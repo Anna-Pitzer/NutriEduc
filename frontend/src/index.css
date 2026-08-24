@@ -1,1 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&display=swap');
 @import "tailwindcss";
+
+@theme {
+
+  /* Cores */
+  --color-primaria: #D92567;
+  --color-vermelho: #D95252;
+  --color-laranja: #D9631E;
+  --color-amarelo: #E6C229;
+  --color-roxo: #8F6BC8;
+  --color-verdeMtClaro: #CFD9C1;
+  --color-verdeLodo: #91A644;
+  --color-verdeEscuro: #1d440b;
+  --color-verdeClaro: #12A628;
+
+  /* Neutros */
+  --color-branco: #F2F2F2;
+}
+
+body {
+  font-family: DynaPuff, sans-serif;
+}
