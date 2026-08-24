@@ -1,0 +1,13 @@
+:root {
+  /* Cores principais */
+  --rosa: #D92567;
+  --verde: #91A644;
+  --verde-claro: #CFD9C1;
+  --laranja: #D9631E;
+  --vermelho: #D95252;
+  --amarelo: #E6C229;
+  --roxo: #8F6BC8;
+
+  /* Neutros */
+  --cinza-claro: #F2F2F2;
+}
