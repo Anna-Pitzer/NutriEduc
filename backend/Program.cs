@@ -1,5 +1,4 @@
-﻿using USER; 
-using Ntc.Controllers;
+﻿using Ntc.Controllers;
 using Microsoft.AspNetCore.Builder;
 using Ntc.Model;
 using Ntc.Database;
