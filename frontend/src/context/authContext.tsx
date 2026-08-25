@@ -1,33 +1,50 @@
 
 import { createContext, useContext, useState } from "react";
 
-type User = {
-  id: string;
+type UserLogin = {
+  email: string;
+  password: string;
+};
+
+type UserRegister = {
   name: string;
-  role: "user" | "admin";
+  password: string;
+  email: string;
+  birthday: string;
 };
 
 type AuthContextData = {
-  user: User | null;
+  userLogin: UserLogin | null;
+  userRegister: UserRegister | null;
   isAuthenticated: boolean;
-  login: (user: User) => void
+  login: (user: UserLogin) => void;
+  register: (user: UserRegister) => void;
 }
 
 export const AuthContext = createContext<AuthContextData | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [userLogin, setUserLogin] = useState<UserLogin | null>(null);
+  const [userRegister, setUserRegister] = useState<UserRegister | null>(null)
 
-  const login = (user: User) => {
-    setUser(user)
+  const login = (user: UserLogin) => {
+    setUserLogin(user)
   }
+
+  const register = (user: UserRegister) => {
+    setUserRegister(user)
+  }
+
+
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        isAuthenticated: user !== null,
+        userLogin,
+        userRegister,
+        isAuthenticated: userLogin !== null,
         login,
+        register,
       }}
     >
       {children}
@@ -35,12 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useAuth(){
+export function useAuth() {
   const context = useContext(AuthContext)
 
-  if (!context){
+  if (!context) {
     throw new Error("UseAuth deve ser usado dentro de um AuthProvider")
   }
 
-  return context 
+  return context
 }

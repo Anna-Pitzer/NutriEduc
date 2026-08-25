@@ -8,13 +8,11 @@ export function Rotas() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/colors" element={<PaletaDeCor/>}/>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/colors" element={<PaletaDeCor />} />
 
-      
       <Route element={<ProtectedRoutes />}>
-        {/* <Route path="/" element={<HomePage />} /> */}
-        
+        <Route path="/" element={<HomePage />} />
+
       </Route>
     </Routes>
   )

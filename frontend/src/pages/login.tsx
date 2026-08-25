@@ -1,28 +1,60 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { KeyRound, Lock, Mail, User } from "lucide-react"
 import { useAuth } from "../context/authContext"
 
 import background from '../assets/background1.png'
+import { Navigate } from "react-router-dom"
 
 export function LoginPage() {
   const [isLoginPage, setIsLoginPage] = useState<boolean>(true)
-  const [fullName, setFullName] = useState<string>()
-  const [email, setEmail] = useState<string>()
-  const [password, setPassword] = useState<string>()
-  const [birthday, setBirthday] = useState<string>()
+  const [fullName, setFullName] = useState<string>("")
+  const [email, setEmail] = useState<string>("")
+  const [password, setPassword] = useState<string>("")
+  const [birthday, setBirthday] = useState<string>("")
 
-  const { user, login } = useAuth()
+  const { isAuthenticated, login, register } = useAuth()
 
-  function handlesubmit(e: React.SubmitEvent<HTMLFormElement>) {
+  useEffect(() => {
+    console.log("isAuthenticated:", isAuthenticated)
+  }, [isAuthenticated])
+
+  function handleLogin(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
-    login({
-      id: "1",
-      name: "Joao",
-      role: "user",
-    })
 
+    if (!email || !password) {
+      alert("Error, preencha todo os campos!")
+      return
+    }
+
+    login({
+      email: email,
+      password: password,
+    })
+    console.log('Login realizado com sucesso')
   }
-  console.log(user)
+
+  function handleRegister(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault()
+
+    if (!fullName || !email || !password || !birthday) {
+      alert("Error, preencha todo os campos!")
+      return
+    }
+
+    register({
+      name: fullName,
+      email: email,
+      password: password,
+      birthday: birthday,
+    })
+    console.log("Registrado com sucesso!")
+  }
+
+
+
+  if (isAuthenticated) {
+    return <Navigate to={"/"} replace />
+  }
 
   return (
     <section
@@ -46,12 +78,12 @@ export function LoginPage() {
         <div className="bg-primaria w-full h-full flex items-center justify-center rounded-tl-[50px] rounded-b-xl">
           {isLoginPage ?
             <form
-              onSubmit={handlesubmit}
+              onSubmit={handleLogin}
               className="flex flex-col gap-8 w-[90%]"
             >
 
               <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md " >
-                <Mail color="gray" />
+                <Mail color="gray"  />
                 <input
                   className="text-gray outline-none w-full"
                   type="email"
@@ -62,7 +94,7 @@ export function LoginPage() {
                 />
               </p>
               <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
-                <Lock color="gray" />
+                <Lock color="gray" width={30} height={30}/>
                 <input
                   className="text-gray outline-none w-full"
                   type="password"
@@ -79,7 +111,7 @@ export function LoginPage() {
               <input
                 type="submit"
                 value="Log in"
-                className="text-black bg-white w-[80%] m-auto h-12 rounded-md hover:cursor-pointer hover:bg-[#CFD9C1] hover:pb-1"
+                className="text-black bg-white w-[80%] m-auto h-12 rounded-md hover:cursor-pointer hover:bg-verdeMtClaro hover:pb-1"
               />
               <div className="flex items-center justify-between px-4">
                 <label className="text-white flex items-center gap-1 hover:cursor-pointer">
@@ -93,14 +125,14 @@ export function LoginPage() {
                   type="button"
                   onClick={() => setIsLoginPage(false)}
 
-                >New here? <strong>Sign up!</strong></button>
+                >New here? <strong>Register!</strong></button>
               </div>
             </form>
 
             :
 
             <form
-              onSubmit={handlesubmit}
+              onSubmit={handleRegister}
               className="flex flex-col gap-4 w-[90%]"
             >
               <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
@@ -150,8 +182,8 @@ export function LoginPage() {
               </p>
 
               <button
-                className="text-black bg-white w-[80%] m-auto h-12 rounded-md hover:cursor-pointer hover:bg-blue-200 hover:pb-1"
-              >Sign up</button>
+                className="text-black bg-white w-[80%] m-auto h-12 rounded-md hover:cursor-pointer hover:bg-verdeMtClaro hover:pb-1"
+              >Register</button>
 
               <button
                 className="text-white"

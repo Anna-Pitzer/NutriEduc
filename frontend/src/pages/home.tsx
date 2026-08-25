@@ -18,7 +18,7 @@ export function HomePage() {
           <Navbar />
           <main className="flex-1 rounded-2xl border border-[#E8E8E8]/20 bg-[rgba(214,211,205,0.07)] p-6 shadow-[0_8px_30px_rgba(11,102,25,0.08)] backdrop-blur-[1px]">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-[#D95252]">
+              <h2 className="text-2xl font-bold text-vermelho">
                 Bem-vindo ao NutriEduc!
               </h2>
               <p className="mt-2 text-sm text-gray-500">
