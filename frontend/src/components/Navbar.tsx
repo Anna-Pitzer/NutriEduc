@@ -1,11 +1,12 @@
 import { Users, UserRound, Settings, Utensils, ChevronRight } from "lucide-react"
+import { Link } from "react-router-dom";
 
 export default function Navbar() {
 
     const opcoes = [
         {
             nome: "Perfil",
-            caminho: "/perfil",
+            caminho: "/Perfil",
             icone: UserRound
         },
         {
@@ -37,24 +38,28 @@ export default function Navbar() {
                         const Icon = opcao.icone;
 
                         return (
-                            <a key={opcao.caminho}
-                            href={opcao.caminho} className="group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-[#8F6BC8] transition-all duration-200 hover:bg-[rgba(172,178,173,0.07)] hover:text-[#E6C229] hover:shadow-sm">
+                            <Link
+                                key={opcao.caminho}
+                                to={opcao.caminho}
+                                className="group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-[#8F6BC8] transition-all duration-200 hover:bg-[rgba(172,178,173,0.07)] hover:text-[#E6C229] hover:shadow-sm"
+                            >
                                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#8F6BC8] shadow-sm transition-all duration-200 group-hover:bg-[#8F6BC8] group-hover:text-white">
                                     <Icon size={20} strokeWidth={2} />
                                 </span>
+
                                 <span className="flex-1 whitespace-nowrap">
                                     {opcao.nome}
                                 </span>
 
-                                <ChevronRight size={17} className="opacity-0 -translate-x-1 text-[#12A628] transition-all duration-200 group-hover:translate-x-0
-                                group-hover:opacity-100"
+                                <ChevronRight
+                                    size={17}
+                                    className="opacity-0 -translate-x-1 text-[#12A628] transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100"
                                 />
-                            </a>
+                            </Link>
                         );
-
                     })}
                 </nav>
-            </div>            
+            </div>
         </aside>
     );
 }
