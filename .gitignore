@@ -1,6 +1,8 @@
 *.db
 [Bb]in/
 [Oo]bj/
+**/bin/
+**/obj/
 
 # Logs
 logs
