@@ -1,27 +1,31 @@
 import Footer from "../components/Footer";
 import Header from "../components/Header";
-import Button from "../components/Button"; 
+import Button from "../components/Button";
 import { useState, useEffect } from "react";
 import { ChevronLeft, Mail, Phone, User } from "lucide-react";
+
+import {
+    sanitizarNome,
+    sanitizarEmail,
+    sanitizarInstituicao,
+    formatarTelefone,
+    sanitizarTelefone,
+
+} from "../components/Sanitizacao"
+
+import {
+    validarNome,
+    validarEmail,
+    validarInstituicao,
+    validarCategoria,
+    validarTelefone,
+    validarSenha
+
+} from '../components/Validacao'
 
 
 export function Perfil() {
     //Remover dps
-    const usuarioId = 15;
-
-    const [foto, setFoto] = useState<string | null>(null);
-    const [form, setForm] = useState({
-        nome: "",
-        email: "",
-        instituicao: "",
-        categoria: "",
-        telefone: ""
-    });
-    const [estatisticas, setEstatisticas] = useState({
-        escolasGerenciadas: 0,
-        alunosComRestricao: 0,
-        refeicoesGerenciadas: 0
-    });
     const [dadosOriginais, setDadosOriginais] = useState({
         nome: "",
         email: "",
@@ -30,48 +34,22 @@ export function Perfil() {
         telefone: ""
     });
 
+    const usuarioId = 15;
+    const [form, setForm] = useState(dadosOriginais);
+    const [foto, setFoto] = useState<string | null>(null);
+    const [estatisticas, setEstatisticas] = useState({
+        escolasGerenciadas: 0,
+        alunosComRestricao: 0,
+        refeicoesGerenciadas: 0
+    });
+
+
     const [mostrarSenha, setMostrarSenha] = useState(false);
     const [senhaAtual, setSenhaAtual] = useState("");
     const [novaSenha, setNovaSenha] = useState("");
     const [confirmarSenha, setConfirmarSenha] = useState("");
     const [erro, setErro] = useState("");
     const [mensagem, setMensagem] = useState("")
-
-    const sanitizarNome = (valor: string) => {
-        return valor.replace(/[^A-Za-zÀ-ÿ\s'-]/g, "").replace(/\s+/g, " ").trimStart().slice(0, 100);
-    };
-
-    const sanitizarEmail = (valor: string) => {
-        return valor.trim().toLocaleLowerCase().slice(0, 150);
-    };
-
-    const sanitizarInstituicao = (valor: string) => {
-        return valor.replace(/\+/g, " ").trim().slice(0, 150);
-    }
-
-    const sanitizarTelefone = (valor: string) => {
-        return valor.replace(/\D/g, "").slice(0, 11);
-    }
-
-    const formatarTelefone = (telefone: string) => {
-        const numeros = telefone.replace(/\D/g, "");
-
-        if (numeros.length <= 10) {
-            return numeros.replace(
-                /^(\d{2})(\d{4})(\d{0,4})$/,
-                "($1) $2-$3"
-            );
-        }
-
-        return numeros.replace(
-            /^(\d{2})(\d{5})(\d{0,4})$/,
-            "($1) $2-$3"
-        );
-    };
-
-    const validarSenha = (senha: string) => {
-        return senha.length >= 8;
-    };
 
     const trocarFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
 
@@ -178,34 +156,34 @@ export function Perfil() {
             telefone: sanitizarTelefone(form.telefone)
         };
 
-        if (dadosSanitizados.nome.length < 2) {
-            setErro("Digite um nome válido.");
+        const erroNome = validarNome(dadosSanitizados.nome);
+        if (erroNome) {
+            setErro(erroNome);
             return;
         }
 
-        if (dadosSanitizados.email.length < 5 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dadosSanitizados.email)) {
-            setErro("Digite um e-mail válido.");
+        const erroEmail = validarEmail(dadosSanitizados.email);
+        if (erroEmail) {
+            setErro(erroEmail);
             return;
         }
 
-        if (dadosSanitizados.instituicao.length < 2) {
-            setErro("Digite uma instituição válida.");
+
+        const erroInstituicao = validarInstituicao(dadosSanitizados.instituicao);
+        if (erroInstituicao) {
+            setErro(erroInstituicao);
             return;
         }
 
-        const categoriasValidas = [
-            "opcao1",
-            "opcao2",
-            "opcao3"
-        ];
-
-        if (!categoriasValidas.includes(dadosSanitizados.categoria)) {
-            setErro("Selecione uma categoria válida.");
+        const erroCategoria = validarCategoria(dadosSanitizados.categoria);
+        if (erroCategoria) {
+            setErro(erroCategoria);
             return;
         }
 
-        if (dadosSanitizados.telefone.length !== 10 &&dadosSanitizados.telefone.length !== 11) {
-            setErro("Digite um telefone válido.");
+        const erroTelefone = validarTelefone(dadosSanitizados.telefone);
+        if (erroTelefone) {
+            setErro(erroTelefone);
             return;
         }
 
@@ -296,7 +274,7 @@ export function Perfil() {
 
         try {
             //Canto do endpoint
-            
+
             const resposta = await fetch(`http://localhost:3003/usuarios/${usuarioId}/senha`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -304,9 +282,9 @@ export function Perfil() {
                     senhaAtual,
                     novaSenha
                 })
-                  }
-              );
-             
+            }
+            );
+
             if (!resposta.ok) {
                 throw new Error("Erro ao alterar senha.");
             }
@@ -345,7 +323,7 @@ export function Perfil() {
             </button>
 
             <div className="flex flex-col mx-30 mb-10">
-               
+
                 <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
                     <div className="flex flex-col">
                         <div className="flex">
@@ -389,7 +367,7 @@ export function Perfil() {
                     </div>
 
                 </div>
- 
+
                 <div className="flex justify-around mt-10">
                     <div className="bg-[F2F2F2] rounded-3xl p-10 shadow-[0_8px_30px_rgba(11,102,25,0.08)] flex flex-col items-center">
                         <h2 className="font-bold text-3xl text-verdelodo">{estatisticas.escolasGerenciadas}</h2>
@@ -427,16 +405,16 @@ export function Perfil() {
                     <div className="flex gap-2">
                         <input type="text" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
                         hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2" placeholder="nome"
-                            value={form.nome} onChange={(e) => setForm({ ...form, nome: sanitizarNome(e.target.value) })} maxLength={100}/>
+                            value={form.nome} onChange={(e) => setForm({ ...form, nome: sanitizarNome(e.target.value) })} maxLength={100} />
                         <input type="email" name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
                         hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2"
                             placeholder="email"
-                            value={form.email} onChange={(e) => setForm({ ...form, email: sanitizarEmail(e.target.value) })} maxLength={150}/>
+                            value={form.email} onChange={(e) => setForm({ ...form, email: sanitizarEmail(e.target.value) })} maxLength={150} />
                     </div>
                     <div>
                         <input type="text" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
                         hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2" placeholder="Instituição"
-                            value={form.instituicao} onChange={(e) => setForm({ ...form, instituicao: sanitizarInstituicao(e.target.value) })} maxLength={150}/>
+                            value={form.instituicao} onChange={(e) => setForm({ ...form, instituicao: sanitizarInstituicao(e.target.value) })} maxLength={150} />
                     </div>
                     <div className="flex gap-2">
                         {/*DPS TEM QUE PUXAR DO BACK AS OPCOES */}
@@ -454,24 +432,24 @@ export function Perfil() {
                         </select>
                         <input type="tel" name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
                         hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2"
-                            placeholder="(00) 00000-0000" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: sanitizarTelefone(e.target.value) })} maxLength={11}/>
+                            placeholder="(00) 00000-0000" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: sanitizarTelefone(e.target.value) })} maxLength={11} />
                     </div>
-                    
+
                     <div className="flex flex-col justify-around mt-4">
                         <div className="flex flex-wrap items-center gap-3">
-    
+
                             <Button type="button" variant="normal" onClick={salvarPerfil}>
                                 Salvar Alterações
                             </Button>
-                            
+
                             <Button type="button" variant="cancelar" onClick={() => cancelarAlteracoes()}>
                                 Cancelar
                             </Button>
 
-                            <Button type="button" variant="alterarSenha" onClick={() => {setErro(""); setMensagem(""); setMostrarSenha(true);}}>
+                            <Button type="button" variant="alterarSenha" onClick={() => { setErro(""); setMensagem(""); setMostrarSenha(true); }}>
                                 Alterar Senha
                             </Button>
-                            
+
                         </div>
                         {mostrarSenha && (
                             <div className="w-full mt-6 rounded-2xl border border-gray-200 bg-white p-5">

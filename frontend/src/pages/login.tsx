@@ -5,8 +5,23 @@ import { useAuth } from "../context/authContext"
 import background from '../assets/background1.png'
 import { Navigate } from "react-router-dom"
 
+import {
+  sanitizarNome,
+  sanitizarEmail,
+  sanitizarAniversario,
+} from "../components/Sanitizacao";
+
+import {
+  validarNome,
+  validarEmail,
+  validarSenha,
+  validarAniversario,
+} from "../components/Validacao";
+
+
 export function LoginPage() {
   const [isLoginPage, setIsLoginPage] = useState<boolean>(true)
+
   const [fullName, setFullName] = useState<string>("")
   const [email, setEmail] = useState<string>("")
   const [password, setPassword] = useState<string>("")
@@ -21,13 +36,22 @@ export function LoginPage() {
   function handleLogin(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    if (!email || !password) {
-      alert("Error, preencha todo os campos!")
-      return
+    const emailSanitizado = sanitizarEmail(email);
+
+    const erroEmail = validarEmail(emailSanitizado);
+    if (erroEmail) {
+      alert(erroEmail);
+      return;
+    }
+
+    const erroSenha = validarSenha(password);
+    if (erroSenha) {
+      alert(erroSenha);
+      return;
     }
 
     login({
-      email: email,
+      email: emailSanitizado,
       password: password,
     })
     console.log('Login realizado com sucesso')
@@ -36,21 +60,51 @@ export function LoginPage() {
   function handleRegister(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    if (!fullName || !email || !password || !birthday) {
-      alert("Error, preencha todo os campos!")
-      return
+    const nomeSanitizado = sanitizarNome(fullName);
+    const emailSanitizado = sanitizarEmail(email);
+    const aniversarioSanitizado = sanitizarAniversario(birthday);
+
+
+    const erroNome = validarNome(nomeSanitizado);
+    if (erroNome) {
+      alert(erroNome);
+      return;
+    }
+
+    const erroEmail = validarEmail(emailSanitizado);
+    if (erroEmail) {
+      alert(erroEmail);
+      return;
+    }
+
+    const erroSenha = validarSenha(password);
+    if (erroSenha) {
+      alert(erroSenha);
+      return;
+    }
+
+    const erroAniversario = validarAniversario(
+      aniversarioSanitizado
+    );
+    if (erroAniversario) {
+      alert(erroAniversario);
+      return;
     }
 
     register({
-      name: fullName,
-      email: email,
-      password: password,
-      birthday: birthday,
-    })
+      name: nomeSanitizado,
+      email: emailSanitizado,
+      password,
+      birthday: aniversarioSanitizado,
+    });
     console.log("Registrado com sucesso!")
+    setFullName('')
+    setEmail('')
+    setPassword('')
+    setBirthday('')
+    setIsLoginPage(true)
+
   }
-
-
 
   if (isAuthenticated) {
     return <Navigate to={"/"} replace />
@@ -83,7 +137,7 @@ export function LoginPage() {
             >
 
               <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md " >
-                <Mail color="gray"  />
+                <Mail color="gray" />
                 <input
                   className="text-gray outline-none w-full"
                   type="email"
@@ -94,7 +148,7 @@ export function LoginPage() {
                 />
               </p>
               <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
-                <Lock color="gray" width={30} height={30}/>
+                <Lock color="gray" width={30} height={30} />
                 <input
                   className="text-gray outline-none w-full"
                   type="password"
