@@ -1,5 +1,6 @@
 import Footer from "../components/Footer";
 import Header from "../components/Header";
+import Button from "../components/Button"; 
 import { useState, useEffect } from "react";
 import { ChevronLeft, Mail, Phone, User } from "lucide-react";
 
@@ -325,6 +326,8 @@ export function Perfil() {
         }
     };
 
+    const cancelar = () => window.history.back();
+
     return (
         <div className="relative min-h-screen bg-[#FAF9F5]">
 
@@ -332,12 +335,12 @@ export function Perfil() {
 
             <button
                 type="button"
-                onClick={() => window.history.back()}
+                onClick={cancelar}
                 className="group flex items-center justify-center cursor-pointer mx-10"
             >
                 <ChevronLeft
                     size={50}
-                    className="text-[#8F6BC8] transition-transform duration-200 group-hover:-translate-x-2"
+                    className="text-roxo transition-transform duration-200 group-hover:-translate-x-2"
                 />
             </button>
 
@@ -354,10 +357,10 @@ export function Perfil() {
                                         className="w-24 h-24 rounded-full object-cover border border-gray-300 hover:opacity-80 transition"
                                     />
                                 ) : (
-                                    <div className="w-24 h-24 rounded-full bg-[#F2F2F2] flex items-center justify-center border border-gray-300 hover:opacity-80 transition">
+                                    <div className="w-24 h-24 rounded-full bg-branco flex items-center justify-center border border-gray-300 hover:opacity-80 transition">
                                         <User
                                             size={42}
-                                            className="text-[#8F6BC8]"
+                                            className="text-roxo"
                                         />
                                     </div>
                                 )}
@@ -389,15 +392,15 @@ export function Perfil() {
  
                 <div className="flex justify-around mt-10">
                     <div className="bg-[F2F2F2] rounded-3xl p-10 shadow-[0_8px_30px_rgba(11,102,25,0.08)] flex flex-col items-center">
-                        <h2 className="font-bold text-3xl text-[#91A644]">{estatisticas.escolasGerenciadas}</h2>
+                        <h2 className="font-bold text-3xl text-verdelodo">{estatisticas.escolasGerenciadas}</h2>
                         <p className="text-gray-500">Escolas gerenciadas</p>
                     </div>
                     <div className="bg-[F2F2F2] rounded-3xl p-10 shadow-[0_8px_30px_rgba(11,102,25,0.08)] flex flex-col items-center">
-                        <h2 className="font-bold text-3xl text-[#D9631E]">{estatisticas.alunosComRestricao}</h2>
+                        <h2 className="font-bold text-3xl text-laranja">{estatisticas.alunosComRestricao}</h2>
                         <p className="text-gray-500">Alunos com restrição</p>
                     </div>
                     <div className="bg-[F2F2F2] rounded-3xl p-10 shadow-[0_8px_30px_rgba(11,102,25,0.08)] flex flex-col items-center">
-                        <h2 className="font-bold text-3xl text-[#8F6BC8]">{estatisticas.refeicoesGerenciadas}</h2>
+                        <h2 className="font-bold text-3xl text-roxo">{estatisticas.refeicoesGerenciadas}</h2>
                         <p className="text-gray-500">Refeições Gerenciadas</p>
                     </div>
 
@@ -456,26 +459,19 @@ export function Perfil() {
                     
                     <div className="flex flex-col justify-around mt-4">
                         <div className="flex flex-wrap items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={salvarPerfil}
-                                className="rounded-2xl bg-[#D92567] px-5 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#b31f55] hover:shadow-md active:scale-[0.98]"
-                            >
+    
+                            <Button type="button" variant="normal" onClick={salvarPerfil}>
                                 Salvar Alterações
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={cancelarAlteracoes}
-                                className="rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-medium text-gray-600 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50 active:scale-[0.98]">
+                            </Button>
+                            
+                            <Button type="button" variant="cancelar" onClick={() => cancelarAlteracoes()}>
                                 Cancelar
-                            </button>
+                            </Button>
 
-                            <button
-                                type="button"
-                                className="rounded-2xl border border-[#E6C229] bg-[#fffae5] px-5 py-3 text-sm font-medium text-[#E6C229] transition-all duration-200 hover:border-[#E6C229] hover:bg-[#fff3c4] active:scale-[0.98]" onClick={() => {setErro(""); setMensagem(""); setMostrarSenha(true);}}>
-                                Alterar senha
-                            </button>
+                            <Button type="button" variant="alterarSenha" onClick={() => {setErro(""); setMensagem(""); setMostrarSenha(true);}}>
+                                Alterar Senha
+                            </Button>
+                            
                         </div>
                         {mostrarSenha && (
                             <div className="w-full mt-6 rounded-2xl border border-gray-200 bg-white p-5">
@@ -489,40 +485,33 @@ export function Perfil() {
                                     <input
                                         type="password"
                                         placeholder="Senha atual"
-                                        className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#E6C229] focus:ring-4 focus:ring-[#E6C229]/10"
+                                        className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-amarelo focus:ring-4 focus:ring-amarelo/10"
                                         onChange={(e) => setSenhaAtual(e.target.value)}
                                     />
 
                                     <input
                                         type="password"
                                         placeholder="Nova senha"
-                                        className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#E6C229] focus:ring-4 focus:ring-[#E6C229]/10"
+                                        className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-amarelo focus:ring-4 focus:ring-amarelo/10"
                                         onChange={(e) => setNovaSenha(e.target.value)}
                                     />
 
                                     <input
                                         type="password"
                                         placeholder="Confirme a nova senha"
-                                        className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-[#E6C229] focus:ring-4 focus:ring-[#E6C229]/10"
+                                        className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-amarelo focus:ring-4 focus:ring-amarelo/10"
                                         onChange={(e) => setConfirmarSenha(e.target.value)}
                                     />
 
                                     <div className="flex justify-end gap-3 mt-2">
 
-                                        <button
-                                            type="button"
-                                            onClick={() => cancelarAlteracaoSenha()}
-                                            className="rounded-2xl border border-gray-200 px-5 py-3 text-sm text-gray-600 hover:bg-gray-50"
-                                        >
+                                        <Button type="button" variant="cancelar" onClick={() => cancelarAlteracaoSenha()}>
                                             Cancelar
-                                        </button>
+                                        </Button>
 
-                                        <button
-                                            type="button"
-                                            className="rounded-2xl bg-[#E6C229] px-5 py-3 text-sm font-medium text-white hover:bg-[#c9a91f]" onClick={alterarSenha}
-                                        >
+                                        <Button type="button" variant="alteracao" onClick={alterarSenha}>
                                             Confirmar alteração
-                                        </button>
+                                        </Button>
 
                                     </div>
 

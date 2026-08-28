@@ -2,7 +2,7 @@
 
 export default function Footer() {
     return (
-        <footer className="bg-[#D9631E] text-white">
+        <footer className="bg-laranja text-white">
             <div className="mx-auto flex max-w-7xl flex-col gape-6 px-6 py-8 md:flex-row md:items-center md:justify-between">
                 <div><h2 className="text-lg font-bold">NutriEduc</h2></div>
                 <div><p className="mt-1 text-sm text-white/80">Sistema de gestão de cardápios escolares</p></div>

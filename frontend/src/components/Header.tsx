@@ -28,7 +28,7 @@ export default function Header() {
 
             <div className=" relative z-10 flex h-full items-start justify-between px-8 py-8 md:px-12">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-[#F2F2F2] md:text-5xl lg:text-6xl">NutriEduc</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-branco md:text-5xl lg:text-6xl">NutriEduc</h1>
                     <p className=" mt-1 text-sm font-light text-white/75 md:text-base">Alimentação que educa, nutrição que transforma</p>
                 </div>
 

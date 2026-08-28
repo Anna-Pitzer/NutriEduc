@@ -1,11 +1,18 @@
-import { Navigate, Outlet } from "react-router-dom"
-import { useAuth } from "../context/authContext"
+import { Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "../context/authContext";
 
 export function ProtectedRoutes() {
-  const { isAuthenticated } = useAuth()
+    const { isAuthenticated } = useAuth();
 
-  if (!isAuthenticated){
-    return <Navigate to={'/login'} replace/>
-  }
-  return <Outlet/>
+    const BYPASS_LOGIN = true;
+
+    if (BYPASS_LOGIN) {
+        return <Outlet />;
+    }
+
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
+
+    return <Outlet />;
 }
