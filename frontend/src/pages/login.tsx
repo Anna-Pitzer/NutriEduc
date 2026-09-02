@@ -204,7 +204,7 @@ export function LoginPage() {
               <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
                 <Mail color="gray" />
                 <input
-                  type="text"
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="outline-none w-full text-gray"
@@ -215,23 +215,11 @@ export function LoginPage() {
               <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
                 <KeyRound color="gray" />
                 <input
-                  type="text"
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="outline-none w-full text-gray"
                   placeholder="Password"
-                />
-              </p>
-
-              <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
-                <label htmlFor="userDate"></label>
-                <input
-                  id="userDate"
-                  value={birthday}
-                  onChange={(e) => setBirthday(e.target.value)}
-                  type="date"
-                  className="outline-none w-full border-white text-gray"
-
                 />
               </p>
 
