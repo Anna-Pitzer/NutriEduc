@@ -43,7 +43,7 @@ export function CadastroAlunos() {
     interface FormularioAluno {
         nome: string;
         matricula: string;
-        idade: string;
+        Nascimento: string;
         serie: string;
         escola: string;
         telefone: string;
@@ -57,7 +57,7 @@ export function CadastroAlunos() {
     const estadoInicial: FormularioAluno = {
         nome: "",
         matricula: "",
-        idade: "",
+        Nascimento: "",
         serie: "",
         escola: "",
         telefone: "",
@@ -112,7 +112,7 @@ export function CadastroAlunos() {
     const limparTelefone = (valor: string): string => {
         return valor.replace(/\D/g, "").slice(0, 11)};
 
-    const limparIdade = (valor: string): string => {
+    const limparNascimento = (valor: string): string => {
         return valor.replace(/\D/g, "").slice(0, 2)};
 
     const [form, setForm] = useState<FormularioAluno>(estadoInicial);
@@ -158,7 +158,7 @@ export function CadastroAlunos() {
     const validaFormulario = (): boolean => {
         const nome = form.nome.trim();
         const matricula = form.matricula.trim();
-        const idade = Number(form.idade);
+        const Nascimento = Number(form.Nascimento);
         const telefone = form.telefone.trim();
         const contatoNome = form.contatoEmerNome.trim();
         const contatoTelefone = form.contatoEmerTelefone.trim();
@@ -183,8 +183,8 @@ export function CadastroAlunos() {
             return false;
         }
 
-        if (!form.idade || !Number.isInteger(idade) || idade < 1 || idade > 18) {
-            mostrarErro("Informe uma idade válida (entre 1 e 18 anos).");
+        if (!form.Nascimento || !Number.isInteger(Nascimento) || Nascimento < 1 || Nascimento > 18) {
+            mostrarErro("Informe uma Nascimento válida (entre 1 e 18 anos).");
             return false;
         }
 
@@ -227,7 +227,7 @@ export function CadastroAlunos() {
         return {
             nome: limparTexto(form.nome, 100),
             matricula: limparMatricula(form.matricula),
-            idade: limparIdade(form.idade),
+            Nascimento: limparNascimento(form.Nascimento),
             serie: form.serie,
             escola: form.escola,
             telefone: limparTelefone(form.telefone),
@@ -324,14 +324,11 @@ export function CadastroAlunos() {
                     <div className="flex gap-4">
                         <input type="text" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
                         hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Nome Completo" value={form.nome} maxLength={100} autoComplete="name" onChange={(e) => atualizarCampo("nome", limparTexto(e.target.value, 100))}/>
-
-                        <input type="text" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Matrícula" value={form.matricula} maxLength={20} onChange={(e) => atualizarCampo("matricula", limparMatricula(e.target.value))}/>
                     </div>
 
                     <div className="flex gap-4">
                         <input type="number" name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Idade" value={form.idade} minLength={1} maxLength={18} onChange={(e) => atualizarCampo("idade", limparIdade(e.target.value))}/>
+                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Nascimento" value={form.Nascimento} minLength={1} maxLength={18} onChange={(e) => atualizarCampo("Nascimento", limparNascimento(e.target.value))}/>
 
                         <select className="w-full rounded-2xl border border-gray-200 bg-white  text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 
                             hover:bg-gray-200 focus:border-[border] focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3" value={form.serie} onChange={(e) => atualizarCampo("serie", e.target.value)}>
@@ -390,6 +387,11 @@ export function CadastroAlunos() {
                                 {opcoes.map((opcao) => {
                                     const Icon = opcao.icone;
 
+                                    const selecionado =
+                                        form.restricoes.includes(
+                                        opcao.valor
+                                    );
+
                                         return (
                                             <button
                                         type="button"
@@ -400,8 +402,7 @@ export function CadastroAlunos() {
                                             )
                                         }
                                         aria-pressed={
-                                            selecionado
-                                        }
+                                            selecionado                                        }
                                         className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition-all duration-200 ${
                                             selecionado
                                                 ? "bg-roxo text-white shadow-sm"
@@ -477,6 +478,10 @@ export function CadastroAlunos() {
                                         }
                                         className="peer sr-only"
                                     />
+                                    
+                                    <div className="flex items-center justify-center rounded-2xl border-2 border-gray-200 bg-white px-8 py-4 font-semibold text-vermelho transition-all duration-200 hover:border-vermelho hover:bg-vermelho/5 peer-checked:border-vermelho peer-checked:bg-vermelho peer-checked:text-white">
+                                        Não
+                                    </div>
                                 </label>
 
                             </div>
@@ -508,23 +513,18 @@ export function CadastroAlunos() {
                             {mensagem}
                         </div>
                     )}
-                    <div className="flex gap-4 m-4">
-                        <Button type="button" variant="normal">
-                            Cadastrar Aluno
+                    <div className="flex justify-center gap-4 m-4">
+                        <Button type="button" variant="normal" onClick={cadastrarALuno} disabled={carregando}>
+                            {carregando ? "Cadastrando..." : "Cadastrar Aluno"}
                         </Button>
                         
-                        <Button type="button" variant="limpar">
+                        <Button type="button" variant="limpar" onClick={limparCampos} disabled={carregando}>
                             Limpar campos
                         </Button>
                         
-                        <Button type="button" variant="cancelar">
+                        <Button type="button" variant="cancelar" onClick={cancelar} disabled={carregando}>
                             Cancelar
                         </Button>
-
-                        <Button type="button" variant="ver">
-                            Visualizar modelos
-                        </Button>
-
                     </div>
                     <div className="border-verdeLodo border-2 rounded-3xl p-4 flex">
                         <div className="my-5 w-4 bg-verdeLodo rounded-3xl mr-4" />
