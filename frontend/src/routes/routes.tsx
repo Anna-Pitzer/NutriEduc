@@ -8,6 +8,7 @@ import { Perfil } from "../pages/Perfil"
 import { TermosDeUso } from "../pages/TermosDeUso"
 import { PoliticaDePrivaciade } from "../pages/PoliticaDePrivacidade"
 import { Suporte } from "../pages/Suporte"
+import { Cardapio } from "../pages/Cardapio"
 
 export function Rotas() {
   return (
@@ -22,6 +23,7 @@ export function Rotas() {
         <Route path="/termosdeuso" element={<TermosDeUso />} />
         <Route path="/politicadeprivacidade" element={<PoliticaDePrivaciade />} />
         <Route path="/suporte" element={<Suporte />} />
+        <Route path="/cardapio" element={<Cardapio />} />
 
       </Route>
     </Routes>
