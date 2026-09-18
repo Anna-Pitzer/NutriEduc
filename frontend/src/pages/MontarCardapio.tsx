@@ -36,7 +36,7 @@ export function MontarCardapio() {
             try {
                 const token = localStorage.getItem("token");
 
-                const resposta = await fetch(                    "http://localhost:3000/alimentos",
+                const resposta = await fetch("http://localhost:3000/alimentos",
                     {
                         headers: {
                             "Content-Type": "application/json",
