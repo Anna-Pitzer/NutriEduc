@@ -9,6 +9,7 @@ import { TermosDeUso } from "../pages/TermosDeUso"
 import { PoliticaDePrivaciade } from "../pages/PoliticaDePrivacidade"
 import { Suporte } from "../pages/Suporte"
 import { Cardapio } from "../pages/Cardapio"
+import { MontarCardapio } from "../pages/MontarCardapio"
 
 export function Rotas() {
   return (
@@ -24,6 +25,8 @@ export function Rotas() {
         <Route path="/politicadeprivacidade" element={<PoliticaDePrivaciade />} />
         <Route path="/suporte" element={<Suporte />} />
         <Route path="/cardapio" element={<Cardapio />} />
+        <Route path="/cardapio/montar/:refeicao" element={<MontarCardapio />}/>
+        <Route path="/cardapio" element={<Cardapio />}/>
 
       </Route>
     </Routes>
