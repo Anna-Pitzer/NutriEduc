@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { ReactNode, ButtonHTMLAttributes } from "react";
 
-type ButtonVariant = "normal" | "cancelar" | "alterarSenha" | "alteracao" | "limpar" | "ver" | "login" | "cadastro" | "link";
+type ButtonVariant = "normal" | "cancelar" | "alterarSenha" | "alteracao" | "limpar" | "ver" | "login" | "cadastro" | "link" | "apagar";
 
 interface ButtonProps
     extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> {
@@ -47,7 +47,9 @@ function Button({
 
         cadastro:"",
 
-        link: "",
+        link: "rounded-2xl bg-verdeClaro px-5 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:brightness-90 hover:shadow-md active:scale-[0.98]",
+
+        apagar: "flex items-center justify-center rounded-xl p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600",
     };
 
     return (

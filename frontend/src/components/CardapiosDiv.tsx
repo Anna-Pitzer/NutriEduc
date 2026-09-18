@@ -6,8 +6,12 @@ type CardapiosDivVariant = "cafe" | "almoco" | "lanche" | "jantar"
 export interface AlimentoCardapio {
     id: number;
     nome: string;
-    quantidade: number;
-    unidade: string;
+    calorias: number;
+    carboidratos: number;
+    proteinas: number;
+    gorduras: number;
+    fibras: number;
+    sodio: number;
 }
 
 interface CardapiosDivProps {
@@ -20,10 +24,10 @@ export function CardapiosDiv({    variant = "cafe",
     onClick, alimentos = [] }: CardapiosDivProps) {
 
     const styles: Record<CardapiosDivVariant, string> = { 
-        cafe: "",
-        almoco: "",
-        lanche: "",
-        jantar: "",
+        cafe: "w-full text-primaria rounded-3xl bg-white p-6 shadow-[0_8px_30px_rgba(11,102,25,0.08)] border border-gray-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(11,102,25,0.12)]",
+        almoco: "w-full text-amarelo rounded-3xl bg-white p-6 shadow-[0_8px_30px_rgba(11,102,25,0.08)] border border-gray-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(11,102,25,0.12)]",
+        lanche: "w-full text-laranja rounded-3xl bg-white p-6 shadow-[0_8px_30px_rgba(11,102,25,0.08)] border border-gray-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(11,102,25,0.12)]",
+        jantar: "w-full text-roxo rounded-3xl bg-white p-6 shadow-[0_8px_30px_rgba(11,102,25,0.08)] border border-gray-100 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(11,102,25,0.12)]",
     }
 
     const nomes: Record<CardapiosDivVariant, string> = {
@@ -51,14 +55,18 @@ export function CardapiosDiv({    variant = "cafe",
             </div>
 
             <div>
-                <h3 className="text-lg font-bold text-gray-800">
+                <h3 className="text-lg font-bold text-gray-800 my-2">
                     {nomes[variant]}
                 </h3>
 
                 {alimentos.length > 0 ? (
-                    <p>
-                        {alimentos.map((alimento)=> alimento.nome).join(" * ")}
-                    </p>
+                    <div className="flex flex-col gap-1">
+                        {alimentos.map((alimento) => (
+                            <p key={alimento.id} className="text-sm text-gray-500">
+                                - {alimento.nome}
+                            </p>
+                        ))}
+                    </div>
                 ) : ( 
                 <p className="text-sm text-gray-500">
                     Clique para montar o cardápio
@@ -71,7 +79,5 @@ export function CardapiosDiv({    variant = "cafe",
             />
 
         </button>
-
-
     );
 }
