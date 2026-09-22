@@ -5,13 +5,14 @@ import Header from "../components/Header";
 import { ChevronLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { buscarCardapio, excluirCardapio, type Refeicao, type AlimentoCardapio } from "../services/CardapioApi";
 
-import {
-
-    type AlimentoCardapio,
-} from "../components/CardapiosDiv";
-
-type CardapiosDivVariant = "cafe" | "almoco" | "lanche" | "jantar";
+const refeicoes: Refeicao[] = [
+    "cafe",
+    "almoco",
+    "lanche",
+    "jantar"
+];
 
 interface Responsavel {
     id: number;
@@ -21,13 +22,22 @@ interface Responsavel {
 }
 
 export function Cardapio() {
+    const navigate = useNavigate();
+
+    const [cardapios, setCardapios] = useState<Record<Refeicao, AlimentoCardapio[]>
+    >({
+        cafe: [],
+        almoco: [],
+        lanche: [],
+        jantar: []
+    });
 
     const cancelar = () => {
         navigate("/");
     };
-    const navigate = useNavigate();
 
     const[dataSelecionada, setDataSelecionada] = useState("");
+    const[tipoSelecionado, setTipoSelecionado] = useState("");
     const[responsavel, setResponsavel] = useState<Responsavel | null>(null);
 
     const gerarDatas = () => {
@@ -45,40 +55,35 @@ export function Cardapio() {
     const datas = gerarDatas();
 
     useEffect(() => {
-        const PegarResponsavel = async () => {
+        async function carregarCardapios() {
             try {
-                const token = localStorage.getItem("token");
+                const resultados = await Promise.all(
+                    refeicoes.map(async (refeicao) => {
+                        const alimentos = await buscarCardapio(refeicao);
 
-                const resposta = await fetch(
-                    "http://localhost:8080/responsaveis",
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                    }
+                        return {
+                            refeicao,
+                            alimentos: alimentos
+                        };
+                    })
                 );
 
-                if (!resposta.ok) {
-                    throw new Error("Erro ao buscar responsáveis");
-                };
-
-                const dados: Responsavel = await resposta.json();
-                setResponsavel(dados);
-
-            } catch (error) {
-                console.error("Erro ao buscar responsáveis:", error);
-            };
+                setCardapios((anterior) => ({
+                    ...anterior,
+                    ...Object.fromEntries(
+                        resultados.map(({ refeicao, alimentos }) => [
+                            refeicao,
+                            alimentos
+                        ])
+                    )
+                }));
+            } catch (erro) {
+                console.error("Erro ao carregar cardápios:", erro);
+            }
         }
 
-        PegarResponsavel();
-    }, []); 
-
-    const [cardapios, setCardapios] = useState<Record<CardapiosDivVariant, AlimentoCardapio[]>>({
-        cafe: [],
-        almoco: [],
-        lanche: [],
-        jantar: [],
-    });
+        carregarCardapios();
+    }, []);
 
     useEffect(() => {
         const carregarCardapios = () => {
@@ -103,6 +108,37 @@ export function Cardapio() {
     ...cardapios.lanche,
     ...cardapios.jantar,
 ];
+
+async function handleExcluirCardapio(refeicao: Refeicao) {
+    try {
+        await excluirCardapio(refeicao);
+
+        setCardapios((anterior) => ({
+            ...anterior,
+            [refeicao]: []
+        }));
+    } catch (erro) {
+        console.error("Erro ao excluir cardápio:", erro);
+    }
+}
+
+function handleSalvarCardapio() {
+    if (!tipoSelecionado || !dataSelecionada) {
+        alert("Selecione o tipo e a data antes de salvar.");
+        return;
+    }
+
+    const historico = JSON.parse(localStorage.getItem("historico_cardapios") || "[]");
+    const novo = {
+        id: Date.now(),
+        refeicoes: cardapios,
+        tipo: tipoSelecionado,
+        data: dataSelecionada,
+        dataCriacao: new Date().toISOString(),
+    };
+    localStorage.setItem("historico_cardapios", JSON.stringify([...historico, novo]));
+    navigate("/");
+}
 
 const composicaoNutricional = todosAlimentos.reduce(
     (total, alimento) => ({
@@ -160,7 +196,7 @@ const sodioCerto = composicaoNutricional.sodio <= 600;
             </button>
 
             <div className="flex flex-col mx-30 mb-10 gap-10">
-                <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                <div className="bg-branco rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
                     <h2 className="font-bold text-2xl">Configuração do cardápio</h2>
 
                     <div className="my-5 w-full border border-gray-200 rounded-3xl" />
@@ -168,17 +204,17 @@ const sodioCerto = composicaoNutricional.sodio <= 600;
                     <div className="flex gap-4">
                       
                         <select name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white  text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-[border] focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3" >
+                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3" value={tipoSelecionado} onChange={(e) => setTipoSelecionado(e.target.value)}>
                             <option value="">Selecione uma Opcao</option>
-                            <option value="">Creche (1 a 3 anos)</option>
-                            <option value="">Creche (4 a 5 anos)</option>
-                            <option value="">Escola Integral</option>
-                            <option value="">Escola Geral</option>
+                            <option value="creche-1-3">Creche (1 a 3 anos)</option>
+                            <option value="creche-4-5">Creche (4 a 5 anos)</option>
+                            <option value="integral">Escola Integral</option>
+                            <option value="geral">Escola Geral</option>
                         </select>
                         
                     
                         <select name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white  text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-[border] focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3" value={dataSelecionada} onChange={(e) => setDataSelecionada(e.target.value)}>
+                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3 py-4" value={dataSelecionada} onChange={(e) => setDataSelecionada(e.target.value)}>
                             {datas.map((data, index) => (
                                 <option key={index} value={data}>
                                     {data}
@@ -194,9 +230,6 @@ const sodioCerto = composicaoNutricional.sodio <= 600;
                                 <p>{responsavel.crn}</p>
                             </div>
                         )}
-                        <Button type="button" variant="normal">
-                            Selecionar
-                        </Button>
                     </div>
 
                     <div className=" border-2 border-verdeClaro rounded-2xl p-4 bg-verdeClaro/15 my-4">
@@ -208,7 +241,7 @@ const sodioCerto = composicaoNutricional.sodio <= 600;
                 
                 </div>
 
-                <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                <div className="bg-branco rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
                     <h2 className="font-bold text-2xl">Refeições PNAE</h2>
 
                     <div className="my-5 w-full border border-gray-200 rounded-3xl" />
@@ -224,7 +257,7 @@ const sodioCerto = composicaoNutricional.sodio <= 600;
 
                 </div>
 
-                <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                <div className="bg-branco rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
                     <h2 className="font-bold text-2xl mb-2">Composição nutricional</h2>
 
                     <div className="space-y-3">
@@ -255,7 +288,7 @@ const sodioCerto = composicaoNutricional.sodio <= 600;
                     </div>
                 </div>
 
-                <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                <div className="bg-branco rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
 
                 <h2 className="font-bold text-2xl mb-2">
                     Analise de Conformidade PNAE
@@ -363,7 +396,7 @@ const sodioCerto = composicaoNutricional.sodio <= 600;
                 </div>
             </div>
 
-                <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                <div className="bg-branco rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
                     <h2 className="font-bold text-2xl mb-2">Exportar em Formatos PNAE</h2>
                     
                     <div className="flex gap-4">
@@ -375,11 +408,10 @@ const sodioCerto = composicaoNutricional.sodio <= 600;
 
                 </div>
 
-                <div>
-                    <button>Salvar Cardapio</button>
-                    <button>Validar Conformidade</button>
-                    <button>Gerar</button>
-                    <button>Cancelar</button>
+                <div className="flex gap-3">
+                    <Button type="button" onClick={handleSalvarCardapio}>
+                        Salvar
+                    </Button>
                 </div>
 
             </div>

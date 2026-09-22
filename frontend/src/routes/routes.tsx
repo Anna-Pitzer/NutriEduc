@@ -26,7 +26,6 @@ export function Rotas() {
         <Route path="/suporte" element={<Suporte />} />
         <Route path="/cardapio" element={<Cardapio />} />
         <Route path="/cardapio/montar/:refeicao" element={<MontarCardapio />}/>
-        <Route path="/cardapio" element={<Cardapio />}/>
 
       </Route>
     </Routes>
