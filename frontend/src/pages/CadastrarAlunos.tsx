@@ -3,6 +3,7 @@ import Header from "../components/Header";
 import Button from "../components/Button";
 import { ChevronLeft, Apple, Candy, CircleHelp, Milk, Wheat } from "lucide-react";
 import { useState } from "react";
+import { cadastrarAlunos } from "../services/AlunoApi";
 
 
 export function CadastroAlunos() {
@@ -43,13 +44,13 @@ export function CadastroAlunos() {
     interface FormularioAluno {
         nome: string;
         matricula: string;
-        Nascimento: string;
+        nascimento: string;
         serie: string;
         escola: string;
         telefone: string;
         observacoes: string;
         restricoes: string[];
-        alergiaSevera: string;
+        anafilaxia: boolean;
         contatoEmerNome: string;
         contatoEmerTelefone: string;
     }
@@ -57,13 +58,13 @@ export function CadastroAlunos() {
     const estadoInicial: FormularioAluno = {
         nome: "",
         matricula: "",
-        Nascimento: "",
+        nascimento: "",
         serie: "",
         escola: "",
         telefone: "",
         observacoes: "",
         restricoes: [],
-        alergiaSevera: "",
+        anafilaxia: false,
         contatoEmerNome: "",
         contatoEmerTelefone: ""
     }
@@ -100,9 +101,9 @@ export function CadastroAlunos() {
 
     const limparTexto = (valor: string, limite: number): string => {
         return valor.replace(/[<>]/g, "")
-        .replace(/\s+/g, " ")
-        .trimStart()
-        .slice(0, limite);
+            .replace(/\s+/g, " ")
+            .trimStart()
+            .slice(0, limite);
     };
 
     const limparMatricula = (valor: string): string => {
@@ -110,10 +111,12 @@ export function CadastroAlunos() {
     };
 
     const limparTelefone = (valor: string): string => {
-        return valor.replace(/\D/g, "").slice(0, 11)};
+        return valor.replace(/\D/g, "").slice(0, 11)
+    };
 
     const limparNascimento = (valor: string): string => {
-        return valor.replace(/\D/g, "").slice(0, 2)};
+        return valor.replace(/\D/g, "").slice(0, 2)
+    };
 
     const [form, setForm] = useState<FormularioAluno>(estadoInicial);
     const [mensagem, setMensagem] = useState("");
@@ -158,7 +161,7 @@ export function CadastroAlunos() {
     const validaFormulario = (): boolean => {
         const nome = form.nome.trim();
         const matricula = form.matricula.trim();
-        const Nascimento = Number(form.Nascimento);
+        const Nascimento = Number(form.nascimento);
         const telefone = form.telefone.trim();
         const contatoNome = form.contatoEmerNome.trim();
         const contatoTelefone = form.contatoEmerTelefone.trim();
@@ -183,7 +186,7 @@ export function CadastroAlunos() {
             return false;
         }
 
-        if (!form.Nascimento || !Number.isInteger(Nascimento) || Nascimento < 1 || Nascimento > 18) {
+        if (!form.nascimento || !Number.isInteger(Nascimento) || Nascimento < 1 || Nascimento > 18) {
             mostrarErro("Informe uma Nascimento válida (entre 1 e 18 anos).");
             return false;
         }
@@ -227,66 +230,50 @@ export function CadastroAlunos() {
         return {
             nome: limparTexto(form.nome, 100),
             matricula: limparMatricula(form.matricula),
-            Nascimento: limparNascimento(form.Nascimento),
+            nascimento: limparNascimento(form.nascimento),
             serie: form.serie,
             escola: form.escola,
             telefone: limparTelefone(form.telefone),
             observacoes: limparTexto(form.observacoes, 350),
             restricoes: form.restricoes,
-            alergiaSevera: form.alergiaSevera,
+            anafilaxia: form.anafilaxia,
             contatoEmerNome: limparTexto(form.contatoEmerNome, 100),
             contatoEmerTelefone: limparTelefone(form.contatoEmerTelefone),
         };
     };
 
     const cadastrarALuno = async () => {
-        if (carregando) {
-            return;
-        }
+        if (carregando) return;
 
         setMensagem("");
-        setTipoMensagem("")
+        setTipoMensagem("");
 
-        if (!validaFormulario()) {
-            return;
-        }
+        if (!validaFormulario()) return;
 
         const dados = prepararDados();
+
         setCarregando(true);
 
         try {
-            // const resposta = await fetch(
-            //    "http://localhost:3003/api/alunos",
-            //     {
-            //         method: "POST",
-            //         headers: {
-            //             "Content-Type":
-            //             "application/json",
-            //         },
-            //         body: JSON.stringify(dados),
-            //     }
-            // );
-             
-            // if (!resposta.ok) {
-            //     throw new Error(
-            //         "Erro ao cadastrar aluno"
-            //     );
-            // }
+            await cadastrarAlunos(dados);
 
-            console.log("Dados preparados para Api", dados);
-
-            setMensagem("Aluno validado e pronto para cadastro.")
+            setMensagem("Aluno cadastrado com sucesso!");
             setTipoMensagem("sucesso");
 
             setForm(estadoInicial);
-        } catch {
-            setMensagem("Erro ao cadastrar aluno. Tente novamente mais tarde."
+
+        } catch (error) {
+            console.error("Erro ao cadastrar aluno:", error);
+
+            setMensagem(
+                "Erro ao cadastrar aluno. Tente novamente mais tarde."
             );
+
             setTipoMensagem("erro");
+
         } finally {
-            setCarregando(false)
+            setCarregando(false);
         }
-        
     };
 
     const limparCampos = () => {
@@ -323,12 +310,12 @@ export function CadastroAlunos() {
 
                     <div className="flex gap-4">
                         <input type="text" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Nome Completo" value={form.nome} maxLength={100} autoComplete="name" onChange={(e) => atualizarCampo("nome", limparTexto(e.target.value, 100))}/>
+                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Nome Completo" value={form.nome} maxLength={100} autoComplete="name" onChange={(e) => atualizarCampo("nome", limparTexto(e.target.value, 100))} />
                     </div>
 
                     <div className="flex gap-4">
                         <input type="number" name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Nascimento" value={form.Nascimento} minLength={1} maxLength={18} onChange={(e) => atualizarCampo("Nascimento", limparNascimento(e.target.value))}/>
+                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Nascimento" value={form.nascimento} minLength={1} maxLength={18} onChange={(e) => atualizarCampo("nascimento", limparNascimento(e.target.value))} />
 
                         <select className="w-full rounded-2xl border border-gray-200 bg-white  text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 
                             hover:bg-gray-200 focus:border-[border] focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3" value={form.serie} onChange={(e) => atualizarCampo("serie", e.target.value)}>
@@ -361,12 +348,12 @@ export function CadastroAlunos() {
 
                     <div>
                         <input type="tel" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Telefone" value={form.telefone} maxLength={11} autoComplete="tel" onChange={(e) => atualizarCampo("telefone", limparTelefone(e.target.value))}/>
+                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Telefone" value={form.telefone} maxLength={11} autoComplete="tel" onChange={(e) => atualizarCampo("telefone", limparTelefone(e.target.value))} />
 
                         <textarea name="" id="" cols={30} rows={10} className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
                         hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Observações importantes" value={form.observacoes} maxLength={350} onChange={(e) => atualizarCampo("observacoes", limparTexto(e.target.value, 350))} />
                         <p className="text-right text-xs text-gray-400">
-                        {form.observacoes.length}/350
+                            {form.observacoes.length}/350
                         </p>
                     </div>
 
@@ -389,103 +376,81 @@ export function CadastroAlunos() {
 
                                     const selecionado =
                                         form.restricoes.includes(
-                                        opcao.valor
-                                    );
+                                            opcao.valor
+                                        );
 
-                                        return (
-                                            <button
-                                        type="button"
-                                        key={opcao.valor}
-                                        onClick={() =>
-                                            alterarRestricao(
-                                                opcao.valor
-                                            )
-                                        }
-                                        aria-pressed={
-                                            selecionado                                        }
-                                        className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition-all duration-200 ${
-                                            selecionado
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={opcao.valor}
+                                            onClick={() =>
+                                                alterarRestricao(
+                                                    opcao.valor
+                                                )
+                                            }
+                                            aria-pressed={
+                                                selecionado}
+                                            className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition-all duration-200 ${selecionado
                                                 ? "bg-roxo text-white shadow-sm"
                                                 : "text-roxo hover:bg-[rgba(172,178,173,0.07)] hover:text-amarelo hover:shadow-sm"
-                                        }`}
-                                    >
-                                        <span
-                                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm transition-all duration-200 ${
-                                                selecionado
+                                                }`}
+                                        >
+                                            <span
+                                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm transition-all duration-200 ${selecionado
                                                     ? "bg-white text-roxo"
                                                     : "bg-white text-roxo group-hover:bg-roxo group-hover:text-white"
-                                            }`}
-                                        >
-                                            <Icon
-                                                size={20}
-                                                strokeWidth={2}
-                                            />
-                                        </span>
+                                                    }`}
+                                            >
+                                                <Icon
+                                                    size={20}
+                                                    strokeWidth={2}
+                                                />
+                                            </span>
 
-                                        <span>
-                                            {opcao.nome}
-                                        </span>
-                                    </button>
+                                            <span>
+                                                {opcao.nome}
+                                            </span>
+                                        </button>
                                     );
                                 })}
                             </div>
                         </div>
                     </div>
-                        <div className="group flex shrink-0 flex-col items-center justify-center rounded-3xl border border-vermelho bg-white p-4 text-vermelho shadow-sm transition-all duration-200 hover:bg-[rgba(196,15,15,0.12)] group-hover:bg-vermelho group-hover:text-white group-hover:shadow-md mt-4">
-                            <h3 className="text-xl font-bold text-vermelho mb-4">
-                                Alergia Severa/Risco de Anafilaxia
-                            </h3>
+                    <div className="group flex shrink-0 flex-col items-center justify-center rounded-3xl border border-vermelho bg-white p-4 text-vermelho shadow-sm transition-all duration-200 hover:bg-[rgba(196,15,15,0.12)] group-hover:bg-vermelho group-hover:text-white group-hover:shadow-md mt-4">
+                        <h3 className="text-xl font-bold text-vermelho mb-4">
+                            Alergia Severa/Risco de Anafilaxia
+                        </h3>
 
-                            <div className="flex gap-4">
-                                <label className="cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="alergia"
-                                        value="sim"
-                                        checked={
-                                            form.alergiaSevera ===
-                                            "sim"
-                                        }
-                                        onChange={(e) =>
-                                            atualizarCampo(
-                                                "alergiaSevera",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="peer sr-only"
-                                    />
+                        <div className="flex gap-4">
+                            <label className="cursor-pointer">
+                                <input type="radio" name="alergia" value="sim"
+                                    checked={
+                                        form.anafilaxia ===
+                                        true
+                                    }
+                                    onChange={(e) =>atualizarCampo("anafilaxia",e.target.value)}className="peer sr-only"/>
 
-                                    <div className="flex items-center justify-center rounded-2xl border-2 border-gray-200 bg-white px-8 py-4 font-semibold text-vermelho transition-all duration-200 hover:border-vermelho hover:bg-vermelho/5 peer-checked:border-vermelho peer-checked:bg-vermelho peer-checked:text-white">
-                                        Sim
-                                    </div>
-                                </label>
+                                <div className="flex items-center justify-center rounded-2xl border-2 border-gray-200 bg-white px-8 py-4 font-semibold text-vermelho transition-all duration-200 hover:border-vermelho hover:bg-vermelho/5 peer-checked:border-vermelho peer-checked:bg-vermelho peer-checked:text-white">
+                                    Sim
+                                </div>
+                            </label>
 
-                                {/* NÃO */}
-                                <label className="cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="alergia"
-                                        value="nao"
-                                        checked={
-                                            form.alergiaSevera ===
-                                            "nao"
-                                        }
-                                        onChange={(e) =>
-                                            atualizarCampo(
-                                                "alergiaSevera",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="peer sr-only"
-                                    />
-                                    
-                                    <div className="flex items-center justify-center rounded-2xl border-2 border-gray-200 bg-white px-8 py-4 font-semibold text-vermelho transition-all duration-200 hover:border-vermelho hover:bg-vermelho/5 peer-checked:border-vermelho peer-checked:bg-vermelho peer-checked:text-white">
-                                        Não
-                                    </div>
-                                </label>
+                            {/* NÃO */}
+                            <label className="cursor-pointer">
+                                <input type="radio" name="alergia" value="nao"
+                                    checked={
+                                        form.anafilaxia ===
+                                        false
+                                    }
+                                    onChange={(e) => atualizarCampo("anafilaxia", e.target.value)} className="peer sr-only"/>
 
-                            </div>
+                                <div className="flex items-center justify-center rounded-2xl border-2 border-gray-200 bg-white px-8 py-4 font-semibold text-vermelho transition-all duration-200 hover:border-vermelho hover:bg-vermelho/5 peer-checked:border-vermelho peer-checked:bg-vermelho peer-checked:text-white">
+                                    Não
+                                </div>
+                            </label>
+
                         </div>
+                    </div>
                 </div>
                 <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)] ">
                     <div className="flex flex-col">
@@ -494,21 +459,20 @@ export function CadastroAlunos() {
                         <div className="flex gap-4">
 
                             <input type="text" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Nome Completo / Parentesco" value={form.contatoEmerNome} maxLength={100}autoComplete="name" onChange={(e) => atualizarCampo( "contatoEmerNome",limparTexto(e.target.value, 100))}/>
+                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Nome Completo / Parentesco" value={form.contatoEmerNome} maxLength={100} autoComplete="name" onChange={(e) => atualizarCampo("contatoEmerNome", limparTexto(e.target.value, 100))} />
 
                             <input type="tel" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Telefone - 00 00000-0000" value={form.contatoEmerTelefone} maxLength={11} autoComplete="tel" onChange={(e) => atualizarCampo( "contatoEmerNome",limparTelefone(e.target.value))}/>
+                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Telefone - 00 00000-0000" value={form.contatoEmerTelefone} maxLength={11} autoComplete="tel" onChange={(e) => atualizarCampo("contatoEmerTelefone", limparTelefone(e.target.value))} />
                         </div>
                     </div>
                     {mensagem && (
                         <div
                             role="alert"
-                            className={`mt-4 rounded-2xl p-4 text-center font-semibold ${
-                                tipoMensagem ===
+                            className={`mt-4 rounded-2xl p-4 text-center font-semibold ${tipoMensagem ===
                                 "erro"
-                                    ? "bg-red-50 text-red-700"
-                                    : "bg-green-50 text-green-700"
-                            }`}
+                                ? "bg-red-50 text-red-700"
+                                : "bg-green-50 text-green-700"
+                                }`}
                         >
                             {mensagem}
                         </div>
@@ -517,11 +481,11 @@ export function CadastroAlunos() {
                         <Button type="button" variant="normal" onClick={cadastrarALuno} disabled={carregando}>
                             {carregando ? "Cadastrando..." : "Cadastrar Aluno"}
                         </Button>
-                        
+
                         <Button type="button" variant="limpar" onClick={limparCampos} disabled={carregando}>
                             Limpar campos
                         </Button>
-                        
+
                         <Button type="button" variant="cancelar" onClick={cancelar} disabled={carregando}>
                             Cancelar
                         </Button>

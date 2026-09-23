@@ -52,13 +52,15 @@ function Button({
         apagar: "flex items-center justify-center rounded-xl p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600",
     };
 
+    const { className: extraClassName, ...rest } = props;
+
     return (
         <button
             type={type}
             onClick={handleClick}
             disabled={disabled}
-            className={styles[variant]}
-            {...props}
+            className={[styles[variant], extraClassName].filter(Boolean).join(" ")}
+            {...rest}
         >
             {children}
         </button>

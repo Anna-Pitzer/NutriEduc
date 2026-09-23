@@ -4,20 +4,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { type AlimentoCardapio } from "../components/CardapiosDiv";
 import Button from "../components/Button";
 import background1 from "../assets/background1.png";
+import { buscarAlimentos, salvarCardapio, type Alimento, type Refeicao } from "../services/CardapioApi";
 
 type CardapiosDivVariant = "cafe" | "almoco" | "lanche" | "jantar";
-
-interface Alimento {
-    id: number;
-    nome: string;
-    categoria: string;
-    calorias: number;
-    carboidratos: number;
-    proteinas: number;
-    gorduras: number;
-    fibras: number;
-    sodio: number;
-}
 
 const nomesRefeicoes: Record<CardapiosDivVariant, string> = {
     cafe: "Café da manhã",
@@ -305,37 +294,18 @@ export function MontarCardapio() {
 
         setAlimentosDisponiveis(alimentosFake);
         setCarregando(false);
-        /*
-                const buscarAlimentos = async () => {
-                    try {
-                        const token = localStorage.getItem("token");
         
-                        const resposta = await fetch(
-                            "http://localhost:3000/alimentos",
-                            {
-                                headers: {
-                                    "Content-Type": "application/json",
-                                    Authorization: `Bearer ${token}`,
-                                },
-                            }
-                        );
-        
-                        if (!resposta.ok) {
-                            throw new Error("Erro ao buscar alimentos");
-                        }
-        
-                        const dados: Alimento[] = await resposta.json();
-        
-                        setAlimentosDisponiveis(dados);
-                    } catch (error) {
-                        console.error("Erro ao buscar alimentos:", error);
-                    } finally {
-                        setCarregando(false);
-                    }
-                };
-        
-                buscarAlimentos();
-                */
+        async function carregarAlimentos() {
+            try {
+                const dados = await buscarAlimentos();
+                setAlimentosDisponiveis(dados);
+            } catch (error) {
+                console.error("Erro ao buscar alimentos:", error);
+            } finally {
+                setCarregando(false);
+            }
+        } 
+        carregarAlimentos();
     }, []);
 
     useEffect(() => {
@@ -414,23 +384,19 @@ export function MontarCardapio() {
         );
     };
 
-    const salvarCardapio = () => {
-        if (!refeicao) {
-            alert("Refeição inválida");
-            return;
-        }
-
-        localStorage.setItem(
-            `cardapio_${refeicao}`,
-            JSON.stringify(alimentos)
-        );
-
-        alert(
-            `${nomesRefeicoes[refeicao]} salvo com sucesso!`
-        );
-
+    async function handleSalvarCardapio() {
+    try {
+        await salvarCardapio({
+            refeicao: refeicao as Refeicao,
+            alimentos: alimentos
+        });
+        localStorage.setItem(`cardapio_${refeicao}`, JSON.stringify(alimentos));
         navigate("/cardapio");
-    };
+    } catch (erro) {
+        console.error("Erro ao salvar cardápio:", erro);
+        alert("Não foi possível salvar o cardápio.");
+    }
+}
 
     const cancelar = () => {
         navigate("/cardapio");
@@ -598,7 +564,7 @@ export function MontarCardapio() {
                                     <Button type="button" onClick={cancelar} variant="cancelar">
                                         Cancelar
                                     </Button>
-                                    <Button type="button" onClick={salvarCardapio} variant="ver">
+                                    <Button type="button" onClick={handleSalvarCardapio} variant="ver">
                                         Salvar refeição
                                     </Button>
                                 </div>
