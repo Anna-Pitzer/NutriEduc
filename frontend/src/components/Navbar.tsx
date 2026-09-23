@@ -1,4 +1,4 @@
-import { Users, UserRound, Settings, Utensils, ChevronRight } from "lucide-react"
+import { Users, UserRound, Utensils, ChevronRight, CircleUserRound } from "lucide-react"
 import { Link } from "react-router-dom";
 
 export default function Navbar() {
@@ -20,9 +20,9 @@ export default function Navbar() {
             icone: Utensils,
         },
         {
-            nome: "Configurações",
-            caminho: "/configuracoes",
-            icone: Settings,
+            nome: "Vizualizar Alunos",
+            caminho: "/vizualunos",
+            icone: CircleUserRound,
         }
     ];
 

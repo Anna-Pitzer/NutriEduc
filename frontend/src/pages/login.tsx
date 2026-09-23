@@ -8,15 +8,14 @@ import { Navigate } from "react-router-dom"
 import {
   sanitizarNome,
   sanitizarEmail,
-  sanitizarAniversario,
 } from "../components/Sanitizacao";
 
 import {
   validarNome,
   validarEmail,
   validarSenha,
-  validarAniversario,
 } from "../components/Validacao";
+
 
 
 export function LoginPage() {
@@ -25,7 +24,6 @@ export function LoginPage() {
   const [fullName, setFullName] = useState<string>("")
   const [email, setEmail] = useState<string>("")
   const [password, setPassword] = useState<string>("")
-  const [birthday, setBirthday] = useState<string>("")
 
   const { isAuthenticated, login, register } = useAuth()
 
@@ -62,7 +60,6 @@ export function LoginPage() {
 
     const nomeSanitizado = sanitizarNome(fullName);
     const emailSanitizado = sanitizarEmail(email);
-    const aniversarioSanitizado = sanitizarAniversario(birthday);
 
 
     const erroNome = validarNome(nomeSanitizado);
@@ -83,25 +80,15 @@ export function LoginPage() {
       return;
     }
 
-    const erroAniversario = validarAniversario(
-      aniversarioSanitizado
-    );
-    if (erroAniversario) {
-      alert(erroAniversario);
-      return;
-    }
-
     register({
       name: nomeSanitizado,
       email: emailSanitizado,
       password,
-      birthday: aniversarioSanitizado,
     });
     console.log("Registrado com sucesso!")
     setFullName('')
     setEmail('')
     setPassword('')
-    setBirthday('')
     setIsLoginPage(true)
 
   }
