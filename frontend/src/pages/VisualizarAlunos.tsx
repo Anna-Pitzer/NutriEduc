@@ -1,4 +1,5 @@
 
+import { AlertTriangle, Trash } from "lucide-react";
 import Footer from "../components/Footer";
 import Header from "../components/Header"
 import { useEffect, useRef, useState } from "react";
@@ -39,6 +40,7 @@ export function VisualizarAlunos() {
 
   // ============ ALUNOS ============
   interface AlunoProps {
+    id: number;
     nome: string;
     escola: string;
     serie: string;
@@ -46,10 +48,10 @@ export function VisualizarAlunos() {
   }
   // EXEMPLO DE GET DA API
   const respostaAPI: AlunoProps[] = [
-    { nome: "Kayke Silva de Mattos Soares", escola: "Escola 01 ", serie: "3 ano", restricoes: ["Integral"] },
-    { nome: "Kayke2 DE", escola: "Escola 01", serie: "9 ano", restricoes: ["Intolerância à Lactose", "Intolerância ao Glúten", "APVL", "Integral", "Diabetes"] },
-    { nome: "Kayke3 Mattos", escola: "Escola 02", serie: "7 ano", restricoes: ["Integral", "APVL"] },
-    { nome: "Kayke4 SOARES", escola: "Escola 03", serie: "6 ano", restricoes: ["Diabetes", "AS/Anafilaxia"] },
+    { id: 1, nome: "Kayke Silva de Mattos Soares", escola: "Escola 01 ", serie: "3 ano", restricoes: ["Integral"] },
+    { id: 2, nome: "Kayke2 DE", escola: "Escola 01", serie: "9 ano", restricoes: ["Intolerância à Lactose", "Intolerância ao Glúten", "APVL", "Integral", "Diabetes"] },
+    { id: 3, nome: "Kayke3 Mattos", escola: "Escola 02", serie: "7 ano", restricoes: ["Integral", "APVL"] },
+    { id: 4, nome: "Kayke4 SOARES", escola: "Escola 03", serie: "6 ano", restricoes: ["Diabetes", "AS/Anafilaxia"] },
   ]
 
   // PREENCHER OS ALUNOS COM O RESULTADO DA API
@@ -70,6 +72,7 @@ export function VisualizarAlunos() {
 
   // ============ SISTEMA DE FILTRAGEM ============
   const estadoInicialFiltros: AlunoProps = {
+    id: 0,
     nome: "",
     escola: "",
     serie: "",
@@ -123,6 +126,13 @@ export function VisualizarAlunos() {
         return "bg-red-200/75 border border-red-500"
     }
   };
+
+  function deletarAluno(id: number) {
+    if (confirm(`Deseja excluir o aluno ${alunos.find(alunos => alunos.id === id)?.nome}?`)) {
+      // SUBSTITUIR POR METODO DELETE DO BACK
+      setAlunos(alunosAtuais => alunosAtuais.filter(aluno => aluno.id !== id))
+    }
+  }
 
   return (
     <div className="flex flex-col items-center min-h-screen bg-fundo">
@@ -294,12 +304,13 @@ export function VisualizarAlunos() {
                 <th className="px-4 text-left font-light">Escola</th>
                 <th className="px-4 text-left font-light">Série</th>
                 <th className="px-4 text-left font-light">Restrições</th>
+                <th className="px-4 text-left font-light">Excluir</th>
               </tr>
             </thead>
 
             <tbody>
               {alunosFiltrados.map((aluno) => (
-                <tr key={aluno.nome} className="border-t border-[#fce9d3] h-12">
+                <tr key={aluno.id} className="border-t border-[#fce9d3] h-12">
                   <td className="p-4 max-w-50 truncate">
                     <div className="">
                       <span className="p-2 bg-roxo/40 text-roxo rounded-full mr-4">{pegarIniciais(aluno.nome)}</span>{aluno.nome}
@@ -314,10 +325,15 @@ export function VisualizarAlunos() {
                           key={restricao}
                           className={`rounded-full px-3 py-1 text-sm ${corRestricao(restricao)}`}
                         >
-                          • {restricao.replaceAll('Intolerância', 'Into')}
+                          • {restricao.replaceAll('Intolerância', 'Intol.')}
                         </span>
                       ))}
                     </div>
+                  </td>
+                  <td className="p-4 text-center">
+                    <button
+                      onClick={() => deletarAluno(aluno.id)}
+                      className="text-vermelho p-2 hover:cursor-pointer hover:bg-red-100 rounded-full"><Trash /></button>
                   </td>
                 </tr>
               ))}
