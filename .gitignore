@@ -1,6 +1,10 @@
+desktop.ini
+
 *.db
 [Bb]in/
 [Oo]bj/
+**/bin/
+**/obj/
 
 # Logs
 logs

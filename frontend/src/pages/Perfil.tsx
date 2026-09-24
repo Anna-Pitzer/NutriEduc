@@ -428,13 +428,61 @@ export function Perfil() {
                         </div>
                     )}
 
-                    {carregando ? (
-                        <p className="py-4 text-gray-500">
-                            Carregando informações...
-                        </p>
-                    ) : (
-                        <>
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="flex gap-2">
+                        <input type="text" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
+                        hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2" placeholder="nome"
+                            value={form.nome} onChange={(e) => setForm({ ...form, nome: sanitizarNome(e.target.value) })} maxLength={100} />
+                        <input type="email" name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
+                        hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2"
+                            placeholder="email"
+                            value={form.email} onChange={(e) => setForm({ ...form, email: sanitizarEmail(e.target.value) })} maxLength={150} />
+                    </div>
+                    <div>
+                        <input type="text" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
+                        hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2" placeholder="Instituição"
+                            value={form.instituicao} onChange={(e) => setForm({ ...form, instituicao: sanitizarInstituicao(e.target.value) })} maxLength={150} />
+                    </div>
+                    <div className="flex gap-2">
+                        {/*DPS TEM QUE PUXAR DO BACK AS OPCOES */}
+                        <select
+                            name="categoria"
+                            id="categoria"
+                            value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                            className="w-full rounded-2xl border border-gray-200 bg-white  text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 
+                            hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 cursor-pointer px-3"
+                        >
+                            <option value="">Selecione uma opção</option>
+                            <option value="opcao1">Opção 1</option>
+                            <option value="opcao2">Opção 2</option>
+                            <option value="opcao3">Opção 3</option>
+                        </select>
+                        <input type="tel" name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
+                        hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2"
+                            placeholder="(00) 00000-0000" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: sanitizarTelefone(e.target.value) })} maxLength={11} />
+                    </div>
+
+                    <div className="flex flex-col justify-around mt-4">
+                        <div className="flex flex-wrap items-center gap-3">
+
+                            <Button type="button" variant="normal" onClick={salvarPerfil}>
+                                Salvar Alterações
+                            </Button>
+
+                            <Button type="button" variant="cancelar" onClick={() => cancelarAlteracoes()}>
+                                Cancelar
+                            </Button>
+
+                            <Button type="button" variant="alterarSenha" onClick={() => { setErro(""); setMensagem(""); setMostrarSenha(true); }}>
+                                Alterar Senha
+                            </Button>
+
+                        </div>
+                        {mostrarSenha && (
+                            <div className="w-full mt-6 rounded-2xl border border-gray-200 bg-white p-5">
+
+                                <h3 className="text-lg font-semibold text-gray-800">
+                                    Alterar senha
+                                </h3>
 
                                 <div className="flex flex-col gap-1">
                                     <label htmlFor="nome" className="text-sm font-medium">

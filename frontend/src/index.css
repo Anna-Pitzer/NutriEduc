@@ -2,7 +2,6 @@
 @import "tailwindcss";
 
 @theme {
-
   /* Cores */
   --color-primaria: #D92567;
   --color-vermelho: #D95252;
@@ -15,7 +14,9 @@
   --color-verdeClaro: #12A628;
 
   /* Neutros */
+  --color-fundo: #FCF8F3;
   --color-branco: #F2F2F2;
+  --color-bege: #FBF2E7;
 }
 
 body {
