@@ -1,8 +1,10 @@
 
-import { AlertTriangle, Trash } from "lucide-react";
+import { Trash } from "lucide-react";
 import Footer from "../components/Footer";
 import Header from "../components/Header"
 import { useEffect, useRef, useState } from "react";
+import { ToastContainer, Zoom } from "react-toastify";
+import { confirmarExclusao } from "../components/Notificacoes";
 
 export function VisualizarAlunos() {
   const detalhesRef = useRef<HTMLDetailsElement>(null);
@@ -127,11 +129,18 @@ export function VisualizarAlunos() {
     }
   };
 
-  function deletarAluno(id: number) {
-    if (confirm(`Deseja excluir o aluno ${alunos.find(alunos => alunos.id === id)?.nome}?`)) {
-      // SUBSTITUIR POR METODO DELETE DO BACK
-      setAlunos(alunosAtuais => alunosAtuais.filter(aluno => aluno.id !== id))
+
+
+
+  async function handleDelete(id: number) {
+    const confirmou = await confirmarExclusao()
+
+    if (!confirmou) {
+      return
     }
+    // SUBSTITUIR POR METODO DELETE DO BACK
+    setAlunos(alunosAtuais => alunosAtuais.filter(aluno => aluno.id !== id))
+
   }
 
   return (
@@ -332,15 +341,29 @@ export function VisualizarAlunos() {
                   </td>
                   <td className="p-4 text-center">
                     <button
-                      onClick={() => deletarAluno(aluno.id)}
-                      className="text-vermelho p-2 hover:cursor-pointer hover:bg-red-100 rounded-full"><Trash /></button>
+                      onClick={() => handleDelete(aluno.id)}
+                      className="text-vermelho p-2 hover:cursor-pointer hover:bg-red-100 rounded-full "><Trash /></button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <ToastContainer
+          position="top-center"
+          autoClose={2000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick={false}
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+          transition={Zoom}
+          toastClassName="!shadow-none !bg-bege !font-[DynaPuff] !w-100"
 
+        />
       </div>
       <footer className="w-full">
         <Footer />
