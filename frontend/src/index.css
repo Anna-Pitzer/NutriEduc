@@ -22,3 +22,15 @@
 body {
   font-family: DynaPuff, sans-serif;
 }
+
+.Toastify__toast {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.Toastify__toast-body {
+  margin: 0;
+  padding: 0;
+}

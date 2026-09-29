@@ -23,8 +23,8 @@ type EstatisticasPerfil = {
 export function Perfil() {
     const usuarioId = 15;
     //DESCOMENTA ISSO E COLOCA NO CONTEXT UM ID VINCULADO AO USER PRA EU PODER PUXAR OS DADOS PLS - E REMOVE ESSA LINHA DE CIMA
-   /* const { usuarioId } = useAuth();
-    const usuarioId = usuario?.id;*/
+    /* const { usuarioId } = useAuth();
+     const usuarioId = usuario?.id;*/
 
     const [foto, setFoto] = useState<string | null>(null);
     const [fotoOriginal, setFotoOriginal] = useState<string | null>(null);
@@ -233,9 +233,9 @@ export function Perfil() {
 
         try {
             setSalvando(true);
-            
+
             if (!usuarioId) {
-                setErro("Usuario  não autenticado."); 
+                setErro("Usuario  não autenticado.");
                 return;
             }
 
@@ -279,6 +279,8 @@ export function Perfil() {
         setErro("");
         setMensagem("");
     };
+
+
 
     return (
         <div className="relative min-h-screen bg-[#FAF9F5]">
@@ -429,141 +431,80 @@ export function Perfil() {
                     )}
 
                     <div className="flex gap-2">
-                        <input type="text" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2" placeholder="nome"
-                            value={form.nome} onChange={(e) => setForm({ ...form, nome: sanitizarNome(e.target.value) })} maxLength={100} />
-                        <input type="email" name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2"
+                        <input
+                            type="text"
+                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2"
+                            placeholder="nome"
+                            value={form.nome}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    nome: sanitizarNome(e.target.value),
+                                })
+                            }
+                            maxLength={100}
+                        />
+
+                        <input
+                            type="email"
+                            name=""
+                            id=""
+                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2"
                             placeholder="email"
-                            value={form.email} onChange={(e) => setForm({ ...form, email: sanitizarEmail(e.target.value) })} maxLength={150} />
+                            value={form.email}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    email: sanitizarEmail(e.target.value),
+                                })
+                            }
+                            maxLength={150}
+                        />
                     </div>
-                    <div>
-                        <input type="text" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2" placeholder="Instituição"
-                            value={form.instituicao} onChange={(e) => setForm({ ...form, instituicao: sanitizarInstituicao(e.target.value) })} maxLength={150} />
-                    </div>
+
                     <div className="flex gap-2">
-                        {/*DPS TEM QUE PUXAR DO BACK AS OPCOES */}
-                        <select
-                            name="categoria"
-                            id="categoria"
-                            value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })}
-                            className="w-full rounded-2xl border border-gray-200 bg-white  text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 
-                            hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 cursor-pointer px-3"
-                        >
-                            <option value="">Selecione uma opção</option>
-                            <option value="opcao1">Opção 1</option>
-                            <option value="opcao2">Opção 2</option>
-                            <option value="opcao3">Opção 3</option>
-                        </select>
-                        <input type="tel" name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2"
-                            placeholder="(00) 00000-0000" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: sanitizarTelefone(e.target.value) })} maxLength={11} />
+                        
+                        
+
+                        <input
+                            type="tel"
+                            name=""
+                            id=""
+                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2"
+                            placeholder="(00) 00000-0000"
+                            value={form.telefone}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    telefone: sanitizarTelefone(e.target.value),
+                                })
+                            }
+                            maxLength={11}
+                        />
                     </div>
 
                     <div className="flex flex-col justify-around mt-4">
                         <div className="flex flex-wrap items-center gap-3">
-
-                            <Button type="button" variant="normal" onClick={salvarPerfil}>
+                            <Button
+                                type="button"
+                                variant="normal"
+                                onClick={salvarPerfil}
+                            >
                                 Salvar Alterações
                             </Button>
 
-                            <Button type="button" variant="cancelar" onClick={() => cancelarAlteracoes()}>
+                            <Button
+                                type="button"
+                                variant="cancelar"
+                                onClick={cancelarAlteracoes}
+                            >
                                 Cancelar
                             </Button>
-
-                            <Button type="button" variant="alterarSenha" onClick={() => { setErro(""); setMensagem(""); setMostrarSenha(true); }}>
-                                Alterar Senha
-                            </Button>
-
                         </div>
-                        {mostrarSenha && (
-                            <div className="w-full mt-6 rounded-2xl border border-gray-200 bg-white p-5">
 
-                                <h3 className="text-lg font-semibold text-gray-800">
-                                    Alterar senha
-                                </h3>
-
-                                <div className="flex flex-col gap-1">
-                                    <label htmlFor="nome" className="text-sm font-medium">
-                                        Nome
-                                    </label>
-
-                                    <input
-                                        id="nome"
-                                        type="text"
-                                        autoComplete="name"
-                                        className="my-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10"
-                                        placeholder="Digite seu nome"
-                                        value={form.nome}
-                                        onChange={(e) =>
-                                            atualizarCampo("nome", e.target.value)
-                                        }
-                                        maxLength={100}
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-1">
-                                    <label htmlFor="email" className="text-sm font-medium">
-                                        E-mail
-                                    </label>
-
-                                    <input
-                                        id="email"
-                                        type="email"
-                                        autoComplete="email"
-                                        className="my-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10"
-                                        placeholder="Digite seu e-mail"
-                                        value={form.email}
-                                        onChange={(e) =>
-                                            atualizarCampo("email", e.target.value)
-                                        }
-                                        maxLength={150}
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-1 md:col-span-2">
-                                    <label htmlFor="telefone" className="text-sm font-medium">
-                                        Telefone
-                                    </label>
-
-                                    <input
-                                        id="telefone"
-                                        type="tel"
-                                        autoComplete="tel"
-                                        className="my-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10"
-                                        placeholder="(00) 00000-0000"
-                                        value={formatarTelefone(form.telefone)}
-                                        onChange={(e) =>
-                                            atualizarCampo("telefone", e.target.value)
-                                        }
-                                        maxLength={15}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="mt-4 flex flex-wrap items-center gap-3">
-                                <Button
-                                    type="button"
-                                    variant="normal"
-                                    onClick={salvarPerfil}
-                                >
-                                    {salvando ? "Salvando..." : "Salvar Alterações"}
-                                </Button>
-
-                                <Button
-                                    type="button"
-                                    variant="cancelar"
-                                    onClick={cancelarAlteracoes}
-                                >
-                                    Cancelar
-                                </Button>
-                            </div>
-                        </>
-                    )}
+                    </div>
                 </div>
             </div>
-
             <Footer />
         </div>
     );
