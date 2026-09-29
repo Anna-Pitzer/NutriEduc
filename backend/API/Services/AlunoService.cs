@@ -11,7 +11,7 @@ public class AlunoService
         _alunoRepository = alunoRepository;
     }
 
-    //Aqui voce faz as regras de negocio do sist ema (criar, editar, validar...)
+    //Aqui voce faz as regras de negocio do sistema (criar, editar, validar...)
 
     public bool CriarAluno(DadosAlunoDTO dto)
     {
