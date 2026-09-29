@@ -1,4 +1,4 @@
-﻿using Ntc.Controllers;
+using Ntc.Controllers;
 using Microsoft.AspNetCore.Builder;
 using Ntc.Domain;
 using Ntc.Database;
