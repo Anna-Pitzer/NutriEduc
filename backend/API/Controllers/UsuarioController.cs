@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Ntc.Domain.Entity;
 using Ntc.Application;
 namespace Ntc.Controllers;
 
@@ -18,7 +17,12 @@ public class UsuarioController : ControllerBase
     [HttpPost("registrar")]
     public IActionResult PostAdd([FromBody]DadosUsuarioDTO usuarioDTO)
     {   
-        _usuarioService.CriarUsuario(usuarioDTO);
+        bool value = _usuarioService.CriarUsuario(usuarioDTO);
+
+        if (!value)
+        {
+            return BadRequest("E-mail já cadastrado ou senha inválida.");
+        }
         return Ok($"Usuario {usuarioDTO.Nome} foi cadastrado com sucesso.");
     }
 
@@ -36,25 +40,19 @@ public class UsuarioController : ControllerBase
     [HttpPost("login")]
     public IActionResult PostLogin([FromBody] LoginUsuarioDTO dadosLoginDTO)
     {
-        
         bool value = _usuarioService.VerificarLogin(dadosLoginDTO);
         
-        if (value){return Ok($"Seja bem-vindo, {_usuarioService.ObterNomePeloEmail(dadosLoginDTO.Email)}");}
-        return NotFound("Email ou senha incorretos");
+        if (value){return Ok($"Seja bem-vindo, {_usuarioService.ObterNomePeloEmail(dadosLoginDTO.Email)}!");}
+        return NotFound("Email ou senha incorretos.");
     }
 
     [HttpPatch("reset-senha")]
     public IActionResult PatchSenha([FromBody] DadosUsuarioDTO usuarioDTO)
     {
-        if (string.IsNullOrEmpty(usuarioDTO.Senha) || usuarioDTO.Senha.Length < 8)
-        {
-            return BadRequest("Senha com menos de 8 caracteres.");
-        }
+        bool value = _usuarioService.TrocarSenha(usuarioDTO.Email, usuarioDTO.Senha);
         
-        if (!_usuarioService.TrocarSenha(usuarioDTO.Email, usuarioDTO.Senha))
-        {
-            return NotFound("Email inserido não existe.");
-        }
+        if (!value) {return NotFound("Email incorreto ou senha inválida.");}
+        
         return Ok("Senha trocada com sucesso!");
     }
 }

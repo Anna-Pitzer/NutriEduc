@@ -1,8 +1,6 @@
-using Ntc.Controllers;
-using Microsoft.AspNetCore.Builder;
-using Ntc.Domain;
+using Ntc.Domain.Interface;
 using Ntc.Database;
-using Ntc.Domain.Entity;
+
 
 var builder = WebApplication.CreateBuilder(args);
 

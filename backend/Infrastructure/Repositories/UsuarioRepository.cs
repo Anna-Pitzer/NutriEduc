@@ -1,54 +1,36 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Ntc.Domain.Entity;
+using Ntc.Domain.Interface;
+
 namespace Ntc.Database;
 public class UsuarioRepository : IUsuarioRepository
 {
     private readonly ConnectionContext _context = new();
-    public bool RegisterUser(Usuario user) {
-        if (!_context.Usuarios.Any(u => u.Email == user.Email))
-        {
-            _context.Usuarios.Add(user);
-            _context.SaveChanges();  
-            return true;
-        }
-        return false;
-    }
-    
-    public bool LoginUser(string email, string senha)
-    {
-        if(_context.Usuarios.Any(u => u.Email == email && u.Senha == senha))
-        {
-            return true;
-        }
-        return false;
-
+    public void Add(Usuario usuario) {
+        _context.Usuarios.Add(usuario);
+        _context.SaveChanges();  
     }
 
-    public Usuario GetById(int id)
+    public Usuario? GetById(int id)
     {
-        var user = _context.Usuarios.FirstOrDefault(u => u.Id == id);
-        return user;
+        var usuario = _context.Usuarios.FirstOrDefault(u => u.Id == id);
+        return usuario;
     }
 
-    public string? GetName(string email)
+    public Usuario? GetByEmail(string email)
     {
-        var usuario = _context.Usuarios.FirstOrDefault(u => u.Email == email);
-        
-        return usuario?.Nome;
-        
+        return _context.Usuarios.FirstOrDefault(u => u.Email == email);   
     }
 
-    public int GetIdByEmail(string email)
+    public bool ExistsByEmail(string email)
     {
-        return _context.Usuarios.Where(u => u.Email == email).Select(u => (int)u.Id).SingleOrDefault();
-        
-    }
-        
-    public void ChangePassword(int id, string senha)
-    {
-        _context.Usuarios.Where(u => u.Id == id).ExecuteUpdate(setters => setters.SetProperty(u => u.Senha, senha));
+        return _context.Usuarios.Any(u => u.Email == email);
     }
 
-    
+    public void Update(Usuario usuario)
+    {
+        _context.Usuarios.Update(usuario);
+        _context.SaveChanges();
+    }
 }

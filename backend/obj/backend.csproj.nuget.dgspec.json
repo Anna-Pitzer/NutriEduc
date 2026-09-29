@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\arthu\\Desktop\\Projeto\\NutriEduc\\backend\\backend.csproj": {}
+    "C:\\NutriEduc\\backend\\backend.csproj": {}
   },
   "projects": {
-    "c:\\Users\\arthu\\Desktop\\Projeto\\NutriEduc\\backend\\backend.csproj": {
+    "C:\\NutriEduc\\backend\\backend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\arthu\\Desktop\\Projeto\\NutriEduc\\backend\\backend.csproj",
+        "projectUniqueName": "C:\\NutriEduc\\backend\\backend.csproj",
         "projectName": "backend",
-        "projectPath": "c:\\Users\\arthu\\Desktop\\Projeto\\NutriEduc\\backend\\backend.csproj",
+        "projectPath": "C:\\NutriEduc\\backend\\backend.csproj",
         "packagesPath": "C:\\Users\\arthu\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\arthu\\Desktop\\Projeto\\NutriEduc\\backend\\obj\\",
+        "outputPath": "C:\\NutriEduc\\backend\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

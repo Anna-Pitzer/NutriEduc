@@ -30,13 +30,28 @@ public class Usuario {
         Senha = senha;
     }   
 
-    public bool VerificarSenha(string Senha){
+    public bool SenhaValida(){
         if (Senha.Length < 8)
         {
             return false;
         }
 
         return true;
+    }
+
+    public void AtualizarSenha(string novaSenha)
+    {
+        if(novaSenha.Length < 8)
+        {
+            throw new ArgumentException("A senha deve possuir pelo menos 8 caracteres.");
+        }
+
+        if (string.IsNullOrWhiteSpace(novaSenha))
+        {
+            throw new ArgumentException("A senha não pode ser vazia");
+        }
+
+        Senha = novaSenha;
     }
 }
 

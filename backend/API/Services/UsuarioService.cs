@@ -1,5 +1,7 @@
 using Ntc.Domain.Entity;
+using Ntc.Domain.Interface;
 using Ntc.Application;
+
 public class UsuarioService
 {
     private readonly IUsuarioRepository _usuarioRepository;
@@ -9,7 +11,7 @@ public class UsuarioService
         _usuarioRepository = usuarioRepository;
     }
 
-    public void CriarUsuario(DadosUsuarioDTO dto)
+    public bool CriarUsuario(DadosUsuarioDTO dto)
     {   
         Usuario usuario = new(
             dto.Nome,
@@ -18,23 +20,29 @@ public class UsuarioService
             dto.Email,
             dto.Senha
         );
-        _usuarioRepository.RegisterUser(usuario);
 
+        if (_usuarioRepository.ExistsByEmail(usuario.Email) || !usuario.SenhaValida())
+        {
+            return false;
+        }
+
+        _usuarioRepository.Add(usuario);
+        return true;
     }
 
-    public DadosUsuarioDTO ObterUsuarioPorId(int id)
+    public DadosUsuarioDTO? ObterUsuarioPorId(int id)
     {
-        var user = _usuarioRepository.GetById(id);
-        if (user == null)
+        Usuario? usuario = _usuarioRepository.GetById(id);
+        if (usuario == null)
         {
             return null;
         }
 
-        DadosUsuarioDTO dto = new(
-            user.Nome,
-            user.Cpf,
-            user.DataNascimento,
-            user.Email
+        DadosUsuarioDTO? dto = new(
+            usuario.Nome,
+            usuario.Cpf,
+            usuario.DataNascimento,
+            usuario.Email
         );
 
         return dto;
@@ -42,25 +50,39 @@ public class UsuarioService
 
     public bool VerificarLogin(LoginUsuarioDTO dto)
     {
-        bool value = _usuarioRepository.LoginUser(dto.Email, dto.Senha);
+        Usuario? usuario = _usuarioRepository.GetByEmail(dto.Email);
 
-        return value;
+        if (usuario != null && dto.Senha == usuario.Senha)
+        {
+            return true;
+        }
+
+        return false;
     }
 
-    public string ObterNomePeloEmail(string email)
+    public string? ObterNomePeloEmail(string email)
     {
-        string nome = _usuarioRepository.GetName(email);
-        return nome;
+        Usuario? usuario = _usuarioRepository.GetByEmail(email);
+        return usuario?.Nome;
     }
 
-    public bool TrocarSenha(string email, string senha)
+    public bool TrocarSenha(string email, string NovaSenha)
     {
-        int id = _usuarioRepository.GetIdByEmail(email);
-        if (id == null)
+        Usuario? usuario = _usuarioRepository.GetByEmail(email);
+
+        if (usuario == null)
         {
             return false;
         }
-        _usuarioRepository.ChangePassword(id, senha);
+        try
+        {
+            usuario.AtualizarSenha(NovaSenha);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        _usuarioRepository.Update(usuario);
         return true;
     }
 }
