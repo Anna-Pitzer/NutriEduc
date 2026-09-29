@@ -3,9 +3,9 @@ namespace Ntc.Domain.Interface;
 
 public interface IAlunoRepository
 {
-    bool Add(Aluno aluno);
-    List<Aluno> GetAlunos();
-    Aluno GetAluno(int id);
-    bool UpdateAluno(int id);
-    bool DeleteAluno(int id);
+    void Add(Aluno aluno);
+    List<Aluno>? GetAlunos();
+    Aluno? GetAluno(int id);
+    void UpdateAluno(Aluno aluno);
+    void DeleteAluno(int id);
 }
