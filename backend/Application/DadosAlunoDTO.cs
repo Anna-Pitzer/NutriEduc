@@ -13,4 +13,17 @@ public class DadosAlunoDTO{
 
     public string NomeResponsavel {get;set;}
     public string TelefoneResponsavel {get;set;}
+
+    public DadosAlunoDTO(string nome, DateOnly nascimento, string escola, string serie, string telefone, string observacao, bool anafilaxia, string nomeResponsavel, string telefoneResponsavel)
+    {
+        Nome = nome;
+        Nascimento = nascimento;
+        Escola = escola;
+        Serie = serie;
+        Telefone = telefone;
+        Observacao = observacao;
+        Anafilaxia = anafilaxia;
+        NomeResponsavel = nomeResponsavel;
+        TelefoneResponsavel = telefoneResponsavel;
+    }
 }

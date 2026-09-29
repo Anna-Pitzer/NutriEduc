@@ -31,6 +31,26 @@ public class AlunoService
         return true;
     }
 
+    public DadosAlunoDTO? ObterAlunoPorId(int id)
+    {
+        Aluno? aluno = _alunoRepository.GetAluno(id);
+        if (aluno == null)
+        {
+            return null;
+        }
 
+        DadosAlunoDTO? dto = new(
+            aluno.Nome,
+            aluno.Nascimento,
+            aluno.Escola,
+            aluno.Serie,
+            aluno.Telefone,
+            aluno.Observacao,
+            aluno.Anafilaxia,
+            aluno.NomeResponsavel,
+            aluno.TelefoneResponsavel
+        );
 
+        return dto;
+    }
 }   
