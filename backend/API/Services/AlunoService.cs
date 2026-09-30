@@ -29,26 +29,34 @@
             return true;
         }
 
+        public List<DadosAlunoDTO> ListarAlunos()
+        {
+            var alunos = _alunoRepository.GetAlunos() ?? new();
+            return alunos.Select(a => new DadosAlunoDTO(
+                a.Nome, a.Nascimento, a.Escola, a.Serie,
+                a.Telefone, a.Observacao, a.Anafilaxia,
+                a.NomeResponsavel, a.TelefoneResponsavel
+            ) { Id = a.Id }).ToList();
+        }
+
         public DadosAlunoDTO? ObterAlunoPorId(int id)
         {
             Aluno? aluno = _alunoRepository.GetAluno(id);
-            if (aluno == null)
-            {
-                return null;
-            }
+            if (aluno == null) return null;
 
-            DadosAlunoDTO? dto = new(
-                aluno.Nome,
-                aluno.Nascimento,
-                aluno.Escola,
-                aluno.Serie,
-                aluno.Telefone,
-                aluno.Observacao,
-                aluno.Anafilaxia,
-                aluno.NomeResponsavel,
-                aluno.TelefoneResponsavel
-            );
+            return new DadosAlunoDTO(
+                aluno.Nome, aluno.Nascimento, aluno.Escola, aluno.Serie,
+                aluno.Telefone, aluno.Observacao, aluno.Anafilaxia,
+                aluno.NomeResponsavel, aluno.TelefoneResponsavel
+            ) { Id = aluno.Id };
+        }
 
-            return dto;
-        } 
+        public bool ExcluirAluno(int id)
+        {
+            Aluno? aluno = _alunoRepository.GetAluno(id);
+            if (aluno == null) return false;
+
+            _alunoRepository.DeleteAluno(aluno);
+            return true;
+        }
     }
