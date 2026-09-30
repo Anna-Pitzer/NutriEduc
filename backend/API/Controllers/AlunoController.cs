@@ -1,38 +1,45 @@
-using Ntc.Application;
 using Microsoft.AspNetCore.Mvc;
+using Ntc.Application;
+
+namespace Ntc.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-
 public class AlunoController : ControllerBase
 {
     private readonly AlunoService _alunoService;
 
     public AlunoController(AlunoService alunoService)
     {
-        _alunoService = alunoService ?? throw new ArgumentException();
+        _alunoService = alunoService;
     }
 
-    [HttpPost("registrar")]
-    public IActionResult PostAddAluno([FromBody] DadosAlunoDTO dto)
+    [HttpPost]
+    public IActionResult Cadastrar([FromBody] DadosAlunoDTO dto)
     {
-        bool value = _alunoService.CriarAluno(dto);
-
-        if (!value)
-        {
-            return BadRequest("Error ao adicionar aluno.");
-        }
-        return Ok("Aluno inserido.");
+        _alunoService.CriarAluno(dto);
+        return Ok("Aluno cadastrado com sucesso.");
     }
 
-    [HttpGet("perfil/{id}")]
-    public IActionResult GetAluno(int id)
+    [HttpGet]
+    public IActionResult Listar()
     {
-        var dadosAluno = _alunoService.ObterAlunoPorId(id);
-        if (dadosAluno == null)
-        {
-            return NotFound("Aluno não encontrado.");
-        }
-        return Ok(dadosAluno);
+        return Ok(_alunoService.ListarAlunos());
+    }
+
+    [HttpGet("{id}")]
+    public IActionResult ObterPorId(int id)
+    {
+        var aluno = _alunoService.ObterAlunoPorId(id);
+        if (aluno == null) return NotFound("Aluno não encontrado.");
+        return Ok(aluno);
+    }
+
+    [HttpDelete("{id}")]
+    public IActionResult Excluir(int id)
+    {
+        bool excluido = _alunoService.ExcluirAluno(id);
+        if (!excluido) return NotFound("Aluno não encontrado.");
+        return NoContent();
     }
 }

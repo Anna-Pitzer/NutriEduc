@@ -3,7 +3,7 @@ import Header from "../components/Header";
 import Button from "../components/Button";
 import { ChevronLeft, Apple, Candy, CircleHelp, Milk, Wheat } from "lucide-react";
 import { useState } from "react";
-import { cadastrarAlunos } from "../services/AlunoApi";
+import { cadastrarAlunos, type AlunoCadastro } from "../services/AlunoApi";
 
 
 export function CadastroAlunos() {
@@ -43,7 +43,6 @@ export function CadastroAlunos() {
 
     interface FormularioAluno {
         nome: string;
-        matricula: string;
         nascimento: string;
         serie: string;
         escola: string;
@@ -57,7 +56,6 @@ export function CadastroAlunos() {
 
     const estadoInicial: FormularioAluno = {
         nome: "",
-        matricula: "",
         nascimento: "",
         serie: "",
         escola: "",
@@ -106,16 +104,8 @@ export function CadastroAlunos() {
             .slice(0, limite);
     };
 
-    const limparMatricula = (valor: string): string => {
-        return valor.replace(/[^a-zA-Z0-9]/g, "").slice(0, 20)
-    };
-
     const limparTelefone = (valor: string): string => {
         return valor.replace(/\D/g, "").slice(0, 11)
-    };
-
-    const limparNascimento = (valor: string): string => {
-        return valor.replace(/\D/g, "").slice(0, 2)
     };
 
     const [form, setForm] = useState<FormularioAluno>(estadoInicial);
@@ -128,7 +118,7 @@ export function CadastroAlunos() {
         setTipoMensagem("erro");
     };
 
-    const atualizarCampo = (campo: keyof FormularioAluno, valor: string) => {
+    const atualizarCampo = <Campo extends keyof FormularioAluno,>(campo: Campo, valor: FormularioAluno[Campo]) => {
         setForm((prev) => ({
             ...prev, [campo]: valor,
         }))
@@ -160,8 +150,15 @@ export function CadastroAlunos() {
 
     const validaFormulario = (): boolean => {
         const nome = form.nome.trim();
-        const matricula = form.matricula.trim();
-        const Nascimento = Number(form.nascimento);
+        const nascimento = new Date(`${form.nascimento}T00:00:00`);
+        const hoje = new Date();
+        let idade = hoje.getFullYear() - nascimento.getFullYear();
+        if (
+            hoje.getMonth() < nascimento.getMonth() ||
+            (hoje.getMonth() === nascimento.getMonth() && hoje.getDate() < nascimento.getDate())
+        ) {
+            idade--;
+        }
         const telefone = form.telefone.trim();
         const contatoNome = form.contatoEmerNome.trim();
         const contatoTelefone = form.contatoEmerTelefone.trim();
@@ -176,18 +173,8 @@ export function CadastroAlunos() {
             return false;
         }
 
-        if (!matricula) {
-            mostrarErro("Informe a matricula do aluno.");
-            return false;
-        }
-
-        if (matricula.length < 2) {
-            mostrarErro("Informe uma matrícula válida.");
-            return false;
-        }
-
-        if (!form.nascimento || !Number.isInteger(Nascimento) || Nascimento < 1 || Nascimento > 18) {
-            mostrarErro("Informe uma Nascimento válida (entre 1 e 18 anos).");
+        if (!form.nascimento || Number.isNaN(nascimento.getTime()) || idade < 1 || idade > 18) {
+            mostrarErro("Informe uma data de nascimento válida (idade entre 1 e 18 anos).");
             return false;
         }
 
@@ -226,19 +213,17 @@ export function CadastroAlunos() {
         return true;
     };
 
-    const prepararDados = () => {
+    const prepararDados = (): AlunoCadastro => {
         return {
             nome: limparTexto(form.nome, 100),
-            matricula: limparMatricula(form.matricula),
-            nascimento: limparNascimento(form.nascimento),
+            nascimento: form.nascimento,
             serie: form.serie,
             escola: form.escola,
             telefone: limparTelefone(form.telefone),
-            observacoes: limparTexto(form.observacoes, 350),
-            restricoes: form.restricoes,
+            observacao: limparTexto(form.observacoes, 350),
             anafilaxia: form.anafilaxia,
-            contatoEmerNome: limparTexto(form.contatoEmerNome, 100),
-            contatoEmerTelefone: limparTelefone(form.contatoEmerTelefone),
+            nomeResponsavel: limparTexto(form.contatoEmerNome, 100),
+            telefoneResponsavel: limparTelefone(form.contatoEmerTelefone),
         };
     };
 
@@ -314,8 +299,8 @@ export function CadastroAlunos() {
                     </div>
 
                     <div className="flex gap-4">
-                        <input type="number" name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Nascimento" value={form.nascimento} minLength={1} maxLength={18} onChange={(e) => atualizarCampo("nascimento", limparNascimento(e.target.value))} />
+                        <input type="date" name="" id="" className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
+                        hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2" placeholder="Nascimento" value={form.nascimento} minLength={1} maxLength={18} onChange={(e) => atualizarCampo("nascimento", e.target.value)} />
 
                         <select className="w-full rounded-2xl border border-gray-200 bg-white  text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 
                             hover:bg-gray-200 focus:border-[border] focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3" value={form.serie} onChange={(e) => atualizarCampo("serie", e.target.value)}>
@@ -428,7 +413,7 @@ export function CadastroAlunos() {
                                         form.anafilaxia ===
                                         true
                                     }
-                                    onChange={(e) =>atualizarCampo("anafilaxia",e.target.value)}className="peer sr-only"/>
+                                    onChange={() => atualizarCampo("anafilaxia", true)} className="peer sr-only" />
 
                                 <div className="flex items-center justify-center rounded-2xl border-2 border-gray-200 bg-white px-8 py-4 font-semibold text-vermelho transition-all duration-200 hover:border-vermelho hover:bg-vermelho/5 peer-checked:border-vermelho peer-checked:bg-vermelho peer-checked:text-white">
                                     Sim
@@ -442,7 +427,7 @@ export function CadastroAlunos() {
                                         form.anafilaxia ===
                                         false
                                     }
-                                    onChange={(e) => atualizarCampo("anafilaxia", e.target.value)} className="peer sr-only"/>
+                                    onChange={() => atualizarCampo("anafilaxia", false)} className="peer sr-only" />
 
                                 <div className="flex items-center justify-center rounded-2xl border-2 border-gray-200 bg-white px-8 py-4 font-semibold text-vermelho transition-all duration-200 hover:border-vermelho hover:bg-vermelho/5 peer-checked:border-vermelho peer-checked:bg-vermelho peer-checked:text-white">
                                     Não

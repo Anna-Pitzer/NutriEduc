@@ -7,4 +7,5 @@ public interface IAlunoRepository
     List<Aluno>? GetAlunos();
     Aluno? GetAluno(int id);
     void UpdateAluno(Aluno aluno);
+    void DeleteAluno(Aluno aluno);
 }

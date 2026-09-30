@@ -5,6 +5,7 @@ import Header from "../components/Header"
 import { useEffect, useRef, useState } from "react";
 import { ToastContainer, Zoom } from "react-toastify";
 import { confirmarExclusao } from "../components/Notificacoes";
+import { buscarAlunos, excluirAluno, type AlunoResposta } from "../services/AlunoApi";
 
 export function VisualizarAlunos() {
   const detalhesRef = useRef<HTMLDetailsElement>(null);
@@ -12,9 +13,9 @@ export function VisualizarAlunos() {
 
   // ============ RESPOSTAS DO BACK ============
   const escolasPermitidas = [
-    "Escola 01",
-    "Escola 02",
-    "Escola 03",
+    "Escola 1",
+    "Escola 2",
+    "Escola 3",
   ];
 
   const seriesPermitidas = [
@@ -41,26 +42,25 @@ export function VisualizarAlunos() {
 
 
   // ============ ALUNOS ============
-  interface AlunoProps {
-    id: number;
-    nome: string;
-    escola: string;
-    serie: string;
-    restricoes: Restricoes[];
-  }
-  // EXEMPLO DE GET DA API
-  const respostaAPI: AlunoProps[] = [
-    { id: 1, nome: "Kayke Silva de Mattos Soares", escola: "Escola 01 ", serie: "3 ano", restricoes: ["Integral"] },
-    { id: 2, nome: "Kayke2 DE", escola: "Escola 01", serie: "9 ano", restricoes: ["Intolerância à Lactose", "Intolerância ao Glúten", "APVL", "Integral", "Diabetes"] },
-    { id: 3, nome: "Kayke3 Mattos", escola: "Escola 02", serie: "7 ano", restricoes: ["Integral", "APVL"] },
-    { id: 4, nome: "Kayke4 SOARES", escola: "Escola 03", serie: "6 ano", restricoes: ["Diabetes", "AS/Anafilaxia"] },
-  ]
+  type AlunoProps = AlunoResposta & { restricoes: Restricoes[] };
+  type FiltroAluno = Pick<AlunoProps, "nome" | "escola" | "serie" | "restricoes">;
 
-  // PREENCHER OS ALUNOS COM O RESULTADO DA API
-  const [alunos, setAlunos] = useState<AlunoProps[]>([])
+  const [alunos, setAlunos] = useState<AlunoProps[]>([]);
+  const [carregando, setCarregando] = useState(true);
+
   useEffect(() => {
-    setAlunos(respostaAPI)
-  }, [])
+    buscarAlunos()
+      .then((dados) =>
+        setAlunos(
+          dados.map((a) => ({
+            ...a,
+            restricoes: a.anafilaxia ? ["AS/Anafilaxia" as Restricoes] : [],
+          }))
+        )
+      )
+      .catch((err) => console.error(err))
+      .finally(() => setCarregando(false));
+  }, []);
 
   const pegarIniciais = (nome: string) => {
     return nome
@@ -73,15 +73,14 @@ export function VisualizarAlunos() {
 
 
   // ============ SISTEMA DE FILTRAGEM ============
-  const estadoInicialFiltros: AlunoProps = {
-    id: 0,
+  const estadoInicialFiltros: FiltroAluno = {
     nome: "",
     escola: "",
     serie: "",
     restricoes: [],
   }
-  const [filtro, setFiltro] = useState<AlunoProps>(estadoInicialFiltros)
-  const atualizarCampo = (campo: keyof AlunoProps, valor: string) => {
+  const [filtro, setFiltro] = useState<FiltroAluno>(estadoInicialFiltros)
+  const atualizarCampo = (campo: "nome" | "escola" | "serie", valor: string) => {
     setFiltro((prev) => ({
       ...prev, [campo]: valor
     }))
@@ -133,14 +132,15 @@ export function VisualizarAlunos() {
 
 
   async function handleDelete(id: number) {
-    const confirmou = await confirmarExclusao()
+    const confirmou = await confirmarExclusao();
+    if (!confirmou) return;
 
-    if (!confirmou) {
-      return
+    try {
+      await excluirAluno(id);
+      setAlunos((atual) => atual.filter((a) => a.id !== id));
+    } catch (err) {
+      console.error(err);
     }
-    // SUBSTITUIR POR METODO DELETE DO BACK
-    setAlunos(alunosAtuais => alunosAtuais.filter(aluno => aluno.id !== id))
-
   }
 
   const cancelar = () => { window.history.back(); };
@@ -168,6 +168,7 @@ export function VisualizarAlunos() {
       <div
         className="flex justify-center  items-center flex-col max-w-7xl bg-[#FAF9F5] mb-30 mx-30 rounded-3xl p-8  shadow-[0_5px_20px_rgba(1,1,1,0.1)]"
       >
+        {carregando && <p className="text-gray-500 py-4">Carregando alunos...</p>}
         <div className="flex flex-col justify-start w-full">
           <h1 className="font-bold text-2xl text-primaria">Alunos cadastrados</h1>
           <h2 className="text-lg">Consulte e filtre os alunos por escola, restrição alimentar ou turma!</h2>
