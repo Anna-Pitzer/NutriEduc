@@ -11,8 +11,8 @@ using Ntc.Database;
 namespace backend.Migrations
 {
     [DbContext(typeof(ConnectionContext))]
-    [Migration("20260929141838_CriarTabelaProdutos")]
-    partial class CriarTabelaProdutos
+    [Migration("20260930025047_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -45,10 +45,6 @@ namespace backend.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Observacao")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.PrimitiveCollection<string>("Restricoes")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -91,6 +87,9 @@ namespace backend.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
 
                     b.ToTable("Usuarios");
                 });

@@ -45,10 +45,6 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.PrimitiveCollection<string>("Restricoes")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Serie")
                         .IsRequired()
                         .HasColumnType("TEXT");
