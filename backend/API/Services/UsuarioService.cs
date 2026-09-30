@@ -45,6 +45,8 @@ public class UsuarioService
             usuario.Email
         );
 
+        dto.Telefone = usuario.Telefone;
+        dto.Foto = usuario.Foto;
         return dto;
     }
 
@@ -66,6 +68,44 @@ public class UsuarioService
         return usuario?.Nome;
     }
 
+    public int? ObterIdPeloEmail(string email)
+    {
+        Usuario? usuario = _usuarioRepository.GetByEmail(email);
+        return usuario?.Id;
+    }
+
+    public DadosUsuarioDTO? AtualizarPerfil(
+        int id,
+        AtualizarPerfilDTO dto)
+    {
+        var usuario = _usuarioRepository.GetById(id);
+
+        if (usuario == null)
+        {
+            return null;
+        }
+
+        var email = dto.Email.Trim().ToLowerInvariant();
+        var usuarioComMesmoEmail = _usuarioRepository.GetByEmail(email);
+
+        if (usuarioComMesmoEmail != null &&
+            usuarioComMesmoEmail.Id != id)
+        {
+            throw new ArgumentException(
+                "Este e-mail já está cadastrado em outra conta."
+            );
+        }
+
+        usuario.AtualizarPerfil(dto.Nome, email);
+        usuario.AtualizarTelefone(dto.Telefone);
+        if (dto.Foto != null)
+        {
+            usuario.AtualizarFoto(dto.Foto);
+        }
+        _usuarioRepository.Update(usuario);
+
+        return ObterUsuarioPorId(id);
+    }   
     public bool TrocarSenha(string email, string NovaSenha)
     {
         Usuario? usuario = _usuarioRepository.GetByEmail(email);

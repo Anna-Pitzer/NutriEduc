@@ -1,7 +1,9 @@
 const ApiURL = "";
 
 export async function buscarPerfil(usuarioId: number){
-    const resposta = await fetch(`${ApiURL}/usuarios/${usuarioId}`);
+    const resposta = await fetch(`/api/usuario/perfil/${usuarioId}`,{
+        credentials: "include",
+    });
 
     if (!resposta.ok) throw new Error("Erro ao buscar perfil");
 
@@ -16,7 +18,8 @@ export async function buscarEstatisticas(usuarioId: number) {
     return resposta.json();
 }
 
-export async function atualizarPerfil(usuarioId: number, 
+export async function atualizarPerfil(
+    usuarioId: number,
     dados: {
         nome: string;
         email: string;
@@ -24,15 +27,27 @@ export async function atualizarPerfil(usuarioId: number,
         foto: string;
     }
 ) {
-    const resposta = await fetch(`${ApiURL}/usuarios/${usuarioId}`, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(dados)
-    })
+    const resposta = await fetch(
+        `/api/usuario/perfil/${usuarioId}`,
+        {
+            method: "PUT",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                nome: dados.nome,
+                email: dados.email,
+                telefone: dados.telefone,
+                foto: dados.foto,
+            }),
+        }
+    );
 
-    if (!resposta.ok) throw new Error("Erro ao atualizar o perfil");
+    if (!resposta.ok) {
+        const mensagem = await resposta.text();
+        throw new Error(mensagem || "Erro ao atualizar o perfil.");
+    }
 
     return resposta.json();
 }

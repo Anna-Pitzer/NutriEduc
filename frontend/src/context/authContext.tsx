@@ -7,6 +7,7 @@ type UserLogin = {
 };
 
 type UserSession = {
+  id: number;
   email: string;
   nome: string;
 };
@@ -24,6 +25,7 @@ type AuthContextData = {
   userRegister: UserRegister | null;
   isAuthenticated: boolean;
   loading: boolean;
+  atualizarUsuario: (usuario: UserSession) => void;
   login: (user: UserLogin) => Promise<void>;
   register: (user: UserRegister) => Promise<void>;
   logout: () => Promise<void>;
@@ -130,8 +132,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUserLogin(null);
   }
-
-
+  
+  const atualizarUsuario = (usuario: UserSession) => {
+    setUserLogin(usuario);
+  };
 
   return (
     <AuthContext.Provider
@@ -143,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        atualizarUsuario,
       }}
     >
       {children}

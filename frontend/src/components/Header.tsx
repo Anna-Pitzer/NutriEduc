@@ -1,5 +1,26 @@
 
+import { useState } from "react";
+import { useAuth } from "../context/authContext";
 export default function Header() {
+
+const { logout } = useAuth();
+const [saindo, setSaindo] = useState(false);
+
+    async function handleLogout() {
+        setSaindo(true);
+
+        try {
+            await logout();
+        } catch (erro) {
+            alert(
+                erro instanceof Error
+                    ? erro.message
+                    : "Não foi possível sair."
+            );
+        } finally {
+            setSaindo(false);
+        }
+    }
 
     return (
         <header className="relative h-60 w-full overflow-hidden">
@@ -31,6 +52,14 @@ export default function Header() {
                     <h1 className="text-3xl font-bold tracking-tight text-branco md:text-5xl lg:text-6xl">NutriEduc</h1>
                     <p className=" mt-1 text-sm font-light text-white/75 md:text-base">Alimentação que educa, nutrição que transforma</p>
                 </div>
+                <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={saindo}
+                    className="rounded-lg bg-white px-4 py-2 font-semibold text-[#D92567] shadow-sm hover:cursor-pointer hover:bg-gray-100 disabled:cursor-wait disabled:opacity-50"
+                >
+                    {saindo ? "Saindo..." : "Sair"}
+                </button>
 
                 
             </div>
