@@ -8,6 +8,8 @@ public class DadosUsuarioDTO
     public DateOnly DataNascimento {get; set;}
     public string? Email {get; set;} 
     public string? Senha {get; set;}
+    public string? Telefone { get; set; }
+    public string? Foto { get; set; }
 
     public DadosUsuarioDTO(){}
     public DadosUsuarioDTO(string nome, string cpf, DateOnly datanascimento, string email)

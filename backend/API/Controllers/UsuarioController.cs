@@ -54,6 +54,13 @@ public class UsuarioController : ControllerBase
 
         var nome = _usuarioService.ObterNomePeloEmail(dadosLoginDTO.Email);
 
+        var id = _usuarioService.ObterIdPeloEmail(dadosLoginDTO.Email);
+
+        if (id == null)
+        {
+            return Unauthorized();
+        }
+
         var claims = new[]
         {
             new Claim(ClaimTypes.Email, dadosLoginDTO.Email!),
@@ -78,6 +85,7 @@ public class UsuarioController : ControllerBase
 
         return Ok(new
         {
+            id = id.Value,
             email = dadosLoginDTO.Email,
             nome
         });
@@ -96,13 +104,16 @@ public class UsuarioController : ControllerBase
 
         var nome = _usuarioService.ObterNomePeloEmail(email);
 
-        if (nome == null)
+        var id = _usuarioService.ObterIdPeloEmail(email);
+
+        if (nome == null || id == null)
         {
             return Unauthorized();
         }
 
         return Ok(new
         {
+            id = id.Value,
             email,
             nome
         });
@@ -117,5 +128,76 @@ public class UsuarioController : ControllerBase
         );
 
         return NoContent();
+    }
+
+    [Authorize]
+    [HttpPut("perfil/{id}")]
+    public async Task<IActionResult> AtualizarPerfil(
+        int id,
+        [FromBody] AtualizarPerfilDTO dto)
+    {
+        var emailDaSessao = User.FindFirstValue(ClaimTypes.Email);
+
+        if (string.IsNullOrWhiteSpace(emailDaSessao))
+        {
+            return Unauthorized();
+        }
+
+        var idDaSessao = _usuarioService.ObterIdPeloEmail(emailDaSessao);
+
+        if (idDaSessao == null)
+        {
+            return Unauthorized();
+        }
+
+        if (idDaSessao.Value != id)
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            var perfil = _usuarioService.AtualizarPerfil(id, dto);
+
+            if (perfil == null)
+            {
+                return NotFound("Usuário não encontrado.");
+            }
+
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.Email, perfil.Email!),
+                new Claim(ClaimTypes.Name, perfil.Nome ?? "")
+            };
+
+            var identidade = new ClaimsIdentity(
+                claims,
+                CookieAuthenticationDefaults.AuthenticationScheme
+            );
+
+            var propriedades = new AuthenticationProperties
+            {
+                IsPersistent = true
+            };
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(identidade),
+                propriedades
+            );
+
+            return Ok(new
+            {
+                id,
+                nome = perfil.Nome,
+                email = perfil.Email,
+                telefone = perfil.Telefone,
+                foto = perfil.Foto
+            });
+        }
+        catch (ArgumentException erro)
+        {
+            return BadRequest(erro.Message);
+        }
     }
 }

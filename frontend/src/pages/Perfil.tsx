@@ -21,10 +21,9 @@ type EstatisticasPerfil = {
 };
 
 export function Perfil() {
-    const usuarioId = 15;
-    //DESCOMENTA ISSO E COLOCA NO CONTEXT UM ID VINCULADO AO USER PRA EU PODER PUXAR OS DADOS PLS - E REMOVE ESSA LINHA DE CIMA
-    /* const { usuarioId } = useAuth();
-     const usuarioId = usuario?.id;*/
+    const { userLogin, atualizarUsuario } = useAuth();
+    const usuarioId = userLogin?.id;
+    
 
     const [foto, setFoto] = useState<string | null>(null);
     const [fotoOriginal, setFotoOriginal] = useState<string | null>(null);
@@ -119,14 +118,8 @@ export function Perfil() {
                 setForm(dadosUsuario);
                 setDadosOriginais(dadosUsuario);
 
-                if (dados.foto) {
-                    const fotoCarregada = dados.foto.startsWith("http")
-                        ? dados.foto
-                        : `http://localhost:5243${dados.foto}`;
-
-                    setFoto(fotoCarregada);
-                    setFotoOriginal(fotoCarregada);
-                }
+                setFoto(dados.foto || null);
+                setFotoOriginal(dados.foto || null);
             } catch (error) {
                 console.error("Erro ao carregar perfil:", error);
                 setErro("Não foi possível carregar o perfil.");
@@ -223,14 +216,6 @@ export function Perfil() {
             return;
         }
 
-        if (
-            dadosSanitizados.telefone.length !== 10 &&
-            dadosSanitizados.telefone.length !== 11
-        ) {
-            setErro("Digite um telefone válido.");
-            return;
-        }
-
         try {
             setSalvando(true);
 
@@ -239,15 +224,37 @@ export function Perfil() {
                 return;
             }
 
-            await atualizarPerfil(usuarioId, dadosSanitizados);
+    const perfilAtualizado = await atualizarPerfil(
+        usuarioId,
+        dadosSanitizados
+    );
+    atualizarUsuario({
+        id: perfilAtualizado.id,
+        nome: perfilAtualizado.nome,
+        email: perfilAtualizado.email,
+    });
 
-            setForm(dadosSanitizados);
-            setDadosOriginais(dadosSanitizados);
+    const novosDados: DadosPerfil = {
+        ...dadosOriginais,
+        nome: perfilAtualizado.nome,
+        email: perfilAtualizado.email,
+        telefone: perfilAtualizado.telefone ?? "",
+        foto: perfilAtualizado.foto ?? "",
+    };
 
-            setMensagem("Informações atualizadas com sucesso!");
+    setForm(novosDados);
+    setDadosOriginais(novosDados);
+    setFoto(novosDados.foto || null);
+    setFotoOriginal(novosDados.foto || null);
+
+    setMensagem("Perfil atualizado com sucesso!");
         } catch (error) {
             console.error("Erro ao atualizar perfil:", error);
-            setErro("Não foi possível atualizar o perfil.");
+            setErro(
+                error instanceof Error
+                    ? error.message
+                    : "Não foi possível atualizar o perfil."
+            );
         } finally {
             setSalvando(false);
         }
