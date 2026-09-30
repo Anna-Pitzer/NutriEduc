@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Ntc.Database;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.UseUrls(builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5001");
 
 builder.Services.AddControllers();
 

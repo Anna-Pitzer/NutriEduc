@@ -5,6 +5,7 @@ import Header from "../components/Header"
 import { useEffect, useRef, useState } from "react";
 import { ToastContainer, Zoom } from "react-toastify";
 import { confirmarExclusao } from "../components/Notificacoes";
+import { buscarAlunos, excluirAluno, type AlunoResposta } from "../services/AlunoApi";
 
 export function VisualizarAlunos() {
   const detalhesRef = useRef<HTMLDetailsElement>(null);
@@ -12,9 +13,9 @@ export function VisualizarAlunos() {
 
   // ============ RESPOSTAS DO BACK ============
   const escolasPermitidas = [
-    "Escola 01",
-    "Escola 02",
-    "Escola 03",
+    "Escola 1",
+    "Escola 2",
+    "Escola 3",
   ];
 
   const seriesPermitidas = [
@@ -35,31 +36,45 @@ export function VisualizarAlunos() {
     "APVL",
     "Diabetes",
     "Intolerância ao Glúten",
+    "Outros",
     "AS/Anafilaxia"
-  ] as const; //as const serve para transformar o elementos em indices, ajuda para quando o aluno tem mais doq uma restricao
-  type Restricoes = typeof restricoesPermitidas[number]
+  ] as const;
+  type Restricoes = string
 
 
   // ============ ALUNOS ============
-  interface AlunoProps {
-    id: number;
-    nome: string;
-    escola: string;
-    serie: string;
-    restricoes: Restricoes[];
-  }
-  // EXEMPLO DE GET DA API
-  const respostaAPI: AlunoProps[] = [
-    { id: 1, nome: "Kayke Silva de Mattos Soares", escola: "Escola 01 ", serie: "3 ano", restricoes: ["Integral"] },
-    { id: 2, nome: "Kayke2 DE", escola: "Escola 01", serie: "9 ano", restricoes: ["Intolerância à Lactose", "Intolerância ao Glúten", "APVL", "Integral", "Diabetes"] },
-    { id: 3, nome: "Kayke3 Mattos", escola: "Escola 02", serie: "7 ano", restricoes: ["Integral", "APVL"] },
-    { id: 4, nome: "Kayke4 SOARES", escola: "Escola 03", serie: "6 ano", restricoes: ["Diabetes", "AS/Anafilaxia"] },
-  ]
+  type AlunoProps = AlunoResposta & { restricoes: Restricoes[] };
+  type FiltroAluno = Pick<AlunoProps, "nome" | "escola" | "serie" | "restricoes">;
 
-  // PREENCHER OS ALUNOS COM O RESULTADO DA API
   const [alunos, setAlunos] = useState<AlunoProps[]>([])
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState("")
   useEffect(() => {
-    setAlunos(respostaAPI)
+    let ativo = true;
+
+    buscarAlunos()
+      .then((dados) => {
+        if (!ativo) return;
+
+        setAlunos(dados.map((aluno) => ({
+          ...aluno,
+          restricoes: [
+            ...aluno.restricoes,
+            ...(aluno.anafilaxia ? ["AS/Anafilaxia" as const] : []),
+          ],
+        })));
+      })
+      .catch((error) => {
+        console.error("Erro ao buscar alunos:", error);
+        if (ativo) setErro("Não foi possível carregar os alunos.");
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
   }, [])
 
   const pegarIniciais = (nome: string) => {
@@ -73,15 +88,14 @@ export function VisualizarAlunos() {
 
 
   // ============ SISTEMA DE FILTRAGEM ============
-  const estadoInicialFiltros: AlunoProps = {
-    id: 0,
+  const estadoInicialFiltros: FiltroAluno = {
     nome: "",
     escola: "",
     serie: "",
     restricoes: [],
   }
-  const [filtro, setFiltro] = useState<AlunoProps>(estadoInicialFiltros)
-  const atualizarCampo = (campo: keyof AlunoProps, valor: string) => {
+  const [filtro, setFiltro] = useState<FiltroAluno>(estadoInicialFiltros)
+  const atualizarCampo = (campo: "nome" | "escola" | "serie", valor: string) => {
     setFiltro((prev) => ({
       ...prev, [campo]: valor
     }))
@@ -124,6 +138,9 @@ export function VisualizarAlunos() {
       case "Intolerância ao Glúten":
         return "bg-orange-200/75";
 
+      case "Outros":
+        return "bg-gray-200/75";
+
       case "AS/Anafilaxia":
         return "bg-red-200/75 border border-red-500"
     }
@@ -138,8 +155,14 @@ export function VisualizarAlunos() {
     if (!confirmou) {
       return
     }
-    // SUBSTITUIR POR METODO DELETE DO BACK
-    setAlunos(alunosAtuais => alunosAtuais.filter(aluno => aluno.id !== id))
+    try {
+      await excluirAluno(id);
+      setAlunos((alunosAtuais) => alunosAtuais.filter((aluno) => aluno.id !== id));
+      setErro("");
+    } catch (error) {
+      console.error("Erro ao excluir aluno:", error);
+      setErro("Não foi possível excluir o aluno.");
+    }
 
   }
 
@@ -320,6 +343,12 @@ export function VisualizarAlunos() {
         <h2 className="w-full py-4 text-lg">
           <span className="text-roxo">{alunosFiltrados.length}</span> de {alunos.length} alunos exibidos
         </h2>
+
+        {carregando && <p className="w-full py-4 text-gray-500">Carregando alunos...</p>}
+        {erro && <p role="alert" className="w-full py-4 text-red-700">{erro}</p>}
+        {!carregando && !erro && alunos.length === 0 && (
+          <p className="w-full py-4 text-gray-500">Nenhum aluno cadastrado.</p>
+        )}
 
         <div className="w-full overflow-hidden rounded-3xl border border-[#fce9d3]  shadow-[0_5px_5px_rgba(1,1,1,0.1)]">
           <table className="w-full bg-white  ">

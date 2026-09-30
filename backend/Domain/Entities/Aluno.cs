@@ -8,15 +8,14 @@ public class Aluno{
     public string Serie {get;private set;}
     public string Telefone {get;private set;}
     public string Observacao {get;private set;}
-    
-    //public List<string> Restricoes {get;private set;} = new();
+    public List<string> Restricoes { get; private set; } = new();
     public bool Anafilaxia {get;private set;}
 
     public string NomeResponsavel {get;private set;}
     public string TelefoneResponsavel {get;private set;}
 
     private Aluno(){ }
-    public Aluno(string nome, DateOnly nascimento, string escola, string serie, string telefone, string observacao, bool anafilaxia, string nomeResponsavel, string telefoneResponsavel)
+    public Aluno(string nome, DateOnly nascimento, string escola, string serie, string telefone, string observacao, List<string> restricoes, bool anafilaxia, string nomeResponsavel, string telefoneResponsavel)
     {
         Nome = nome;
         Nascimento = nascimento;
@@ -24,6 +23,7 @@ public class Aluno{
         Serie = serie;
         Telefone = telefone;
         Observacao = observacao;
+        Restricoes = restricoes;
         Anafilaxia = anafilaxia;
         NomeResponsavel = nomeResponsavel;
         TelefoneResponsavel = telefoneResponsavel;

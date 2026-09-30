@@ -25,6 +25,12 @@ public class AlunoController : ControllerBase
         return Ok("Aluno inserido.");
     }
 
+    [HttpGet]
+    public IActionResult Listar()
+    {
+        return Ok(_alunoService.ListarAlunos());
+    }
+
     [HttpGet("perfil/{id}")]
     public IActionResult GetAluno(int id)
     {
@@ -34,5 +40,16 @@ public class AlunoController : ControllerBase
             return NotFound("Aluno não encontrado.");
         }
         return Ok(dadosAluno);
+    }
+
+    [HttpDelete("{id:int}")]
+    public IActionResult Excluir(int id)
+    {
+        if (!_alunoService.ExcluirAluno(id))
+        {
+            return NotFound("Aluno não encontrado.");
+        }
+
+        return NoContent();
     }
 }
