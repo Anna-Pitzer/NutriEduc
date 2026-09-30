@@ -24,14 +24,17 @@ export function LoginPage() {
   const [fullName, setFullName] = useState<string>("")
   const [email, setEmail] = useState<string>("")
   const [password, setPassword] = useState<string>("")
+  const [cpf, setCpf] = useState<string>("")
+  const [birthDate, setBirthDate] = useState<string>("")
+  const [cadastrando, setCadastrando] = useState(false)
 
-  const { isAuthenticated, login, register } = useAuth()
+  const { isAuthenticated, loading, login, register } = useAuth()
 
   useEffect(() => {
     console.log("isAuthenticated:", isAuthenticated)
   }, [isAuthenticated])
 
-  function handleLogin(e: React.SubmitEvent<HTMLFormElement>) {
+  async function handleLogin(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
 
     const emailSanitizado = sanitizarEmail(email);
@@ -48,19 +51,28 @@ export function LoginPage() {
       return;
     }
 
-    login({
-      email: emailSanitizado,
-      password: password,
-    })
-    console.log('Login realizado com sucesso')
+    try {
+      await login({
+        email: emailSanitizado,
+        password: password,
+      });
+    } catch (erro) {
+      alert(
+        erro instanceof Error
+          ? erro.message
+          : "Não foi possível conectar ao backend."
+      );
+    }
   }
 
-  function handleRegister(e: React.SubmitEvent<HTMLFormElement>) {
-    e.preventDefault()
+  async function handleRegister(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    if (cadastrando) return;
 
     const nomeSanitizado = sanitizarNome(fullName);
     const emailSanitizado = sanitizarEmail(email);
-
+    const cpfLimpo = cpf.replace(/\D/g, "");
 
     const erroNome = validarNome(nomeSanitizado);
     if (erroNome) {
@@ -80,19 +92,49 @@ export function LoginPage() {
       return;
     }
 
-    register({
-      name: nomeSanitizado,
-      email: emailSanitizado,
-      password,
-    });
-    console.log("Registrado com sucesso!")
-    setFullName('')
-    setEmail('')
-    setPassword('')
-    setIsLoginPage(true)
+    if (cpfLimpo.length !== 11) {
+      alert("Informe o CPF com 11 dígitos.");
+      return;
+    }
 
+    if (!birthDate) {
+      alert("Informe a data de nascimento.");
+      return;
+    }
+
+    setCadastrando(true);
+
+    try {
+      await register({
+        name: nomeSanitizado,
+        cpf: cpfLimpo,
+        birthDate,
+        email: emailSanitizado,
+        password,
+      });
+
+      alert("Cadastro realizado! Agora entre com seu email e senha.");
+
+      setFullName("");
+      setCpf("");
+      setBirthDate("");
+      setPassword("");
+      setEmail(emailSanitizado);
+      setIsLoginPage(true);
+    } catch (erro) {
+      alert(
+        erro instanceof Error
+          ? erro.message
+          : "Não foi possível conectar ao backend."
+      );
+    } finally {
+      setCadastrando(false);
+    }
   }
 
+  if (loading){
+    return <p role="status">Carregando...</p>
+  }
   if (isAuthenticated) {
     return <Navigate to={"/"} replace />
   }
@@ -198,6 +240,33 @@ export function LoginPage() {
                   placeholder="Email"
                 />
               </p>
+              
+              <p className="flex gap-2 w-full bg-branco p-3 rounded-md">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value)}
+                  maxLength={14}
+                  className="outline-none w-full text-gray"
+                  placeholder="CPF"
+                  required
+                />
+              </p>
+
+              <p className="flex flex-col gap-1 w-full bg-branco p-3 rounded-md">
+                <label htmlFor="dataNascimento" className="text-sm text-gray">
+                  Data de nascimento
+                </label>
+                <input
+                  id="dataNascimento"
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className="outline-none w-full text-gray"
+                  required
+                />
+              </p>
 
               <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
                 <KeyRound color="gray" />
@@ -211,16 +280,21 @@ export function LoginPage() {
               </p>
 
               <button
-                className="text-black bg-white w-[80%] m-auto h-12 rounded-md hover:cursor-pointer hover:bg-verdeMtClaro hover:pb-1"
-              >Register</button>
+                type="submit"
+                disabled={cadastrando}
+                className="text-black bg-white w-[80%] m-auto h-12 rounded-md hover:cursor-pointer hover:bg-verdeMtClaro disabled:opacity-50"
+              >
+                {cadastrando ? "Cadastrando..." : "Register"}
+              </button>
 
               <button
-                className="text-white"
-              >Already have an account?
-                <b
-                  onClick={() => setIsLoginPage(true)}
-                  className="text-white ml-1 hover:cursor-pointer"
-                >Log in</b></button>
+                type="button"
+                className="text-white hover:cursor-pointer"
+                onClick={() => setIsLoginPage(true)}
+              >
+                Already have an account?
+                <b className="ml-1">Log in</b>
+              </button>
             </form>
           }
         </div>
