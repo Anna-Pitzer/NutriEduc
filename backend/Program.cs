@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Ntc.Domain.Interface;
+using Microsoft.EntityFrameworkCore;
 using Ntc.Database;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,6 +9,9 @@ builder.Services.AddControllers();
 
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddTransient<UsuarioService>();
+
+builder.Services.AddScoped<AlunoService>();
+builder.Services.AddScoped<IAlunoRepository, AlunoRepository>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -34,9 +38,18 @@ builder.Services
         };
     });
 
+
+
 builder.Services.AddAuthorization();
+builder.Services.AddDbContext<ConnectionContext>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ConnectionContext>();
+    db.Database.Migrate();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

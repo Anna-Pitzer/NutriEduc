@@ -15,6 +15,7 @@ public class Aluno{
     public string NomeResponsavel {get;private set;}
     public string TelefoneResponsavel {get;private set;}
 
+    private Aluno(){ }
     public Aluno(string nome, DateOnly nascimento, string escola, string serie, string telefone, string observacao, bool anafilaxia, string nomeResponsavel, string telefoneResponsavel)
     {
         Nome = nome;

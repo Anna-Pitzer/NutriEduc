@@ -8,7 +8,7 @@ public class DadosAlunoDTO{
     public string Telefone {get;set;}
     public string Observacao {get;set;}
     
-    public List<string> Restricoes {get;set;}
+    //public List<string> Restricoes {get;set;}
     public bool Anafilaxia {get;set;}
 
     public string NomeResponsavel {get;set;}

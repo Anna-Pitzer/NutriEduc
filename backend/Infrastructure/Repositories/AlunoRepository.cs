@@ -1,12 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using Ntc.Domain.Entity;
-
+using Ntc.Domain.Interface;
 
 namespace Ntc.Database;
-public class AlunoRepository()
+public class AlunoRepository : IAlunoRepository
 {
-    private readonly ConnectionContext _context = new();
+    private readonly ConnectionContext _context;
 
+    public AlunoRepository(ConnectionContext context)
+{
+    _context = context;
+}
     public void Add(Aluno aluno)
     {
         _context.Alunos.Add(aluno);

@@ -1,5 +1,5 @@
 
-import { Trash } from "lucide-react";
+import { Trash, ChevronLeft } from "lucide-react";
 import Footer from "../components/Footer";
 import Header from "../components/Header"
 import { useEffect, useRef, useState } from "react";
@@ -143,10 +143,26 @@ export function VisualizarAlunos() {
 
   }
 
+  const cancelar = () => { window.history.back(); };
+
   return (
     <div className="flex flex-col items-center min-h-screen bg-fundo">
 
       <Header />
+
+      <div className="self-start ml-4">
+        <button
+            type="button"
+            onClick={cancelar}
+            aria-label="Voltar"
+            className="group flex cursor-pointer items-center justify-center"
+        >
+            <ChevronLeft
+                size={50}
+                className="text-roxo transition-transform duration-200 group-hover:-translate-x-2"
+            />
+        </button>
+    </div>
 
 
       <div
