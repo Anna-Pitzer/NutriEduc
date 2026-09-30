@@ -1,10 +1,13 @@
 desktop.ini
 
 *.db
+*.db-shm
+*.db-wal
 [Bb]in/
 [Oo]bj/
 **/bin/
 **/obj/
+.env
 
 # Logs
 logs
