@@ -11,13 +11,11 @@ public class AlunoService
         _alunoRepository = alunoRepository;
     }
 
-    //Aqui voce faz as regras de negocio do sistema (criar, editar, validar...)
-
     public bool CriarAluno(DadosAlunoDTO dto)
     {
         Aluno aluno = new(
             dto.Nome,
-            dto.Nascimento,
+            dto.Nascimento, 
             dto.Escola,
             dto.Serie,
             dto.Telefone,
@@ -52,5 +50,5 @@ public class AlunoService
         );
 
         return dto;
-    }
-}   
+    } 
+}
