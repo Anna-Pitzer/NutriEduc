@@ -1,5 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Ntc.Application;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 namespace Ntc.Controllers;
 
 
@@ -38,21 +42,80 @@ public class UsuarioController : ControllerBase
     }
 
     [HttpPost("login")]
-    public IActionResult PostLogin([FromBody] LoginUsuarioDTO dadosLoginDTO)
-    {
-        bool value = _usuarioService.VerificarLogin(dadosLoginDTO);
-        
-        if (value){return Ok($"Seja bem-vindo, {_usuarioService.ObterNomePeloEmail(dadosLoginDTO.Email)}!");}
-        return NotFound("Email ou senha incorretos.");
+    public async Task<IActionResult> PostLogin(
+        [FromBody] LoginUsuarioDTO dadosLoginDTO)
+    {   
+        bool valido = _usuarioService.VerificarLogin(dadosLoginDTO);
+
+        if (!valido)
+        {
+            return Unauthorized("Email ou senha incorretos.");
+        }
+
+        var nome = _usuarioService.ObterNomePeloEmail(dadosLoginDTO.Email);
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.Email, dadosLoginDTO.Email!),
+            new Claim(ClaimTypes.Name, nome ?? "")
+        };
+
+        var identidade = new ClaimsIdentity(
+            claims,
+            CookieAuthenticationDefaults.AuthenticationScheme
+        );
+
+        var usuario = new ClaimsPrincipal(identidade);
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            usuario,
+            new AuthenticationProperties
+            {
+                IsPersistent = true
+            }
+        );
+
+        return Ok(new
+        {
+            email = dadosLoginDTO.Email,
+            nome
+        });
     }
 
-    [HttpPatch("reset-senha")]
-    public IActionResult PatchSenha([FromBody] DadosUsuarioDTO usuarioDTO)
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult ObterSessao()
     {
-        bool value = _usuarioService.TrocarSenha(usuarioDTO.Email, usuarioDTO.Senha);
-        
-        if (!value) {return NotFound("Email incorreto ou senha inválida.");}
-        
-        return Ok("Senha trocada com sucesso!");
+        var email = User.FindFirstValue(ClaimTypes.Email);
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return Unauthorized();
+        }
+
+        var nome = _usuarioService.ObterNomePeloEmail(email);
+
+        if (nome == null)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(new
+        {
+            email,
+            nome
+        });
+    }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme
+        );
+
+        return NoContent();
     }
 }
