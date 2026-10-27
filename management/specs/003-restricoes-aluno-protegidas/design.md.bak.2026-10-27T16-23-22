@@ -1,0 +1,86 @@
+---
+name: restricoes-aluno-protegidas
+status: created
+references: V1, ADR-006, L2
+---
+
+# Design — Restrições alimentares protegidas
+
+## Domínio — `backend/Domain/Entities/Aluno.cs`
+
+```csharp
+private const int MaxRestricoes = 20;
+private readonly List<string> _restricoes = new();
+
+public IReadOnlyList<string> Restricoes => _restricoes;
+
+public void AdicionarRestricao(string restricao)
+{
+    var valor = (restricao ?? string.Empty).Trim();
+    if (valor.Length == 0)
+        throw new ArgumentException("A restrição não pode ser vazia.");
+    if (_restricoes.Any(r => string.Equals(r, valor, StringComparison.OrdinalIgnoreCase)))
+        throw new ArgumentException("Restrição já cadastrada para este aluno.");
+    if (_restricoes.Count >= MaxRestricoes)
+        throw new ArgumentException($"O aluno já possui {MaxRestricoes} restrições cadastradas.");
+
+    _restricoes.Add(valor);
+}
+
+public bool RemoverRestricao(string restricao)
+{
+    var indice = _restricoes.FindIndex(r =>
+        string.Equals(r, restricao?.Trim(), StringComparison.OrdinalIgnoreCase));
+    if (indice < 0) return false;
+
+    _restricoes.RemoveAt(indice);
+    return true;
+}
+```
+
+O construtor itera a coleção recebida e chama `AdicionarRestricao`, ignorando itens
+vazios em vez de falhar a materialização do objeto.
+
+## Persistência
+
+O EF Core não mapeia `IReadOnlyList<string>` diretamente. Duas opções:
+
+| Opção | Decisão |
+| --- | --- |
+| Propriedade de navegação com backing field privado | **Escolhida** — configuração explícita em `OnModelCreating`, coluna `Restricoes` preservada |
+| Entidade `Restricao` normalizada | Adiada para a Spec 010 |
+
+Configuração em `backend/Infrastructure/DataBase/ConnectionContext.cs`:
+
+```csharp
+modelBuilder.Entity<Aluno>()
+    .Property<List<string>>("Restricoes")
+    .HasField("_restricoes")
+    .UsePropertyAccessMode(PropertyAccessMode.Field);
+```
+
+Para o EF Core, a propriedade sombreada `Restricoes` continua sendo `List<string>` (o
+campo). A API lê o mesmo JSON de hoje, sem mudança de contrato.
+
+## Conversão DTO
+
+`AlunoService` deixa de passar `dto.Restricoes` direto ao construtor e passa
+`dto.Restricoes ?? new()`. `DadosAlunoDTO` continua com `List<string>` na saída,
+alimentado por `aluno.Restricoes.ToList()`.
+
+## Testes obrigatórios (Spec 005)
+
+| Caso | Esperado |
+| --- | --- |
+| Adicionar válida | coleção com 1 item |
+| Duplicata case-insensitive | `ArgumentException` |
+| Item vazio / espaços | `ArgumentException` |
+| 21ª restrição | `ArgumentException` |
+| Remover existente / inexistente | `true` / `false` |
+| Construtor com lista contendo vazio | ignora o item, não lança |
+
+## Riscos
+
+- Mapeamento com backing field é sensível a renomear o campo: documentar em comentário
+  no `ConnectionContext`.
+- Consultas por restrição continuam impossíveis em SQL até a Spec 010.

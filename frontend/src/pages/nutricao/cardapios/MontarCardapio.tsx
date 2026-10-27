@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { type AlimentoCardapio } from "../components/CardapiosDiv";
-import Button from "../components/Button";
-import background1 from "../assets/background1.png";
-import { buscarAlimentos, salvarCardapio, type Alimento, type Refeicao } from "../services/CardapioApi";
+import { type AlimentoCardapio } from "../../../components/CardapiosDiv";
+import Button from "../../../components/Button";
+import background1 from "../../../assets/background1.png";
+import { buscarAlimentos, salvarCardapio, type Alimento, type Refeicao } from "../../../services/CardapioApi";
 
 type CardapiosDivVariant = "cafe" | "almoco" | "lanche" | "jantar";
 

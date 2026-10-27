@@ -1,11 +1,11 @@
-import Footer from "../components/Footer";
-import Header from "../components/Header";
-import Button from "../components/Button";
+import Footer from "../../components/Footer";
+import Header from "../../components/Header";
+import Button from "../../components/Button";
 import { useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 import { ChevronLeft, Mail, Phone, User } from "lucide-react";
-import { useAuth } from "../context/authContext";
-import { buscarPerfil, buscarEstatisticas, atualizarPerfil } from "../services/Perfil";
+import { useAuth } from "../../context/authContext";
+import { buscarPerfil, buscarEstatisticas, atualizarPerfil } from "../../services/Perfil";
 
 type DadosPerfil = {
     nome: string;

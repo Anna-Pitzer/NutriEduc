@@ -1,11 +1,11 @@
-import Button from "../components/Button";
-import { CardapiosDiv } from "../components/CardapiosDiv";
-import Footer from "../components/Footer";
-import Header from "../components/Header";
+import Button from "../../../components/Button";
+import { CardapiosDiv } from "../../../components/CardapiosDiv";
+import Footer from "../../../components/Footer";
+import Header from "../../../components/Header";
 import { ChevronLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { buscarCardapio, excluirCardapio, type Refeicao, type AlimentoCardapio } from "../services/CardapioApi";
+import { buscarCardapio, excluirCardapio, type Refeicao, type AlimentoCardapio } from "../../../services/CardapioApi";
 
 const refeicoes: Refeicao[] = [
     "cafe",

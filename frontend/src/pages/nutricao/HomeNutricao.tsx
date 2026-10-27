@@ -1,14 +1,14 @@
-import Header from "../components/Header";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
-import background2 from '../assets/background2.png';
+import Header from "../../components/Header";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
+import background2 from '../../assets/background2.png';
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar, ChevronRight } from "lucide-react";
-import { buscarHistoricoCardapios, type CardapioHistorico } from "../services/CardapioApi";
-import Button from "../components/Button";
+import { buscarHistoricoCardapios, type CardapioHistorico } from "../../services/CardapioApi";
+import Button from "../../components/Button";
 
-export function HomePage() {
+export function HomeNutricao() {
   const navigate = useNavigate();
 
   const[historico, setHistorico] = useState<CardapioHistorico[]>([]);

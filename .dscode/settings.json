@@ -1,0 +1,33 @@
+{
+  "modelInstances": {
+    "NutriEduc": {
+      "name": "NutriEduc",
+      "modelId": "deepseek-flash",
+      "provider": "deepseek",
+      "apiKey": "aes256:F4q7gZXJ4McVMxPs:uKzz1_iRLq1x7o7KTJfhzQ:fwtFmXt9FE7uuCqBP__FgWCt3mAI8nPmI4BMYkeTOd_uTdA",
+      "apiKeyEncrypted": true,
+      "credentialRevision": "4753685a-e176-47f2-9588-bdd8b12491ef",
+      "priority": 1
+    }
+  },
+  "model": "deepseek-flash",
+  "modelInstance": "NutriEduc",
+  "thinkingEnabled": true,
+  "reasoningEffort": "max",
+  "trust": {
+    "tools": {
+      "bash": {
+        "approved": true,
+        "approvedAt": "2026-10-27T16:06:09.151Z"
+      },
+      "batch": {
+        "approved": true,
+        "approvedAt": "2026-10-27T16:22:33.729Z"
+      },
+      "apply_patch": {
+        "approved": true,
+        "approvedAt": "2026-10-27T16:53:26.806Z"
+      }
+    }
+  }
+}

@@ -1,11 +1,11 @@
 
 import { Trash, ChevronLeft } from "lucide-react";
-import Footer from "../components/Footer";
-import Header from "../components/Header"
+import Footer from "../../../components/Footer";
+import Header from "../../../components/Header"
 import { useEffect, useRef, useState } from "react";
 import { ToastContainer, Zoom } from "react-toastify";
-import { confirmarExclusao } from "../components/Notificacoes";
-import { buscarAlunos, excluirAluno, type AlunoResposta } from "../services/AlunoApi";
+import { confirmarExclusao } from "../../../components/Notificacoes";
+import { buscarAlunos, excluirAluno, type AlunoResposta } from "../../../services/AlunoApi";
 
 export function VisualizarAlunos() {
   const detalhesRef = useRef<HTMLDetailsElement>(null);

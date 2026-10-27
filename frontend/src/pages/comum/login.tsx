@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react"
 import { KeyRound, Lock, Mail, User } from "lucide-react"
-import { useAuth } from "../context/authContext"
+import { useAuth } from "../../context/authContext"
 
-import background from '../assets/background1.png'
+import background from '../../assets/background1.png'
 import { Navigate } from "react-router-dom"
 
 import {
   sanitizarNome,
   sanitizarEmail,
-} from "../components/Sanitizacao";
+} from "../../components/Sanitizacao";
 
 import {
   validarNome,
   validarEmail,
   validarSenha,
-} from "../components/Validacao";
+} from "../../components/Validacao";
 
 
 

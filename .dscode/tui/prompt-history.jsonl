@@ -1,0 +1,4 @@
+{"text":"olá","submittedAt":1793117152851}
+{"text":"vc leu o correcoes.md e implementacoes.md e o conteudo de /management?","submittedAt":1793117832945}
+{"text":"corrija os documentos antes","submittedAt":1793118048817}
+{"text":"Certo, antes de continuarmos preciso que vc reorganize as pastas do projeto, como pode ver no implementacoes.md teremos areas como Escola, Secretaria e Pais. Minha equipe e eu chegamos em um concenso de dividir a home do frontend em pequenas homes, que mais tarde serao navegadas por uma navbar que sera implementado no final. Preciso que vc organize as pastas de acordo com as areas, crie arquivos se necessario, n precisa por enquanto codificar nada nos arquivos que criar, mas foque em reordenar os arquivos existentes e obviamente os imports dos arquivos também  ","submittedAt":1793118537532}
