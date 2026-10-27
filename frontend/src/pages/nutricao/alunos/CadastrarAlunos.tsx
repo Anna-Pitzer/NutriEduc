@@ -1,9 +1,9 @@
-import Footer from "../components/Footer";
-import Header from "../components/Header";
-import Button from "../components/Button";
+import Footer from "../../../components/Footer";
+import Header from "../../../components/Header";
+import Button from "../../../components/Button";
 import { ChevronLeft, Apple, Candy, CircleHelp, Milk, Wheat } from "lucide-react";
 import { useState } from "react";
-import { cadastrarAlunos, type AlunoCadastro } from "../services/AlunoApi";
+import { cadastrarAlunos, type AlunoCadastro } from "../../../services/AlunoApi";
 
 
 export function CadastroAlunos() {
