@@ -333,7 +333,9 @@ export function Perfil() {
 
                             <div>
                                 <p className="font-semibold">
-                                    {form.nome || "Carregando perfil..."}
+                                    {carregando
+                                        ? "Carregando perfil..."
+                                        : form.nome || "—"}
                                 </p>
 
                                 <label
@@ -444,10 +446,7 @@ export function Perfil() {
                             placeholder="nome"
                             value={form.nome}
                             onChange={(e) =>
-                                setForm({
-                                    ...form,
-                                    nome: sanitizarNome(e.target.value),
-                                })
+                                atualizarCampo("nome", e.target.value)
                             }
                             maxLength={100}
                         />
@@ -460,10 +459,7 @@ export function Perfil() {
                             placeholder="email"
                             value={form.email}
                             onChange={(e) =>
-                                setForm({
-                                    ...form,
-                                    email: sanitizarEmail(e.target.value),
-                                })
+                                atualizarCampo("email", e.target.value)
                             }
                             maxLength={150}
                         />
@@ -481,10 +477,7 @@ export function Perfil() {
                             placeholder="(00) 00000-0000"
                             value={form.telefone}
                             onChange={(e) =>
-                                setForm({
-                                    ...form,
-                                    telefone: sanitizarTelefone(e.target.value),
-                                })
+                                atualizarCampo("telefone", e.target.value)
                             }
                             maxLength={11}
                         />
@@ -496,8 +489,9 @@ export function Perfil() {
                                 type="button"
                                 variant="normal"
                                 onClick={salvarPerfil}
+                                disabled={salvando}
                             >
-                                Salvar Alterações
+                                {salvando ? "Salvando..." : "Salvar Alterações"}
                             </Button>
 
                             <Button

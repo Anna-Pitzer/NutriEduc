@@ -9,6 +9,9 @@ desktop.ini
 **/obj/
 .env
 
+# Estado de runtime do DsCode (contém settings.json com chaves e bancos locais)
+.dscode/
+
 # Logs
 logs
 *.log

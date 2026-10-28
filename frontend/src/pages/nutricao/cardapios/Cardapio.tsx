@@ -5,7 +5,7 @@ import Header from "../../../components/Header";
 import { ChevronLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { buscarCardapio, excluirCardapio, type Refeicao, type AlimentoCardapio } from "../../../services/CardapioApi";
+import { buscarCardapio, type Refeicao, type AlimentoCardapio } from "../../../services/CardapioApi";
 
 const refeicoes: Refeicao[] = [
     "cafe",
@@ -13,13 +13,6 @@ const refeicoes: Refeicao[] = [
     "lanche",
     "jantar"
 ];
-
-interface Responsavel {
-    id: number;
-    nome: string;
-    cargo: string;
-    crn: string;
-}
 
 export function Cardapio() {
     const navigate = useNavigate();
@@ -38,7 +31,6 @@ export function Cardapio() {
 
     const[dataSelecionada, setDataSelecionada] = useState("");
     const[tipoSelecionado, setTipoSelecionado] = useState("");
-    const[responsavel, setResponsavel] = useState<Responsavel | null>(null);
 
     const gerarDatas = () => {
         const datas: string[] = []; 
@@ -108,19 +100,6 @@ export function Cardapio() {
     ...cardapios.lanche,
     ...cardapios.jantar,
 ];
-
-async function handleExcluirCardapio(refeicao: Refeicao) {
-    try {
-        await excluirCardapio(refeicao);
-
-        setCardapios((anterior) => ({
-            ...anterior,
-            [refeicao]: []
-        }));
-    } catch (erro) {
-        console.error("Erro ao excluir cardápio:", erro);
-    }
-}
 
 function handleSalvarCardapio() {
     if (!tipoSelecionado || !dataSelecionada) {
@@ -221,15 +200,6 @@ const sodioCerto = composicaoNutricional.sodio <= 600;
                                 </option>
                             ))}
                         </select>
-
-                        {responsavel && (
-                            <div className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 
-                            hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2">
-                                <p>{responsavel.nome}</p>
-                                <p>{responsavel.cargo}</p>
-                                <p>{responsavel.crn}</p>
-                            </div>
-                        )}
                     </div>
 
                     <div className=" border-2 border-verdeClaro rounded-2xl p-4 bg-verdeClaro/15 my-4">
