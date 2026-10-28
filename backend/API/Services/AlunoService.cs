@@ -40,7 +40,7 @@
                 aluno.Serie,
                 aluno.Telefone,
                 aluno.Observacao,
-                aluno.Restricoes,
+                aluno.Restricoes.ToList(),
                 aluno.Anafilaxia,
                 aluno.NomeResponsavel,
                 aluno.TelefoneResponsavel
@@ -62,7 +62,7 @@
                 aluno.Serie,
                 aluno.Telefone,
                 aluno.Observacao,
-                aluno.Restricoes,
+                aluno.Restricoes.ToList(),
                 aluno.Anafilaxia,
                 aluno.NomeResponsavel,
                 aluno.TelefoneResponsavel

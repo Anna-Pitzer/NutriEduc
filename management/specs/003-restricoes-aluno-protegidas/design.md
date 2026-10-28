@@ -60,10 +60,17 @@ Configuração em `backend/Infrastructure/DataBase/ConnectionContext.cs`:
 
 ```csharp
 modelBuilder.Entity<Aluno>()
-    .Property<List<string>>("Restricoes")
+    .PrimitiveCollection(a => a.Restricoes)
     .HasField("_restricoes")
     .UsePropertyAccessMode(PropertyAccessMode.Field);
 ```
+
+> **Correção nesta revisão:** a versão anterior usava
+> `.Property<List<string>>("Restricoes")`, que criaria uma *shadow property* com o mesmo
+> nome da propriedade CLR e falharia na validação de modelo. O EF Core 10 expõe
+> `PrimitiveCollection(...)` para coleções primitivas, e é ele que aceita
+> `HasField` + `UsePropertyAccessMode` para uma propriedade somente leitura.
+> Assinaturas conferidas em `Microsoft.EntityFrameworkCore.dll` 10.0.11.
 
 Para o EF Core, a propriedade sombreada `Restricoes` continua sendo `List<string>` (o
 campo). A API lê o mesmo JSON de hoje, sem mudança de contrato.
