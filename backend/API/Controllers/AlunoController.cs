@@ -16,13 +16,15 @@ public class AlunoController : ControllerBase
     [HttpPost("registrar")]
     public IActionResult PostAddAluno([FromBody] DadosAlunoDTO dto)
     {
-        bool value = _alunoService.CriarAluno(dto);
-
-        if (!value)
+        try
         {
-            return BadRequest("Error ao adicionar aluno.");
+            _alunoService.CriarAluno(dto);
+            return Ok("Aluno inserido.");
         }
-        return Ok("Aluno inserido.");
+        catch (ArgumentException erro)
+        {
+            return BadRequest(new { erro = erro.Message });
+        }
     }
 
     [HttpGet]
@@ -37,9 +39,29 @@ public class AlunoController : ControllerBase
         var dadosAluno = _alunoService.ObterAlunoPorId(id);
         if (dadosAluno == null)
         {
-            return NotFound("Aluno não encontrado.");
+            return NotFound(new { erro = "Aluno não encontrado." });
         }
         return Ok(dadosAluno);
+    }
+
+    [HttpPut("{id:int}")]
+    public IActionResult Atualizar(int id, [FromBody] DadosAlunoDTO dto)
+    {
+        try
+        {
+            var aluno = _alunoService.AtualizarAluno(id, dto);
+
+            if (aluno == null)
+            {
+                return NotFound(new { erro = "Aluno não encontrado." });
+            }
+
+            return Ok(aluno);
+        }
+        catch (ArgumentException erro)
+        {
+            return BadRequest(new { erro = erro.Message });
+        }
     }
 
     [HttpDelete("{id:int}")]
@@ -47,7 +69,7 @@ public class AlunoController : ControllerBase
     {
         if (!_alunoService.ExcluirAluno(id))
         {
-            return NotFound("Aluno não encontrado.");
+            return NotFound(new { erro = "Aluno não encontrado." });
         }
 
         return NoContent();

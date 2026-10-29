@@ -18,18 +18,12 @@ public class Usuario {
         Email = email;
     }
 
-    public Usuario(string email, string senha)
+    public Usuario(string nome, string cpf, DateOnly dataNascimento, string email)
     {
-        Email = email;
-        Senha = senha;
-    }
-    public Usuario (string nome, string cpf, DateOnly dataNascimento, string email, string senha)
-    {   
         Nome = nome;
         Cpf = cpf;
         DataNascimento = dataNascimento;
         Email = email;
-        Senha = senha;
     }   
 
     public void AtualizarPerfil(string nome, string email)
@@ -126,28 +120,58 @@ public class Usuario {
 }
     
     
-    public bool SenhaValida(){
-        if (Senha.Length < 8)
+    /// <summary>
+    /// Define a senha a partir do valor informado pelo usuário. Ordem obrigatória
+    /// (Spec 002): guard clause → comprimento → derivação → atribuição. Um valor
+    /// inválido não altera o estado persistido.
+    /// </summary>
+    public void DefinirSenha(string senha)
+    {
+        if (string.IsNullOrWhiteSpace(senha))
+        {
+            throw new ArgumentException("A senha não pode ser vazia.", nameof(senha));
+        }
+
+        if (senha.Length < 8)
+        {
+            throw new ArgumentException(
+                "A senha deve possuir pelo menos 8 caracteres.", nameof(senha));
+        }
+
+        Senha = HashSenha.Criar(senha).ToString();
+    }
+
+    /// <summary>
+    /// Confere a senha contra o hash persistido. Nunca lança: senha vazia ou valor
+    /// persistido fora do formato de hash resultam em <c>false</c>.
+    /// </summary>
+    public bool SenhaConfere(string? senha)
+    {
+        if (string.IsNullOrEmpty(senha))
         {
             return false;
         }
 
-        return true;
+        if (!HashSenha.TentarLer(Senha, out var hash))
+        {
+            return false;
+        }
+
+        return hash.Confere(senha);
     }
 
-    public void AtualizarSenha(string novaSenha)
+    /// <summary>
+    /// Detecta um registro gravado antes da Spec 002, quando a senha era persistida em
+    /// claro. Só é verdadeiro enquanto o valor gravado não estiver no formato de hash.
+    /// </summary>
+    public bool SenhaLegada(string? senha)
     {
-        if(novaSenha.Length < 8)
+        if (string.IsNullOrEmpty(senha) || Senha is null)
         {
-            throw new ArgumentException("A senha deve possuir pelo menos 8 caracteres.");
+            return false;
         }
 
-        if (string.IsNullOrWhiteSpace(novaSenha))
-        {
-            throw new ArgumentException("A senha não pode ser vazia");
-        }
-
-        Senha = novaSenha;
+        return !HashSenha.TentarLer(Senha, out _) && Senha == senha;
     }
 }
 

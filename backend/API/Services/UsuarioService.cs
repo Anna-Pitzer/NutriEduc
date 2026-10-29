@@ -12,16 +12,18 @@ public class UsuarioService
     }
 
     public bool CriarUsuario(DadosUsuarioDTO dto)
-    {   
+    {
         Usuario usuario = new(
             dto.Nome,
             dto.Cpf,
             dto.DataNascimento,
-            dto.Email,
-            dto.Senha
+            dto.Email
         );
 
-        if (_usuarioRepository.ExistsByEmail(usuario.Email) || !usuario.SenhaValida())
+        // Senha inválida vira ArgumentException; o controller traduz para 400.
+        usuario.DefinirSenha(dto.Senha ?? string.Empty);
+
+        if (_usuarioRepository.ExistsByEmail(usuario.Email!))
         {
             return false;
         }
@@ -52,10 +54,24 @@ public class UsuarioService
 
     public bool VerificarLogin(LoginUsuarioDTO dto)
     {
-        Usuario? usuario = _usuarioRepository.GetByEmail(dto.Email);
+        Usuario? usuario = _usuarioRepository.GetByEmail(dto.Email ?? string.Empty);
 
-        if (usuario != null && dto.Senha == usuario.Senha)
+        if (usuario == null)
         {
+            return false;
+        }
+
+        if (usuario.SenhaConfere(dto.Senha))
+        {
+            return true;
+        }
+
+        // Registro gravado antes da Spec 002: autentica em claro uma única vez e
+        // persiste o hash, de modo que o próximo login use SenhaConfere.
+        if (usuario.SenhaLegada(dto.Senha))
+        {
+            usuario.DefinirSenha(dto.Senha!);
+            _usuarioRepository.Update(usuario);
             return true;
         }
 
@@ -116,7 +132,7 @@ public class UsuarioService
         }
         try
         {
-            usuario.AtualizarSenha(NovaSenha);
+            usuario.DefinirSenha(NovaSenha);
         }
         catch (ArgumentException)
         {

@@ -128,3 +128,12 @@ Formato único de erro:
 | `Restricoes` como JSON | Impede consulta por restrição | Spec 010 |
 | Sem paginação em `/api/aluno` | Listagem cresce sem limite | Spec 010 |
 | Sem versionamento de API | Contrato muda sem sinal | Pós-F2 |
+
+## Spec 007 — contrato-erro-e-infra-di
+
+**Canonical creation path:** `backend/API/Middleware/`, `backend/Program.cs`.
+
+O contrato único de erro (§6) e a injeção de dependência por contrato (§5) ganham um
+dono explícito: um middleware de exceção registrado em `Program.cs`, que traduz
+`ArgumentException` em 400 e elimina os `try/catch` repetidos nos controllers, e a
+correção do `UsuarioRepository`, que hoje instancia o próprio `DbContext` (PEND-004).

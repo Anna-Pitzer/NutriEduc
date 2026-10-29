@@ -20,6 +20,8 @@ qualquer atribuição.
 **Regra derivada:** validar tudo e só então atribuir — mesmo padrão já correto em
 `Usuario.AtualizarPerfil`.
 
+**Canonical creation path:** `backend/Domain/Entities/Aluno.cs`, `backend/Infrastructure/DataBase/ConnectionContext.cs`
+
 **Delivered by:** Spec 003 (restricoes-aluno-protegidas), Spec 004 (dominio-aluno-invariantes)
 
 ---
@@ -31,6 +33,8 @@ apenas em perfil, que é outro recurso. O requisito de CRUD funcional não fecha
 
 **Valor entregue:** `C+R+U+D` completo de `Aluno`, exercitado pela interface, com
 persistência confirmada por leitura posterior.
+
+**Canonical creation path:** `backend/API/Controllers/AlunoController.cs`, `backend/API/Services/AlunoService.cs`, `frontend/src/services/AlunoApi.ts`, `frontend/src/pages/nutricao/alunos/VisualizarAlunos.tsx`, `frontend/src/routes/routes.tsx`
 
 **Delivered by:** Spec 001 (crud-aluno-completo)
 
@@ -45,6 +49,8 @@ persistência confirmada por leitura posterior.
 por usuário; nenhum caminho compara senhas em claro, exceto a janela única de
 migração de dados legados, que re-hasheia no primeiro login bem-sucedido.
 
+**Canonical creation path:** `backend/Domain/Entities/HashSenha.cs`, `backend/Domain/Entities/Usuario.cs`, `backend/API/Services/UsuarioService.cs`
+
 **Delivered by:** Spec 002 (seguranca-senha-hash)
 
 ---
@@ -57,6 +63,8 @@ testes e toda mudança é uma aposta.
 **Valor entregue:** as regras de domínio e os casos de uso críticos têm cobertura
 automatizada; toda correção acompanha um teste que falha antes e passa depois.
 
+**Canonical creation path:** `backend.Tests/backend.Tests.csproj`, `backend.Tests/Domain/`, `backend.Tests/Services/`, `backend.Tests/Fakes/`
+
 **Delivered by:** Spec 005 (testes-automatizados-backend)
 
 ---
@@ -67,6 +75,8 @@ automatizada; toda correção acompanha um teste que falha antes e passa depois.
 consulta e exclusão de dados de crianças respondem a requisição anônima.
 
 **Valor entregue:** nenhuma rota de dados de aluno responde sem sessão válida.
+
+**Canonical creation path:** `backend/API/Controllers/AlunoController.cs`, `frontend/src/services/AlunoApi.ts`
 
 **Delivered by:** Spec 006 (autorizacao-endpoints-aluno)
 
@@ -82,6 +92,8 @@ possui domínio de cardápio, embora o frontend já chame seis rotas inexistente
 nutricional próprio; a compatibilidade entre cardápio e restrições alimentares é uma
 regra de domínio testada, não uma checagem visual.
 
+**Canonical creation path:** `backend/Domain/Entities/`, `backend/API/Controllers/`, `backend/API/Services/`
+
 **Delivered by:** Spec 009 (papeis-e-escopo-dados), Spec 010 (dominio-alimentos-cardapios), Spec 011 (compatibilidade-cardapio-restricoes), Spec 012 (ocorrencias-solicitacoes-relatorios)
 
 ---
@@ -94,5 +106,7 @@ silenciosamente.
 
 **Valor entregue:** a documentação é atualizada na mesma mudança que altera o
 contrato, e a tabela de endpoints coincide com o mapa de controllers.
+
+**Canonical creation path:** `README.md`, `frontend/src/routes/routes.tsx`, `frontend/src/services/`
 
 **Delivered by:** Spec 008 (higiene-frontend)

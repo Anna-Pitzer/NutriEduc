@@ -20,14 +20,22 @@ public class UsuarioController : ControllerBase
 
     [HttpPost("registrar")]
     public IActionResult PostAdd([FromBody]DadosUsuarioDTO usuarioDTO)
-    {   
-        bool value = _usuarioService.CriarUsuario(usuarioDTO);
-
-        if (!value)
+    {
+        try
         {
-            return BadRequest("E-mail já cadastrado ou senha inválida.");
+            bool value = _usuarioService.CriarUsuario(usuarioDTO);
+
+            if (!value)
+            {
+                return BadRequest(new { erro = "E-mail já cadastrado." });
+            }
+
+            return Ok($"Usuario {usuarioDTO.Nome} foi cadastrado com sucesso.");
         }
-        return Ok($"Usuario {usuarioDTO.Nome} foi cadastrado com sucesso.");
+        catch (ArgumentException erro)
+        {
+            return BadRequest(new { erro = erro.Message });
+        }
     }
 
     [HttpGet("perfil/{id}")]

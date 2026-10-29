@@ -154,6 +154,12 @@ Os caminhos abaixo são definidos pelos controllers atuais. O ASP.NET Core aceit
 
 A autenticação usa cookie HTTP-only chamado `NutriEduc.Auth`, com validade de oito horas. As chamadas feitas diretamente pelo navegador devem incluir credenciais (`credentials: "include"`).
 
+### Senhas
+
+As senhas nunca são persistidas em claro. `Usuario.DefinirSenha` deriva um hash PBKDF2-SHA256 com salt aleatório de 16 bytes e 100.000 iterações, gravado no formato `pbkdf2-sha256$<iteracoes>$<salt>$<hash>` (salt e hash em base64). `Usuario.SenhaConfere` compara em tempo constante.
+
+Registros gravados antes dessa mudança ainda têm a senha em claro: no primeiro login válido o serviço compara uma única vez, grava o hash e passa a autenticar por ele. Não houve alteração de schema — a coluna `Senha` continua `TEXT` no SQLite —, portanto não existe migration para essa mudança.
+
 ### Alunos
 
 | Método | Caminho | Descrição |
@@ -161,9 +167,22 @@ A autenticação usa cookie HTTP-only chamado `NutriEduc.Auth`, com validade de 
 | `POST` | `/api/aluno/registrar` | Cadastra um aluno |
 | `GET` | `/api/aluno` | Lista alunos |
 | `GET` | `/api/aluno/perfil/{id}` | Consulta um aluno pelo ID |
+| `PUT` | `/api/aluno/{id}` | Atualiza um aluno existente |
 | `DELETE` | `/api/aluno/{id}` | Exclui um aluno |
 
 O campo de nascimento do DTO é `DateOnly`; envie uma data no formato `yyyy-MM-dd`. `anafilaxia` deve ser um booleano JSON (`true` ou `false`). As restrições alimentares são armazenadas como uma coleção JSON na tabela `Alunos`.
+
+Erros de validação de domínio respondem `400` com o corpo `{ "erro": "mensagem" }`; aluno inexistente responde `404` no mesmo formato.
+
+## Testes
+
+A suíte automatizada fica em `backend.Tests` (xUnit) e cobre as regras de domínio de `Usuario` e `Aluno` e os serviços `UsuarioService` e `AlunoService`, usando repositórios em memória.
+
+```bash
+dotnet test backend.Tests/backend.Tests.csproj
+```
+
+Para rodar apenas um grupo: `dotnet test backend.Tests/backend.Tests.csproj --filter Domain.AlunoTests`.
 
 ## Pendências conhecidas
 

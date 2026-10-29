@@ -41,6 +41,7 @@ export function Rotas() {
         <Route path="/" element={<HomeNutricao />} />
         <Route path="/cadastro" element={<CadastroAlunos />} />
         <Route path="/vizualunos" element={<VisualizarAlunos />} />
+        <Route path="/alunos/editar/:id" element={<CadastroAlunos />} />
         <Route path="/cardapio" element={<Cardapio />} />
         <Route path="/cardapio/montar/:refeicao" element={<MontarCardapio />} />
 
