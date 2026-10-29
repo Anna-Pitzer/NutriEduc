@@ -11,43 +11,40 @@
             _alunoRepository = alunoRepository;
         }
 
-        public bool CriarAluno(DadosAlunoDTO dto)
+        public void CriarAluno(DadosAlunoDTO dto)
         {
             Aluno aluno = new(
                 dto.Nome,
                 dto.Nascimento,
-                dto.Escola,
-                dto.Serie,
+                new Turma(dto.Escola, dto.Serie),
                 dto.Telefone,
                 dto.Observacao,
                 dto.Restricoes,
                 dto.Anafilaxia,
-                dto.NomeResponsavel,
-                dto.TelefoneResponsavel
+                new Responsavel(dto.NomeResponsavel, dto.TelefoneResponsavel)
             );
 
             _alunoRepository.Add(aluno);
-            return true;
         }
 
         public List<DadosAlunoDTO> ListarAlunos()
         {
             var alunos = _alunoRepository.GetAlunos() ?? new();
-            return alunos.Select(aluno => new DadosAlunoDTO(
-                aluno.Nome,
-                aluno.Nascimento,
-                aluno.Escola,
-                aluno.Serie,
-                aluno.Telefone,
-                aluno.Observacao,
-                aluno.Restricoes.ToList(),
-                aluno.Anafilaxia,
-                aluno.NomeResponsavel,
-                aluno.TelefoneResponsavel
-            ) { Id = aluno.Id }).ToList();
+            return alunos.Select(ParaDTO).ToList();
         }
 
         public DadosAlunoDTO? ObterAlunoPorId(int id)
+        {
+            Aluno? aluno = _alunoRepository.GetAluno(id);
+            return aluno == null ? null : ParaDTO(aluno);
+        }
+
+        /// <summary>
+        /// Delega a atualização ao domínio: <see cref="Aluno.AtualizarDados"/> valida
+        /// tudo antes de alterar o estado, então uma exceção deixa o objeto intacto.
+        /// Retorna <c>null</c> quando o id não existe (o controller responde 404).
+        /// </summary>
+        public DadosAlunoDTO? AtualizarAluno(int id, DadosAlunoDTO dto)
         {
             Aluno? aluno = _alunoRepository.GetAluno(id);
             if (aluno == null)
@@ -55,21 +52,37 @@
                 return null;
             }
 
-            DadosAlunoDTO dto = new(
+            aluno.AtualizarDados(
+                dto.Nome,
+                dto.Nascimento,
+                new Turma(dto.Escola, dto.Serie),
+                dto.Telefone,
+                dto.Observacao,
+                dto.Restricoes,
+                dto.Anafilaxia,
+                new Responsavel(dto.NomeResponsavel, dto.TelefoneResponsavel)
+            );
+
+            _alunoRepository.UpdateAluno(aluno);
+
+            return ParaDTO(aluno);
+        }
+
+        private static DadosAlunoDTO ParaDTO(Aluno aluno)
+        {
+            return new DadosAlunoDTO(
                 aluno.Nome,
                 aluno.Nascimento,
-                aluno.Escola,
-                aluno.Serie,
+                aluno.Turma.Escola,
+                aluno.Turma.Serie,
                 aluno.Telefone,
                 aluno.Observacao,
                 aluno.Restricoes.ToList(),
                 aluno.Anafilaxia,
-                aluno.NomeResponsavel,
-                aluno.TelefoneResponsavel
+                aluno.Responsavel.Nome,
+                aluno.Responsavel.Telefone
             ) { Id = aluno.Id };
-
-            return dto;
-        } 
+        }
 
         public bool ExcluirAluno(int id)
         {

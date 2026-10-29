@@ -17,7 +17,12 @@ edição manual.
    estiver ancorado em outro diretório, o índice canônico não é gerado e esta tabela
    continua sendo a fonte de verdade.
 2. Commitar as 12 linhas abaixo com a ferramenta de planejamento (todas com status
-   `planned`, conforme exigido por ela).
+   `planned`, conforme exigido por ela). **Bloqueado em 2026-10-28:** a ferramenta
+   primeiro exige um caminho canônico de criação por spec — já adicionado em
+   `vision.md` (V1–V7) e em `arch.md` (seção "Spec 007") — e, superada essa etapa,
+   recusa qualquer número abaixo de 100:
+   `[plan-lane-numbering-invalid] base 0 does not exist in the batch or the roadmap`.
+   O índice canônico trabalha com faixas de 100; o esquema 001–012 não é aceito.
 3. Executar `/spec-new <n>` para cada spec já documentada (001 a 005). O pipeline
    valida os três documentos e sela a spec como `verified`.
 4. Seguir `/spec-implement <n>` e `/spec-test <n>`, ou `/spec-pipe <n>` para encadear

@@ -1,14 +1,16 @@
 
-import { Trash, ChevronLeft } from "lucide-react";
+import { Trash, ChevronLeft, Pencil } from "lucide-react";
 import Footer from "../../../components/Footer";
 import Header from "../../../components/Header"
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ToastContainer, Zoom } from "react-toastify";
 import { confirmarExclusao } from "../../../components/Notificacoes";
 import { buscarAlunos, excluirAluno, type AlunoResposta } from "../../../services/AlunoApi";
 
 export function VisualizarAlunos() {
   const detalhesRef = useRef<HTMLDetailsElement>(null);
+  const navegar = useNavigate();
 
 
   // ============ RESPOSTAS DO BACK ============
@@ -358,6 +360,7 @@ export function VisualizarAlunos() {
                 <th className="px-4 text-left font-light">Escola</th>
                 <th className="px-4 text-left font-light">Série</th>
                 <th className="px-4 text-left font-light">Restrições</th>
+                <th className="px-4 text-left font-light">Editar</th>
                 <th className="px-4 text-left font-light">Excluir</th>
               </tr>
             </thead>
@@ -383,6 +386,12 @@ export function VisualizarAlunos() {
                         </span>
                       ))}
                     </div>
+                  </td>
+                  <td className="p-4 text-center">
+                    <button
+                      onClick={() => navegar(`/alunos/editar/${aluno.id}`)}
+                      aria-label={`Editar ${aluno.nome}`}
+                      className="text-roxo p-2 hover:cursor-pointer hover:bg-purple-100 rounded-full "><Pencil /></button>
                   </td>
                   <td className="p-4 text-center">
                     <button

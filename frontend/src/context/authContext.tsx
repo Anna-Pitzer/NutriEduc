@@ -1,5 +1,6 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { extrairErro } from "../services/erroApi";
 
 type UserLogin = {
   email: string;
@@ -113,8 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (!resposta.ok) {
-      const mensagem = await resposta.text();
-      throw new Error(mensagem || "Não foi possível cadastrar.");
+      throw new Error(await extrairErro(resposta, "Não foi possível cadastrar."));
     }
 
     setUserRegister(user);

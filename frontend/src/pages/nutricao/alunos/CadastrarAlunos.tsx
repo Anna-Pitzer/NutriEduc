@@ -2,8 +2,51 @@ import Footer from "../../../components/Footer";
 import Header from "../../../components/Header";
 import Button from "../../../components/Button";
 import { ChevronLeft, Apple, Candy, CircleHelp, Milk, Wheat } from "lucide-react";
-import { useState } from "react";
-import { cadastrarAlunos, type AlunoCadastro } from "../../../services/AlunoApi";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { atualizarAluno, buscarAlunoPorId, cadastrarAlunos, type AlunoCadastro, type AlunoResposta } from "../../../services/AlunoApi";
+
+interface FormularioAluno {
+    nome: string;
+    nascimento: string;
+    serie: string;
+    escola: string;
+    telefone: string;
+    observacoes: string;
+    restricoes: string[];
+    anafilaxia: boolean;
+    contatoEmerNome: string;
+    contatoEmerTelefone: string;
+}
+
+const estadoInicial: FormularioAluno = {
+    nome: "",
+    nascimento: "",
+    serie: "",
+    escola: "",
+    telefone: "",
+    observacoes: "",
+    restricoes: [],
+    anafilaxia: false,
+    contatoEmerNome: "",
+    contatoEmerTelefone: ""
+};
+
+/** Converte o aluno vindo da API no estado do formulário (cadastro e edição). */
+function mapearAlunoParaFormulario(aluno: AlunoResposta): FormularioAluno {
+    return {
+        nome: aluno.nome,
+        nascimento: aluno.nascimento,
+        serie: aluno.serie,
+        escola: aluno.escola,
+        telefone: aluno.telefone,
+        observacoes: aluno.observacao,
+        restricoes: aluno.restricoes,
+        anafilaxia: aluno.anafilaxia,
+        contatoEmerNome: aluno.nomeResponsavel,
+        contatoEmerTelefone: aluno.telefoneResponsavel,
+    };
+}
 
 
 export function CadastroAlunos() {
@@ -40,32 +83,6 @@ export function CadastroAlunos() {
             icone: CircleHelp,
         }
     ];
-
-    interface FormularioAluno {
-        nome: string;
-        nascimento: string;
-        serie: string;
-        escola: string;
-        telefone: string;
-        observacoes: string;
-        restricoes: string[];
-        anafilaxia: boolean;
-        contatoEmerNome: string;
-        contatoEmerTelefone: string;
-    }
-
-    const estadoInicial: FormularioAluno = {
-        nome: "",
-        nascimento: "",
-        serie: "",
-        escola: "",
-        telefone: "",
-        observacoes: "",
-        restricoes: [],
-        anafilaxia: false,
-        contatoEmerNome: "",
-        contatoEmerTelefone: ""
-    }
 
     //IDEAL PUXAR DO BACK DPS
     const seriesPermitidas = [
@@ -108,10 +125,45 @@ export function CadastroAlunos() {
         return valor.replace(/\D/g, "").slice(0, 11)
     };
 
+    const { id } = useParams<{ id: string }>();
+    const idNumerico = Number(id);
+    const idEdicao = Number.isInteger(idNumerico) && idNumerico > 0 ? idNumerico : null;
+    const modoEdicao = idEdicao !== null;
+
     const [form, setForm] = useState<FormularioAluno>(estadoInicial);
+    const [formOriginal, setFormOriginal] = useState<FormularioAluno | null>(null);
     const [mensagem, setMensagem] = useState("");
     const [tipoMensagem, setTipoMensagem] = useState<"erro" | "sucesso" | "">("");
     const [carregando, setCarregando] = useState(false);
+    const [carregandoAluno, setCarregandoAluno] = useState(modoEdicao);
+
+    useEffect(() => {
+        if (idEdicao === null) return;
+
+        let ativo = true;
+
+        buscarAlunoPorId(idEdicao)
+            .then((aluno) => {
+                if (!ativo) return;
+
+                const carregado = mapearAlunoParaFormulario(aluno);
+                setForm(carregado);
+                setFormOriginal(carregado);
+            })
+            .catch(() => {
+                if (ativo) {
+                    setMensagem("Não foi possível carregar o aluno para edição.");
+                    setTipoMensagem("erro");
+                }
+            })
+            .finally(() => {
+                if (ativo) setCarregandoAluno(false);
+            });
+
+        return () => {
+            ativo = false;
+        };
+    }, [idEdicao]);
 
     const mostrarErro = (texto: string) => {
         setMensagem(texto);
@@ -228,7 +280,7 @@ export function CadastroAlunos() {
         };
     };
 
-    const cadastrarALuno = async () => {
+    const salvarAluno = async () => {
         if (carregando) return;
 
         setMensagem("");
@@ -241,19 +293,32 @@ export function CadastroAlunos() {
         setCarregando(true);
 
         try {
-            await cadastrarAlunos(dados);
+            if (idEdicao !== null) {
+                const atualizado = await atualizarAluno(idEdicao, dados);
 
-            setMensagem("Aluno cadastrado com sucesso!");
+                const recarregado = mapearAlunoParaFormulario(atualizado);
+                setForm(recarregado);
+                setFormOriginal(recarregado);
+
+                setMensagem("Aluno atualizado com sucesso!");
+            } else {
+                await cadastrarAlunos(dados);
+
+                setMensagem("Aluno cadastrado com sucesso!");
+
+                setForm(estadoInicial);
+            }
+
             setTipoMensagem("sucesso");
 
-            setForm(estadoInicial);
-
         } catch (error) {
-            console.error("Erro ao cadastrar aluno:", error);
+            console.error("Erro ao salvar aluno:", error);
 
-            setMensagem(
-                "Erro ao cadastrar aluno. Tente novamente mais tarde."
-            );
+            const motivo = error instanceof Error && !(error instanceof TypeError) && error.message
+                ? error.message
+                : "Erro ao salvar aluno. Tente novamente mais tarde.";
+
+            setMensagem(motivo);
 
             setTipoMensagem("erro");
 
@@ -263,12 +328,22 @@ export function CadastroAlunos() {
     };
 
     const limparCampos = () => {
-        setForm(estadoInicial);
+        setForm(formOriginal ?? estadoInicial);
         setMensagem("");
         setTipoMensagem("");
     };
 
     const cancelar = () => window.history.back();
+
+    if (carregandoAluno) {
+        return (
+            <div className="relative min-h-screen bg-[#FAF9F5]">
+                <Header />
+                <p className="mx-10 my-10 text-gray-500">Carregando aluno...</p>
+                <Footer />
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen bg-[#FAF9F5]">
@@ -464,12 +539,16 @@ export function CadastroAlunos() {
                         </div>
                     )}
                     <div className="flex justify-center gap-4 m-4">
-                        <Button type="button" variant="normal" onClick={cadastrarALuno} disabled={carregando}>
-                            {carregando ? "Cadastrando..." : "Cadastrar Aluno"}
+                        <Button type="button" variant="normal" onClick={salvarAluno} disabled={carregando}>
+                            {carregando
+                                ? "Salvando..."
+                                : modoEdicao
+                                    ? "Salvar alterações"
+                                    : "Cadastrar Aluno"}
                         </Button>
 
                         <Button type="button" variant="limpar" onClick={limparCampos} disabled={carregando}>
-                            Limpar campos
+                            {modoEdicao ? "Desfazer alterações" : "Limpar campos"}
                         </Button>
 
                         <Button type="button" variant="cancelar" onClick={cancelar} disabled={carregando}>

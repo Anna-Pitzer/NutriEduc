@@ -119,3 +119,27 @@ uma das cópias.
 **Regra:** antes de declarar um utilitário morto, verificar os imports. A versão
 anterior desta lição afirmava que os dois componentes não eram importados por
 ninguém; era falso e teria levado à remoção de código em uso.
+
+---
+
+## L10: Objeto de valor no EF Core exige tipo complexo, não entidade possuída
+
+**Observado:** ao trocar `Escola`, `Serie`, `NomeResponsavel` e `TelefoneResponsavel`
+por `Turma` e `Responsavel` dentro de `Aluno`, o mapeamento inicial com
+`OwnsOne` compilou sem erro, mas o modelo construído passou a exigir uma coluna
+`AlunoId` — que não existe no banco. O teste que constrói o modelo do EF Core sem
+abrir conexão foi o que revelou o problema; um `dotnet build` verde não revelaria.
+
+**Lição:** entidade possuída tem identidade e chave próprias (aqui, uma shadow
+property `AlunoId`), mesmo quando mora na tabela do dono. Para um objeto sem
+identidade — em que igualdade é definida pelos dados — o mapeamento correto é tipo
+complexo (`ComplexProperty`), que não cria chave nem coluna nova.
+
+**Regra:** objeto de valor usa `ComplexProperty`. Entidade possuída só quando o
+objeto precisa de identidade própria. E todo mapeamento novo passa por um teste que
+constrói o modelo e confere os nomes das colunas — o banco não pode ser a primeira
+verificação.
+
+**Observação de verificação:** propriedades de tipo complexo não aparecem em
+`IEntityType.GetProperties()`; use `GetComplexProperties()` para inspecioná-las.
+

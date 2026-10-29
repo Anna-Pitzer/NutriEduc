@@ -28,5 +28,34 @@ public class ConnectionContext : DbContext
             .PrimitiveCollection(a => a.Restricoes)
             .HasField("_restricoes")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Turma e Responsavel são objetos de valor do Aluno: não têm identidade nem
+        // chave própria, por isso são mapeados como tipo complexo (e não como entidade
+        // possuída, que criaria uma coluna de chave AlunoId inexistente). Ficam nas
+        // colunas que já existiam — Escola, Serie, NomeResponsavel, TelefoneResponsavel —
+        // portanto sem mudança de schema e sem migration nova.
+        modelBuilder.Entity<Aluno>()
+            .ComplexProperty(a => a.Turma, turma =>
+            {
+                turma.Property(t => t.Escola)
+                    .HasColumnName("Escola")
+                    .IsRequired();
+
+                turma.Property(t => t.Serie)
+                    .HasColumnName("Serie")
+                    .IsRequired();
+            });
+
+        modelBuilder.Entity<Aluno>()
+            .ComplexProperty(a => a.Responsavel, responsavel =>
+            {
+                responsavel.Property(r => r.Nome)
+                    .HasColumnName("NomeResponsavel")
+                    .IsRequired();
+
+                responsavel.Property(r => r.Telefone)
+                    .HasColumnName("TelefoneResponsavel")
+                    .IsRequired();
+            });
     }
 }

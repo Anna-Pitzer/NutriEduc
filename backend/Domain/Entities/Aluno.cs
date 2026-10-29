@@ -5,13 +5,17 @@ namespace Ntc.Domain.Entity;
 /// <summary>
 /// Aluno da rede escolar.
 ///
-/// Invariantes (Spec 004): todo o estado é validado antes de qualquer atribuição — um
-/// payload inválido não deixa o objeto parcialmente alterado. Construtor e
+/// Composição: o aluno não guarda texto solto de escola, série ou contato — ele possui
+/// uma <see cref="Turma"/> e um <see cref="Responsavel"/> e delega a eles as próprias
+/// invariantes. Nenhuma regra de escola, série ou contato é duplicada aqui.
+///
+/// Invariantes: todo o estado é validado antes de qualquer atribuição — um payload
+/// inválido não deixa o objeto parcialmente alterado. Construtor e
 /// <see cref="AtualizarDados"/> compartilham <c>ValidarDados</c>, de modo que existe uma
 /// única fonte de verdade por regra.
 ///
-/// Coleção de restrições (Spec 003): exposta como <see cref="IReadOnlyList{T}"/> sobre um
-/// campo privado. A escrita só acontece por <see cref="AdicionarRestricao"/> e
+/// Coleção de restrições: exposta como <see cref="IReadOnlyList{T}"/> sobre um campo
+/// privado. A escrita só acontece por <see cref="AdicionarRestricao"/> e
 /// <see cref="RemoverRestricao"/>.
 ///
 /// Assimetria intencional: o construtor privado sem parâmetros existe para o EF Core
@@ -22,6 +26,8 @@ public class Aluno
 {
     private const int MaxRestricoes = 20;
     private const int MaxObservacao = 500;
+    private const int NomeMin = 2;
+    private const int NomeMax = 100;
 
     private readonly List<string> _restricoes = new();
 
@@ -31,14 +37,12 @@ public class Aluno
 
     public DateOnly Nascimento { get; private set; }
 
-    public string Escola { get; private set; } = string.Empty;
-
-    public string Serie { get; private set; } = string.Empty;
+    /// <summary>Preenchida pelo EF Core ao materializar; nunca nula em objeto válido.</summary>
+    public Turma Turma { get; private set; } = null!;
 
     /// <summary>
     /// Armazenado sem máscara. Ausência é representada por <see cref="string.Empty"/> —
-    /// não por <c>null</c> — para preservar o schema atual das colunas (Spec 004, restrição
-    /// "não alterar o schema do banco").
+    /// não por <c>null</c> — para preservar o schema atual das colunas.
     /// </summary>
     public string Telefone { get; private set; } = string.Empty;
 
@@ -48,10 +52,8 @@ public class Aluno
 
     public bool Anafilaxia { get; private set; }
 
-    public string NomeResponsavel { get; private set; } = string.Empty;
-
-    /// <summary>Mesma convenção de <see cref="Telefone"/>.</summary>
-    public string TelefoneResponsavel { get; private set; } = string.Empty;
+    /// <summary>Preenchido pelo EF Core ao materializar; nunca nulo em objeto válido.</summary>
+    public Responsavel Responsavel { get; private set; } = null!;
 
     /// <summary>Somente para o EF Core. Não valida e não deve ser usado pela aplicação.</summary>
     private Aluno()
@@ -61,23 +63,22 @@ public class Aluno
     public Aluno(
         string nome,
         DateOnly nascimento,
-        string escola,
-        string serie,
+        Turma turma,
         string? telefone,
         string? observacao,
         IEnumerable<string>? restricoes,
         bool anafilaxia,
-        string nomeResponsavel,
-        string? telefoneResponsavel)
+        Responsavel responsavel)
     {
-        var dados = ValidarDados(
-            nome, nascimento, escola, serie, telefone, observacao,
-            nomeResponsavel, telefoneResponsavel);
+        ArgumentNullException.ThrowIfNull(turma);
+        ArgumentNullException.ThrowIfNull(responsavel);
+
+        var dados = ValidarDados(nome, nascimento, telefone, observacao);
 
         // Buffer validado: nada é atribuído se alguma restrição violar o limite.
         var restricoesValidadas = NormalizarRestricoes(restricoes);
 
-        AplicarDados(dados, anafilaxia);
+        AplicarDados(dados, turma, anafilaxia, responsavel);
 
         foreach (var restricao in restricoesValidadas)
             _restricoes.Add(restricao);
@@ -90,22 +91,21 @@ public class Aluno
     public void AtualizarDados(
         string nome,
         DateOnly nascimento,
-        string escola,
-        string serie,
+        Turma turma,
         string? telefone,
         string? observacao,
         IEnumerable<string>? restricoes,
         bool anafilaxia,
-        string nomeResponsavel,
-        string? telefoneResponsavel)
+        Responsavel responsavel)
     {
-        var dados = ValidarDados(
-            nome, nascimento, escola, serie, telefone, observacao,
-            nomeResponsavel, telefoneResponsavel);
+        ArgumentNullException.ThrowIfNull(turma);
+        ArgumentNullException.ThrowIfNull(responsavel);
+
+        var dados = ValidarDados(nome, nascimento, telefone, observacao);
 
         var restricoesValidadas = NormalizarRestricoes(restricoes);
 
-        AplicarDados(dados, anafilaxia);
+        AplicarDados(dados, turma, anafilaxia, responsavel);
 
         _restricoes.Clear();
         foreach (var restricao in restricoesValidadas)
@@ -145,22 +145,14 @@ public class Aluno
     private readonly record struct DadosValidados(
         string Nome,
         DateOnly Nascimento,
-        string Escola,
-        string Serie,
         string Telefone,
-        string Observacao,
-        string NomeResponsavel,
-        string TelefoneResponsavel);
+        string Observacao);
 
     private static DadosValidados ValidarDados(
         string? nome,
         DateOnly nascimento,
-        string? escola,
-        string? serie,
         string? telefone,
-        string? observacao,
-        string? nomeResponsavel,
-        string? telefoneResponsavel)
+        string? observacao)
     {
         var observacaoValidada = (observacao ?? string.Empty).Trim();
 
@@ -169,31 +161,27 @@ public class Aluno
                 $"A observação deve ter no máximo {MaxObservacao} caracteres.");
 
         return new DadosValidados(
-            ValidarTexto(nome, "Nome", 2, 100),
+            ValidarNome(nome),
             ValidarNascimento(nascimento),
-            ValidarTexto(escola, "Escola", 2, 150),
-            ValidarTexto(serie, "Série", 2, 50),
-            ValidarTelefone(telefone, "Telefone"),
-            observacaoValidada,
-            ValidarTexto(nomeResponsavel, "Nome do responsável", 2, 100),
-            ValidarTelefone(telefoneResponsavel, "Telefone do responsável"));
+            ValidarTelefone(telefone),
+            observacaoValidada);
     }
 
-    private static string ValidarTexto(string? valor, string campo, int min, int max)
+    private static string ValidarNome(string? nome)
     {
-        var texto = (valor ?? string.Empty).Trim();
+        var texto = (nome ?? string.Empty).Trim();
 
         if (texto.Length == 0)
-            throw new ArgumentException($"O campo {campo} é obrigatório.");
+            throw new ArgumentException("O campo Nome é obrigatório.");
 
-        if (texto.Length < min || texto.Length > max)
+        if (texto.Length < NomeMin || texto.Length > NomeMax)
             throw new ArgumentException(
-                $"O campo {campo} deve ter entre {min} e {max} caracteres.");
+                $"O campo Nome deve ter entre {NomeMin} e {NomeMax} caracteres.");
 
         return texto;
     }
 
-    private static string ValidarTelefone(string? valor, string campo)
+    private static string ValidarTelefone(string? valor)
     {
         if (string.IsNullOrWhiteSpace(valor))
             return string.Empty;
@@ -201,7 +189,7 @@ public class Aluno
         var digitos = new string(valor.Where(char.IsDigit).ToArray());
 
         if (digitos.Length != 10 && digitos.Length != 11)
-            throw new ArgumentException($"O campo {campo} deve ter 10 ou 11 dígitos.");
+            throw new ArgumentException("O campo Telefone deve ter 10 ou 11 dígitos.");
 
         return digitos;
     }
@@ -249,16 +237,18 @@ public class Aluno
         return buffer;
     }
 
-    private void AplicarDados(DadosValidados dados, bool anafilaxia)
+    private void AplicarDados(
+        DadosValidados dados,
+        Turma turma,
+        bool anafilaxia,
+        Responsavel responsavel)
     {
         Nome = dados.Nome;
         Nascimento = dados.Nascimento;
-        Escola = dados.Escola;
-        Serie = dados.Serie;
+        Turma = turma;
         Telefone = dados.Telefone;
         Observacao = dados.Observacao;
         Anafilaxia = anafilaxia;
-        NomeResponsavel = dados.NomeResponsavel;
-        TelefoneResponsavel = dados.TelefoneResponsavel;
+        Responsavel = responsavel;
     }
 }

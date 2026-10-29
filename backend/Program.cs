@@ -58,3 +58,12 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+/// <summary>
+/// Exposta para que o projeto de testes possa referenciar a aplicação (Spec 005, T2).
+/// O compilador já gera esta classe a partir das instruções de nível superior; o
+/// <c>partial</c> apenas amplia a visibilidade de <c>internal</c> para <c>public</c>.
+/// </summary>
+public partial class Program
+{
+}
