@@ -122,3 +122,13 @@ contrato, e a tabela de endpoints coincide com o mapa de controllers.
 **Canonical creation path:** `backend/API/Middleware/`, `backend/Program.cs`, `backend/Infrastructure/Repository/UsuarioRepository.cs`
 
 **Delivered by:** Spec 007 (contrato-erro-e-infra-di)
+
+### V9: Contrato de rota uniforme e verificável
+
+**Problema:** as onze rotas existentes seguem três padrões distintos. Duas devolvem corpo `string` no sucesso, o `id` é `{id:int}` em duas rotas e `{id}` em três, e o contrato `{ "erro": "mensagem" }` do Spec 007 vaza em validação de modelo (`ProblemDetails`), em `405` e em `415` (corpo vazio). `GET /api/usuario/perfil/{id}` ainda é anônimo e devolve CPF de qualquer usuário.
+
+**Valor entregue:** um padrão único e observável — criação responde `201` com `Location` e objeto, toda rota com `id` usa `{id:int}`, e todo erro sob `/api/` responde `{ erro }` em português, inclusive modelo inválido, JSON malformado, verbo errado, content-type errado e rota inexistente. O perfil passa a exigir sessão e dono, sem expor `cpf` nem `senha`.
+
+**Canonical creation path:** `backend/API/Middleware/`, `backend/API/Controllers/`, `backend/API/Services/`
+
+**Delivered by:** Spec 020 (padronizacao-contrato-rotas)

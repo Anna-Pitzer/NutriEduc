@@ -11,7 +11,11 @@ public class UsuarioService
         _usuarioRepository = usuarioRepository;
     }
 
-    public bool CriarUsuario(DadosUsuarioDTO dto)
+    /// <summary>
+    /// Cria o usuário e devolve o id gerado. Devolve <c>null</c> quando o e-mail já
+    /// está cadastrado — o controller responde 400 nesse caso.
+    /// </summary>
+    public int? CriarUsuario(DadosUsuarioDTO dto)
     {
         Usuario usuario = new(
             dto.Nome,
@@ -25,11 +29,11 @@ public class UsuarioService
 
         if (_usuarioRepository.ExistsByEmail(usuario.Email!))
         {
-            return false;
+            return null;
         }
 
         _usuarioRepository.Add(usuario);
-        return true;
+        return usuario.Id;
     }
 
     public DadosUsuarioDTO? ObterUsuarioPorId(int id)
@@ -122,23 +126,4 @@ public class UsuarioService
 
         return ObterUsuarioPorId(id);
     }   
-    public bool TrocarSenha(string email, string NovaSenha)
-    {
-        Usuario? usuario = _usuarioRepository.GetByEmail(email);
-
-        if (usuario == null)
-        {
-            return false;
-        }
-        try
-        {
-            usuario.DefinirSenha(NovaSenha);
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-        _usuarioRepository.Update(usuario);
-        return true;
-    }
 }

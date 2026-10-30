@@ -7,11 +7,11 @@ namespace Backend.Tests.Integration;
 
 public class AlunoApiTests : IClassFixture<ApiFactory>
 {
-    private readonly HttpClient _client;
+    private readonly ApiFactory _factory;
 
     public AlunoApiTests(ApiFactory factory)
     {
-        _client = factory.CreateClient();
+        _factory = factory;
     }
 
     private static object Payload(string nome) => new
@@ -28,12 +28,12 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
         telefoneResponsavel = "11988888888"
     };
 
-    private async Task<int> CriarAluno(string nome)
+    private async Task<int> CriarAluno(HttpClient client, string nome)
     {
-        var resposta = await _client.PostAsJsonAsync("/api/aluno/registrar", Payload(nome));
-        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        var resposta = await client.PostAsJsonAsync("/api/aluno/registrar", Payload(nome));
+        Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
 
-        var alunos = await _client.GetFromJsonAsync<List<JsonElement>>("/api/aluno");
+        var alunos = await client.GetFromJsonAsync<List<JsonElement>>("/api/aluno");
         Assert.NotNull(alunos);
 
         var aluno = alunos!.Single(a => a.GetProperty("nome").GetString() == nome);
@@ -41,17 +41,25 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Post_ComDadosValidos_Retorna200()
+    public async Task Post_ComDadosValidos_Retorna201ComLocation()
     {
-        var resposta = await _client.PostAsJsonAsync("/api/aluno/registrar", Payload("Ana Cadastro"));
+        var client = await _factory.CreateAuthenticatedClientAsync();
 
-        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        var resposta = await client.PostAsJsonAsync("/api/aluno/registrar", Payload("Ana Cadastro"));
+
+        Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
+
+        using var corpo = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
+        var id = corpo.RootElement.GetProperty("id").GetInt32();
+        Assert.Equal($"/api/aluno/perfil/{id}", resposta.Headers.Location?.ToString());
     }
 
     [Fact]
     public async Task Post_ComDadosInvalidos_Retorna400ComErro()
     {
-        var resposta = await _client.PostAsJsonAsync("/api/aluno/registrar", Payload(""));
+        var client = await _factory.CreateAuthenticatedClientAsync();
+
+        var resposta = await client.PostAsJsonAsync("/api/aluno/registrar", Payload(""));
 
         Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
 
@@ -63,9 +71,10 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Get_ListaDevolveAlunoCadastrado()
     {
-        await CriarAluno("Beto Lista");
+        var client = await _factory.CreateAuthenticatedClientAsync();
+        await CriarAluno(client, "Beto Lista");
 
-        var alunos = await _client.GetFromJsonAsync<List<JsonElement>>("/api/aluno");
+        var alunos = await client.GetFromJsonAsync<List<JsonElement>>("/api/aluno");
 
         Assert.NotNull(alunos);
         Assert.Contains(alunos!, a => a.GetProperty("nome").GetString() == "Beto Lista");
@@ -78,19 +87,22 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Put_ComDadosValidos_PersisteAlteracao()
     {
-        var id = await CriarAluno("Carla Antes");
+        var client = await _factory.CreateAuthenticatedClientAsync();
+        var id = await CriarAluno(client, "Carla Antes");
 
-        var resposta = await _client.PutAsJsonAsync($"/api/aluno/{id}", Payload("Carla Depois"));
+        var resposta = await client.PutAsJsonAsync($"/api/aluno/{id}", Payload("Carla Depois"));
         Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
 
-        var atualizado = await _client.GetFromJsonAsync<JsonElement>($"/api/aluno/perfil/{id}");
+        var atualizado = await client.GetFromJsonAsync<JsonElement>($"/api/aluno/perfil/{id}");
         Assert.Equal("Carla Depois", atualizado.GetProperty("nome").GetString());
     }
 
     [Fact]
     public async Task Put_ComIdInexistente_Retorna404()
     {
-        var resposta = await _client.PutAsJsonAsync("/api/aluno/999999", Payload("Fantasma"));
+        var client = await _factory.CreateAuthenticatedClientAsync();
+
+        var resposta = await client.PutAsJsonAsync("/api/aluno/999999", Payload("Fantasma"));
 
         Assert.Equal(HttpStatusCode.NotFound, resposta.StatusCode);
 
@@ -101,8 +113,31 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Delete_ComIdInexistente_Retorna404()
     {
-        var resposta = await _client.DeleteAsync("/api/aluno/999999");
+        var client = await _factory.CreateAuthenticatedClientAsync();
+
+        var resposta = await client.DeleteAsync("/api/aluno/999999");
 
         Assert.Equal(HttpStatusCode.NotFound, resposta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Endpoints_SemSessao_Retornam401SemDados()
+    {
+        var client = _factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.PostAsJsonAsync("/api/aluno/registrar", Payload("Anonimo"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.GetAsync("/api/aluno")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.GetAsync("/api/aluno/perfil/1")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.PutAsJsonAsync("/api/aluno/1", Payload("Anonimo"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.DeleteAsync("/api/aluno/1")).StatusCode);
+
+        var respostaLista = await client.GetAsync("/api/aluno");
+        var corpo = await respostaLista.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("nome", corpo, StringComparison.OrdinalIgnoreCase);
     }
 }

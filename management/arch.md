@@ -133,20 +133,19 @@ Formato único de erro:
 
 | Verificação | Resultado |
 | --- | --- |
-| `dotnet test backend.Tests` | 152 testes, 152 aprovados, 0 falhas (12 de integração HTTP) |
-| Warnings de build | 8 `CS8604` em `UsuarioService`/`UsuarioController` (propriedades anuláveis de `Usuario`) |
+| `dotnet test backend.Tests` | 170 testes, 170 aprovados, 0 falhas (32 de integração HTTP) |
+| Warnings de build | 7 `CS8604` em `UsuarioService`/`UsuarioController` (propriedades anuláveis de `Usuario`) |
 | `npm run build` / `npm run lint` | passam: build Vite OK (1846 módulos); lint 0 erros e 5 avisos |
 | Migrations | 5, aplicadas no startup por `Database.Migrate()` (a última é documental: `HashSenhaUsuario`) |
 | Domínio implementado | `Aluno` (invariantes, `Turma`, `Responsavel`, restrições protegidas) e `Usuario` (hash PBKDF2), sem papel |
 | Domínio especificado e não implementado | Specs 009–019 (33 documentos, status `created`) |
 | Superfície HTTP | 2 controllers (`AlunoController`, `UsuarioController`) |
-| Índice canônico | `management/roadmap.md` com 19 linhas, todas `planned`, criadas por `roadmap-plan-commit` em 2026-10-30 |
+| Índice canônico | `management/roadmap.md` com 20 linhas, todas `planned`, criadas por `roadmap-plan-commit` em 2026-10-30 |
 
-Estado formal por spec: no roadmap, as 19 estão `planned` e a promoção para
+Estado formal por spec: no roadmap, as 20 estão `planned` e a promoção para
 `verified`/`implemented` é feita pelos comandos do pipeline (`/spec-new`,
-`/spec-implement`, `/spec-test`). 001–005 têm os três documentos e todas as tasks
-executadas; 006–008 têm os três documentos e nenhuma task executada; 009–019 têm os
-três documentos e nenhuma task executada.
+`/spec-implement`, `/spec-test`). 001–008 e 020 têm os três documentos e todas as tasks
+executadas; 009–019 têm os três documentos e nenhuma task executada.
 
 ## 11. Mapa de módulos especificados (009–019)
 

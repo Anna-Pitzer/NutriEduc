@@ -29,13 +29,15 @@ public class UsuarioApiTests : IClassFixture<ApiFactory>
     };
 
     [Fact]
-    public async Task Post_ComDadosValidos_Retorna200()
+    public async Task Post_ComDadosValidos_Retorna201ComLocation()
     {
         var client = _factory.CreateClient();
 
         var resposta = await client.PostAsJsonAsync("/api/usuario/registrar", Payload(EmailUnico()));
 
-        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
+        Assert.NotNull(resposta.Headers.Location);
+        Assert.StartsWith("/api/usuario/perfil/", resposta.Headers.Location!.ToString());
     }
 
     [Fact]

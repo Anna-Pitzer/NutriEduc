@@ -5,19 +5,13 @@ import { useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 import { ChevronLeft, Mail, Phone, User } from "lucide-react";
 import { useAuth } from "../../context/authContext";
-import { buscarPerfil, buscarEstatisticas, atualizarPerfil } from "../../services/Perfil";
+import { buscarPerfil, atualizarPerfil } from "../../services/Perfil";
 
 type DadosPerfil = {
     nome: string;
     email: string;
     telefone: string;
     foto: string;
-};
-
-type EstatisticasPerfil = {
-    escolasGerenciadas: number;
-    alunosComRestricao: number;
-    refeicoesGerenciadas: number;
 };
 
 export function Perfil() {
@@ -41,13 +35,6 @@ export function Perfil() {
             email: "",
             telefone: "",
             foto: "",
-        });
-
-    const [estatisticas, setEstatisticas] =
-        useState<EstatisticasPerfil>({
-            escolasGerenciadas: 0,
-            alunosComRestricao: 0,
-            refeicoesGerenciadas: 0,
         });
 
     const [erro, setErro] = useState("");
@@ -129,26 +116,6 @@ export function Perfil() {
         };
 
         carregarPerfil();
-    }, [usuarioId]);
-
-    useEffect(() => {
-        if (!usuarioId) return;
-
-        const carregarEstatisticas = async () => {
-            try {
-                const dados = await buscarEstatisticas(usuarioId);
-
-                setEstatisticas({
-                    escolasGerenciadas: dados.escolasGerenciadas ?? 0,
-                    alunosComRestricao: dados.alunosComRestricao ?? 0,
-                    refeicoesGerenciadas: dados.refeicoesGerenciadas ?? 0,
-                });
-            } catch (error) {
-                console.error("Erro ao carregar estatísticas:", error);
-            }
-        };
-
-        carregarEstatisticas();
     }, [usuarioId]);
 
     const trocarFoto = (e: ChangeEvent<HTMLInputElement>) => {
@@ -382,35 +349,6 @@ export function Perfil() {
                                 </p>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="flex flex-col items-center rounded-3xl bg-branco p-6 text-center shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
-                        <h2 className="text-3xl font-bold text-verdelodo">
-                            {estatisticas.escolasGerenciadas}
-                        </h2>
-                        <p className="text-gray-500">
-                            Escolas gerenciadas
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col items-center rounded-3xl bg-branco p-6 text-center shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
-                        <h2 className="text-3xl font-bold text-laranja">
-                            {estatisticas.alunosComRestricao}
-                        </h2>
-                        <p className="text-gray-500">
-                            Alunos com restrição
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col items-center rounded-3xl bg-branco p-6 text-center shadow-[0_8px_30px_rgba(11,102,25,0.08)] sm:col-span-2 lg:col-span-1">
-                        <h2 className="text-3xl font-bold text-roxo">
-                            {estatisticas.refeicoesGerenciadas}
-                        </h2>
-                        <p className="text-gray-500">
-                            Refeições gerenciadas
-                        </p>
                     </div>
                 </div>
 

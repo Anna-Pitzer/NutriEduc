@@ -81,15 +81,15 @@ options e o caminho do banco fica fixo no `OnConfiguring`, enquanto `UsuarioServ
 
 ## Critérios de aceitação
 
-- [ ] `POST /api/aluno/registrar` inválido devolve 400 com `{ erro }`.
-- [ ] `GET /api/aluno/perfil/{id}` inexistente devolve 404 com `{ erro }`.
-- [ ] `GET /api/usuario/perfil/{id}` inexistente devolve 404 com `{ erro }` (não string).
-- [ ] `POST /api/usuario/login` inválido devolve 401 com `{ erro }`.
-- [ ] Exceção não tratada devolve 500 com `{ erro: "Erro interno." }` e sem stack.
-- [ ] Nenhum `try/catch (ArgumentException)` permanece nos controllers.
-- [ ] `ConnectionContext` é resolvido com a connection string configurada.
-- [ ] `UsuarioService` é `Scoped`, como `AlunoService` e os repositórios.
-- [ ] `dotnet build`, `dotnet test`, `npm run build` e `npm run lint` sem erro.
+- [x] `POST /api/aluno/registrar` inválido devolve 400 com `{ erro }`.
+- [x] `GET /api/aluno/perfil/{id}` inexistente devolve 404 com `{ erro }`.
+- [x] `GET /api/usuario/perfil/{id}` inexistente devolve 404 com `{ erro }` (não string).
+- [x] `POST /api/usuario/login` inválido devolve 401 com `{ erro }`.
+- [x] Exceção não tratada devolve 500 com `{ erro: "Erro interno." }` e sem stack.
+- [x] Nenhum `try/catch (ArgumentException)` permanece nos controllers.
+- [x] `ConnectionContext` é resolvido com a connection string configurada.
+- [x] `UsuarioService` é `Scoped`, como `AlunoService` e os repositórios.
+- [x] `dotnet build`, `dotnet test`, `npm run build` e `npm run lint` sem erro.
 
 ## Validação
 

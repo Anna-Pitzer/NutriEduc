@@ -27,20 +27,16 @@ import { HomeSecretaria } from "../pages/secretaria/HomeSecretaria"
 // Administração Escolar
 import { HomeEscolas } from "../pages/escolas/HomeEscolas"
 
-// Desenvolvimento
-import { PaletaDeCor } from "../pages/dev/colorsTESTE"
-
 export function Rotas() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/colors" element={<PaletaDeCor />} />
 
       <Route element={<ProtectedRoutes />}>
         {/* Nutrição — área principal do sistema hoje */}
         <Route path="/" element={<HomeNutricao />} />
-        <Route path="/cadastro" element={<CadastroAlunos />} />
-        <Route path="/vizualunos" element={<VisualizarAlunos />} />
+        <Route path="/aluno/registrar" element={<CadastroAlunos />} />
+        <Route path="/aluno/vizualizar" element={<VisualizarAlunos />} />
         <Route path="/alunos/editar/:id" element={<CadastroAlunos />} />
         <Route path="/cardapio" element={<Cardapio />} />
         <Route path="/cardapio/montar/:refeicao" element={<MontarCardapio />} />

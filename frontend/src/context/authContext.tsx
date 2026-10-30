@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { extrairErro } from "../services/erroApi";
 
 type UserLogin = {
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserRegister(user);
   };
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     const resposta = await fetch("/api/usuario/logout", {
       method: "POST",
       credentials: "include",
@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setUserLogin(null);
-  }
+  }, []);
   
   const atualizarUsuario = (usuario: UserSession) => {
     setUserLogin(usuario);

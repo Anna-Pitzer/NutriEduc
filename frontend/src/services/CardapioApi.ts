@@ -1,7 +1,7 @@
 const ApiURL = "";
 
 export type Refeicao = "cafe" | "almoco" | "lanche" | "jantar";
-export type Serie = "Creche" | "Integral" | "geral"
+export type Serie = "Creche" | "Integral" | "geral";
 
 export interface AlimentoCardapio {
     id: number;
@@ -23,54 +23,6 @@ export interface CardapioCadastro {
     alimentos: AlimentoCardapio[];
 }
 
-export async function buscarAlimentos(): Promise<Alimento[]> {
-    const resposta = await fetch(`${ApiURL}/api/alimentos`);
-
-    if (!resposta.ok) throw new Error("Erro ao buscar alimentos");
-
-    return resposta.json();
-}
-
-export async function buscarCardapio(
-    refeicao: Refeicao
-): Promise<AlimentoCardapio[]> {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/${refeicao}`);
-
-    if (!resposta.ok) throw new Error("Erro ao buscar cardápio");
-
-    return resposta.json();
-}
-
-export async function salvarCardapio(dados: CardapioCadastro) {
-    const resposta = await fetch(`${ApiURL}/api/cardapios`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(dados)
-    });
-
-    if (!resposta.ok) throw new Error("Erro ao salvar cardápio");
-
-    if (resposta.status === 204) return;
-
-    return resposta.json();
-}
-
-export async function excluirCardapio(refeicao: Refeicao) {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/${refeicao}`,
-        {
-            method: "DELETE"
-        }
-    );
-
-    if (!resposta.ok) throw new Error("Erro ao excluir cardápio");
-
-    if (resposta.status === 204) return;
-
-    return resposta.json();
-}
-
 export interface CardapioHistorico {
     id: number;
     refeicoes: {
@@ -84,44 +36,47 @@ export interface CardapioHistorico {
     dataCriacao: string;
 }
 
-export async function salvarCardapioCompleto(dados: {
-    refeicoes: CardapioHistorico["refeicoes"];
-    tipo: Serie;
-    data: string;
-}) {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/historico`, {
+/**
+ * As rotas de cardápio só existem a partir da Spec 012. Até lá, 404 significa
+ * "módulo indisponível" e a tela mostra estado vazio em vez de erro no console.
+ */
+async function buscarOuVazio<T>(url: string): Promise<T[]> {
+    const resposta = await fetch(url, { credentials: "include" });
+
+    if (resposta.status === 404) return [];
+
+    if (!resposta.ok) throw new Error("Erro ao carregar dados do cardápio");
+
+    return resposta.json();
+}
+
+export async function buscarAlimentos(): Promise<Alimento[]> {
+    return buscarOuVazio<Alimento>(`${ApiURL}/api/alimentos`);
+}
+
+export async function buscarCardapio(
+    refeicao: Refeicao
+): Promise<AlimentoCardapio[]> {
+    return buscarOuVazio<AlimentoCardapio>(`${ApiURL}/api/cardapios/${refeicao}`);
+}
+
+export async function buscarHistoricoCardapios(): Promise<CardapioHistorico[]> {
+    return buscarOuVazio<CardapioHistorico>(`${ApiURL}/api/cardapios/historico`);
+}
+
+export async function salvarCardapio(dados: CardapioCadastro) {
+    const resposta = await fetch(`${ApiURL}/api/cardapios`, {
         method: "POST",
+        credentials: "include",
         headers: {
             "Content-Type": "application/json"
         },
         body: JSON.stringify(dados)
     });
 
-    if(!resposta.ok) throw new Error("Erro ao salvar cardápio");
+    if (!resposta.ok) throw new Error("Erro ao salvar cardápio");
+
+    if (resposta.status === 204) return;
 
     return resposta.json();
-}
-
-export async function buscarHistoricoCardapios(): Promise<CardapioHistorico[]> {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/historico`);
-    
-    if (!resposta.ok) throw new Error("Erro ao buscar histórico de cardápios");
-
-    return resposta.json();
-}
-
-export async function buscarCardapioHistorico(id: number): Promise<CardapioHistorico[]> {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/historico/${id}`);
-    
-    if (!resposta.ok) throw new Error("Erro ao buscar cardápio");
-
-    return resposta.json();
-}
-
-export async function excluirCardapioHistorico(id: number): Promise<void> {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/historico/${id}`, {
-        method: "DELETE"
-    });
-
-    if (!resposta.ok) throw new Error("Erro ao excluir cardápio");
 }

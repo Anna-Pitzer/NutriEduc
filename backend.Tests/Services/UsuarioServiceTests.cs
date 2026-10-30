@@ -23,7 +23,7 @@ public class UsuarioServiceTests
         var repositorio = new UsuarioRepositoryFake();
         var servico = new UsuarioService(repositorio);
 
-        Assert.True(servico.CriarUsuario(DtoUsuario()));
+        Assert.Equal(1, servico.CriarUsuario(DtoUsuario()));
 
         var persistido = repositorio.GetByEmail("maria@exemplo.com");
 
@@ -35,13 +35,13 @@ public class UsuarioServiceTests
     }
 
     [Fact]
-    public void CriarUsuario_ComEmailDuplicado_RetornaFalse()
+    public void CriarUsuario_ComEmailDuplicado_RetornaNull()
     {
         var repositorio = new UsuarioRepositoryFake();
         var servico = new UsuarioService(repositorio);
         servico.CriarUsuario(DtoUsuario());
 
-        Assert.False(servico.CriarUsuario(DtoUsuario()));
+        Assert.Null(servico.CriarUsuario(DtoUsuario()));
     }
 
     [Fact]
@@ -161,34 +161,6 @@ public class UsuarioServiceTests
 
         Assert.NotNull(inalterado);
         Assert.Equal("maria@exemplo.com", inalterado!.Email);
-    }
-
-    [Fact]
-    public void TrocarSenha_ComSenhaCurta_RetornaFalse()
-    {
-        var repositorio = new UsuarioRepositoryFake();
-        var servico = new UsuarioService(repositorio);
-        servico.CriarUsuario(DtoUsuario());
-
-        var hashOriginal = repositorio.GetByEmail("maria@exemplo.com")!.Senha;
-
-        Assert.False(servico.TrocarSenha("maria@exemplo.com", "1234567"));
-        Assert.Equal(hashOriginal, repositorio.GetByEmail("maria@exemplo.com")!.Senha);
-    }
-
-    [Fact]
-    public void TrocarSenha_ComSenhaNova_Atualiza()
-    {
-        var repositorio = new UsuarioRepositoryFake();
-        var servico = new UsuarioService(repositorio);
-        servico.CriarUsuario(DtoUsuario());
-
-        Assert.True(servico.TrocarSenha("maria@exemplo.com", "abcdefgh"));
-
-        var persistido = repositorio.GetByEmail("maria@exemplo.com")!;
-
-        Assert.True(persistido.SenhaConfere("abcdefgh"));
-        Assert.False(persistido.SenhaConfere("12345678"));
     }
 
     [Fact]

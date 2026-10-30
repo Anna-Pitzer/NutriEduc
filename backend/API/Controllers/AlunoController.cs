@@ -1,7 +1,9 @@
 using Ntc.Application;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 
 public class AlunoController : ControllerBase
@@ -16,15 +18,8 @@ public class AlunoController : ControllerBase
     [HttpPost("registrar")]
     public IActionResult PostAddAluno([FromBody] DadosAlunoDTO dto)
     {
-        try
-        {
-            _alunoService.CriarAluno(dto);
-            return Ok("Aluno inserido.");
-        }
-        catch (ArgumentException erro)
-        {
-            return BadRequest(new { erro = erro.Message });
-        }
+        var criado = _alunoService.CriarAluno(dto);
+        return Created($"/api/aluno/perfil/{criado.Id}", criado);
     }
 
     [HttpGet]
@@ -33,7 +28,7 @@ public class AlunoController : ControllerBase
         return Ok(_alunoService.ListarAlunos());
     }
 
-    [HttpGet("perfil/{id}")]
+    [HttpGet("perfil/{id:int}")]
     public IActionResult GetAluno(int id)
     {
         var dadosAluno = _alunoService.ObterAlunoPorId(id);
@@ -47,21 +42,14 @@ public class AlunoController : ControllerBase
     [HttpPut("{id:int}")]
     public IActionResult Atualizar(int id, [FromBody] DadosAlunoDTO dto)
     {
-        try
-        {
-            var aluno = _alunoService.AtualizarAluno(id, dto);
+        var aluno = _alunoService.AtualizarAluno(id, dto);
 
-            if (aluno == null)
-            {
-                return NotFound(new { erro = "Aluno não encontrado." });
-            }
-
-            return Ok(aluno);
-        }
-        catch (ArgumentException erro)
+        if (aluno == null)
         {
-            return BadRequest(new { erro = erro.Message });
+            return NotFound(new { erro = "Aluno não encontrado." });
         }
+
+        return Ok(aluno);
     }
 
     [HttpDelete("{id:int}")]

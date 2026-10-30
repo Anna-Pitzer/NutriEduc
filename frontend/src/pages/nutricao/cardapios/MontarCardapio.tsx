@@ -298,7 +298,7 @@ export function MontarCardapio() {
         async function carregarAlimentos() {
             try {
                 const dados = await buscarAlimentos();
-                setAlimentosDisponiveis(dados);
+                setAlimentosDisponiveis(dados.length > 0 ? dados : alimentosFake);
             } catch (error) {
                 console.error("Erro ao buscar alimentos:", error);
             } finally {

@@ -5,6 +5,8 @@ import { ChevronLeft, Apple, Candy, CircleHelp, Milk, Wheat } from "lucide-react
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { atualizarAluno, buscarAlunoPorId, cadastrarAlunos, type AlunoCadastro, type AlunoResposta } from "../../../services/AlunoApi";
+import { naoAutorizado } from "../../../services/erroApi";
+import { useAuth } from "../../../context/authContext";
 
 interface FormularioAluno {
     nome: string;
@@ -126,6 +128,7 @@ export function CadastroAlunos() {
     };
 
     const { id } = useParams<{ id: string }>();
+    const { logout } = useAuth();
     const idNumerico = Number(id);
     const idEdicao = Number.isInteger(idNumerico) && idNumerico > 0 ? idNumerico : null;
     const modoEdicao = idEdicao !== null;
@@ -150,7 +153,12 @@ export function CadastroAlunos() {
                 setForm(carregado);
                 setFormOriginal(carregado);
             })
-            .catch(() => {
+            .catch((error) => {
+                if (naoAutorizado(error)) {
+                    void logout();
+                    return;
+                }
+
                 if (ativo) {
                     setMensagem("Não foi possível carregar o aluno para edição.");
                     setTipoMensagem("erro");
@@ -163,7 +171,7 @@ export function CadastroAlunos() {
         return () => {
             ativo = false;
         };
-    }, [idEdicao]);
+    }, [idEdicao, logout]);
 
     const mostrarErro = (texto: string) => {
         setMensagem(texto);
@@ -312,6 +320,11 @@ export function CadastroAlunos() {
             setTipoMensagem("sucesso");
 
         } catch (error) {
+            if (naoAutorizado(error)) {
+                void logout();
+                return;
+            }
+
             console.error("Erro ao salvar aluno:", error);
 
             const motivo = error instanceof Error && !(error instanceof TypeError) && error.message

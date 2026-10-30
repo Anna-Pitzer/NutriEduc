@@ -7,10 +7,13 @@ import { useNavigate } from "react-router-dom";
 import { ToastContainer, Zoom } from "react-toastify";
 import { confirmarExclusao } from "../../../components/Notificacoes";
 import { buscarAlunos, excluirAluno, type AlunoResposta } from "../../../services/AlunoApi";
+import { naoAutorizado } from "../../../services/erroApi";
+import { useAuth } from "../../../context/authContext";
 
 export function VisualizarAlunos() {
   const detalhesRef = useRef<HTMLDetailsElement>(null);
   const navegar = useNavigate();
+  const { logout } = useAuth();
 
 
   // ============ RESPOSTAS DO BACK ============
@@ -67,6 +70,11 @@ export function VisualizarAlunos() {
         })));
       })
       .catch((error) => {
+        if (naoAutorizado(error)) {
+          void logout();
+          return;
+        }
+
         console.error("Erro ao buscar alunos:", error);
         if (ativo) setErro("Não foi possível carregar os alunos.");
       })
@@ -77,7 +85,7 @@ export function VisualizarAlunos() {
     return () => {
       ativo = false;
     };
-  }, [])
+  }, [logout])
 
   const pegarIniciais = (nome: string) => {
     return nome
@@ -162,6 +170,11 @@ export function VisualizarAlunos() {
       setAlunos((alunosAtuais) => alunosAtuais.filter((aluno) => aluno.id !== id));
       setErro("");
     } catch (error) {
+      if (naoAutorizado(error)) {
+        void logout();
+        return;
+      }
+
       console.error("Erro ao excluir aluno:", error);
       setErro("Não foi possível excluir o aluno.");
     }

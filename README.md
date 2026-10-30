@@ -133,7 +133,6 @@ dotnet run --project backend/backend.csproj
 | `/suporte` | Suporte | Protegido |
 | `/termosdeuso` | Termos de uso | Protegido |
 | `/politicadeprivacidade` | Política de privacidade | Protegido |
-| `/colors` | Página de teste de cores | Público |
 
 As rotas protegidas dependem da sessão autenticada.
 
@@ -149,7 +148,7 @@ Os caminhos abaixo são definidos pelos controllers atuais. O ASP.NET Core aceit
 | `POST` | `/api/usuario/login` | Autentica e cria a sessão | Não |
 | `GET` | `/api/usuario/me` | Retorna o usuário da sessão | Sim |
 | `POST` | `/api/usuario/logout` | Encerra a sessão | Sim |
-| `GET` | `/api/usuario/perfil/{id}` | Consulta perfil pelo ID | Não |
+| `GET` | `/api/usuario/perfil/{id}` | Consulta perfil pelo ID | Sim; o ID deve corresponder à sessão |
 | `PUT` | `/api/usuario/perfil/{id}` | Atualiza o perfil do usuário autenticado | Sim; o ID deve corresponder à sessão |
 
 A autenticação usa cookie HTTP-only chamado `NutriEduc.Auth`, com validade de oito horas. As chamadas feitas diretamente pelo navegador devem incluir credenciais (`credentials: "include"`).
@@ -162,17 +161,21 @@ Registros gravados antes dessa mudança ainda têm a senha em claro: no primeiro
 
 ### Alunos
 
-| Método | Caminho | Descrição |
-| --- | --- | --- |
-| `POST` | `/api/aluno/registrar` | Cadastra um aluno |
-| `GET` | `/api/aluno` | Lista alunos |
-| `GET` | `/api/aluno/perfil/{id}` | Consulta um aluno pelo ID |
-| `PUT` | `/api/aluno/{id}` | Atualiza um aluno existente |
-| `DELETE` | `/api/aluno/{id}` | Exclui um aluno |
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `POST` | `/api/aluno/registrar` | Cadastra um aluno | Sim |
+| `GET` | `/api/aluno` | Lista alunos | Sim |
+| `GET` | `/api/aluno/perfil/{id}` | Consulta um aluno pelo ID | Sim |
+| `PUT` | `/api/aluno/{id}` | Atualiza um aluno existente | Sim |
+| `DELETE` | `/api/aluno/{id}` | Exclui um aluno | Sim |
 
 O campo de nascimento do DTO é `DateOnly`; envie uma data no formato `yyyy-MM-dd`. `anafilaxia` deve ser um booleano JSON (`true` ou `false`). As restrições alimentares são armazenadas como uma coleção JSON na tabela `Alunos`.
 
-Erros de validação de domínio respondem `400` com o corpo `{ "erro": "mensagem" }`; aluno inexistente responde `404` no mesmo formato.
+Erros seguem um contrato único: corpo `{ "erro": "mensagem" }` em `400` (validação de domínio, modelo inválido ou JSON malformado), `401` (sem sessão), `403` (acesso negado), `404` (recurso ou rota inexistente), `405` (verbo não permitido), `409` (conflito de estado), `415` (content-type não suportado) e `500` (erro interno, sem detalhe técnico). As exceções são traduzidas por `ErrorHandlingMiddleware`; modelo inválido, `404` de rota inexistente, `405` e `415` são traduzidos por `API/Middleware/ContratoDeErro.cs`. Nenhum controller monta resposta de erro fora desse formato.
+
+As rotas de criação (`POST /api/usuario/registrar` e `POST /api/aluno/registrar`) respondem `201 Created` com o cabeçalho `Location` apontando para o recurso criado e o recurso no corpo. `DELETE` e `logout` respondem `204 No Content`. Toda rota com `id` usa a constraint `{id:int}`.
+
+O perfil de usuário devolve apenas `id`, `nome`, `email`, `telefone` e `foto`; `cpf` e `senha` nunca aparecem no corpo.
 
 ## Testes
 

@@ -21,32 +21,56 @@ public class UsuarioController : ControllerBase
     [HttpPost("registrar")]
     public IActionResult PostAdd([FromBody]DadosUsuarioDTO usuarioDTO)
     {
-        try
-        {
-            bool value = _usuarioService.CriarUsuario(usuarioDTO);
+        var id = _usuarioService.CriarUsuario(usuarioDTO);
 
-            if (!value)
-            {
-                return BadRequest(new { erro = "E-mail já cadastrado." });
-            }
-
-            return Ok($"Usuario {usuarioDTO.Nome} foi cadastrado com sucesso.");
-        }
-        catch (ArgumentException erro)
+        if (id == null)
         {
-            return BadRequest(new { erro = erro.Message });
+            return BadRequest(new { erro = "E-mail já cadastrado." });
         }
+
+        return Created(
+            $"/api/usuario/perfil/{id.Value}",
+            new { id = id.Value, nome = usuarioDTO.Nome, email = usuarioDTO.Email });
     }
 
-    [HttpGet("perfil/{id}")]
+    [Authorize]
+    [HttpGet("perfil/{id:int}")]
     public IActionResult GetUser(int id)
     {
+        var emailDaSessao = User.FindFirstValue(ClaimTypes.Email);
+
+        if (string.IsNullOrWhiteSpace(emailDaSessao))
+        {
+            return Unauthorized(new { erro = "Sessão inválida ou ausente." });
+        }
+
+        var idDaSessao = _usuarioService.ObterIdPeloEmail(emailDaSessao);
+
+        if (idDaSessao == null)
+        {
+            return Unauthorized(new { erro = "Sessão inválida ou ausente." });
+        }
+
+        if (idDaSessao.Value != id)
+        {
+            return Forbid();
+        }
+
         var dadosUsuario = _usuarioService.ObterUsuarioPorId(id);
+
         if (dadosUsuario == null)
         {
-            return NotFound("Usuário não encontrado.");
+            return NotFound(new { erro = "Usuário não encontrado." });
         }
-        return Ok(dadosUsuario);
+
+        return Ok(new
+        {
+            id,
+            nome = dadosUsuario.Nome,
+            email = dadosUsuario.Email,
+            telefone = dadosUsuario.Telefone,
+            foto = dadosUsuario.Foto
+        });
     }
 
     [HttpPost("login")]
@@ -57,7 +81,7 @@ public class UsuarioController : ControllerBase
 
         if (!valido)
         {
-            return Unauthorized("Email ou senha incorretos.");
+            return Unauthorized(new { erro = "Email ou senha incorretos." });
         }
 
         var nome = _usuarioService.ObterNomePeloEmail(dadosLoginDTO.Email);
@@ -66,7 +90,7 @@ public class UsuarioController : ControllerBase
 
         if (id == null)
         {
-            return Unauthorized();
+            return Unauthorized(new { erro = "Sessão inválida ou ausente." });
         }
 
         var claims = new[]
@@ -107,7 +131,7 @@ public class UsuarioController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(email))
         {
-            return Unauthorized();
+            return Unauthorized(new { erro = "Sessão inválida ou ausente." });
         }
 
         var nome = _usuarioService.ObterNomePeloEmail(email);
@@ -116,7 +140,7 @@ public class UsuarioController : ControllerBase
 
         if (nome == null || id == null)
         {
-            return Unauthorized();
+            return Unauthorized(new { erro = "Sessão inválida ou ausente." });
         }
 
         return Ok(new
@@ -139,7 +163,7 @@ public class UsuarioController : ControllerBase
     }
 
     [Authorize]
-    [HttpPut("perfil/{id}")]
+    [HttpPut("perfil/{id:int}")]
     public async Task<IActionResult> AtualizarPerfil(
         int id,
         [FromBody] AtualizarPerfilDTO dto)
@@ -148,14 +172,14 @@ public class UsuarioController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(emailDaSessao))
         {
-            return Unauthorized();
+            return Unauthorized(new { erro = "Sessão inválida ou ausente." });
         }
 
         var idDaSessao = _usuarioService.ObterIdPeloEmail(emailDaSessao);
 
         if (idDaSessao == null)
         {
-            return Unauthorized();
+            return Unauthorized(new { erro = "Sessão inválida ou ausente." });
         }
 
         if (idDaSessao.Value != id)
@@ -163,49 +187,42 @@ public class UsuarioController : ControllerBase
             return Forbid();
         }
 
-        try
+        var perfil = _usuarioService.AtualizarPerfil(id, dto);
+
+        if (perfil == null)
         {
-            var perfil = _usuarioService.AtualizarPerfil(id, dto);
-
-            if (perfil == null)
-            {
-                return NotFound("Usuário não encontrado.");
-            }
-
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.Email, perfil.Email!),
-                new Claim(ClaimTypes.Name, perfil.Nome ?? "")
-            };
-
-            var identidade = new ClaimsIdentity(
-                claims,
-                CookieAuthenticationDefaults.AuthenticationScheme
-            );
-
-            var propriedades = new AuthenticationProperties
-            {
-                IsPersistent = true
-            };
-
-            await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(identidade),
-                propriedades
-            );
-
-            return Ok(new
-            {
-                id,
-                nome = perfil.Nome,
-                email = perfil.Email,
-                telefone = perfil.Telefone,
-                foto = perfil.Foto
-            });
+            return NotFound(new { erro = "Usuário não encontrado." });
         }
-        catch (ArgumentException erro)
+
+        var claims = new[]
         {
-            return BadRequest(erro.Message);
-        }
+            new Claim(ClaimTypes.Email, perfil.Email!),
+            new Claim(ClaimTypes.Name, perfil.Nome ?? "")
+        };
+
+        var identidade = new ClaimsIdentity(
+            claims,
+            CookieAuthenticationDefaults.AuthenticationScheme
+        );
+
+        var propriedades = new AuthenticationProperties
+        {
+            IsPersistent = true
+        };
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identidade),
+            propriedades
+        );
+
+        return Ok(new
+        {
+            id,
+            nome = perfil.Nome,
+            email = perfil.Email,
+            telefone = perfil.Telefone,
+            foto = perfil.Foto
+        });
     }
 }

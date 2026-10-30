@@ -11,7 +11,7 @@ export default function Navbar() {
         },
         {
             nome: "Cadastro de alunos com restrição",
-            caminho: "/cadastro",
+            caminho: "/aluno/registrar",
             icone: Users,
         },
         {
@@ -21,7 +21,7 @@ export default function Navbar() {
         },
         {
             nome: "Vizualizar Alunos",
-            caminho: "/vizualunos",
+            caminho: "/aluno/vizualizar",
             icone: CircleUserRound,
         }
     ];

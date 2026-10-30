@@ -15,3 +15,18 @@ export async function extrairErro(resposta: Response, padrao: string): Promise<s
 
     return padrao;
 }
+
+/** Erro de API que preserva o status HTTP para a UI decidir (ex.: 401 → login). */
+export class ErroRequisicao extends Error {
+    readonly status: number;
+
+    constructor(mensagem: string, status: number) {
+        super(mensagem);
+        this.name = "ErroRequisicao";
+        this.status = status;
+    }
+}
+
+export function naoAutorizado(erro: unknown): boolean {
+    return erro instanceof ErroRequisicao && erro.status === 401;
+}

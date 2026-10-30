@@ -76,13 +76,13 @@ mantém documentação e controllers alinhados.
 
 ## Critérios de aceitação
 
-- [ ] `/colors` não existe em `routes.tsx` nem há import de `colorsTESTE`.
-- [ ] `buscarEstatisticas` não existe em `Perfil.ts` nem é importada.
-- [ ] `CardapioApi.ts` não contém as quatro funções sem consumidor.
-- [ ] Tela de cardápio mostra estado vazio quando a API devolve 404.
-- [ ] `README.md` lista todos os endpoints reais e nenhum inexistente.
-- [ ] Teste de documentação passa e falha se um endpoint for removido do README.
-- [ ] `npm run build`, `npm run lint` e `dotnet test` sem erro.
+- [x] `/colors` não existe em `routes.tsx` nem há import de `colorsTESTE`.
+- [x] `buscarEstatisticas` não existe em `Perfil.ts` nem é importada.
+- [x] `CardapioApi.ts` não contém as quatro funções sem consumidor.
+- [x] Tela de cardápio mostra estado vazio quando a API devolve 404.
+- [x] `README.md` lista todos os endpoints reais e nenhum inexistente.
+- [x] Teste de documentação passa e falha se um endpoint for removido do README.
+- [x] `npm run build`, `npm run lint` e `dotnet test` sem erro.
 
 ## Validação
 

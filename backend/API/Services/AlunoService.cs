@@ -11,7 +11,11 @@
             _alunoRepository = alunoRepository;
         }
 
-        public void CriarAluno(DadosAlunoDTO dto)
+        /// <summary>
+        /// Cria o aluno e devolve o DTO com o id gerado. O repositório chama
+        /// <c>SaveChanges</c> dentro de <c>Add</c>, então o id já está preenchido.
+        /// </summary>
+        public DadosAlunoDTO CriarAluno(DadosAlunoDTO dto)
         {
             Aluno aluno = new(
                 dto.Nome,
@@ -25,6 +29,8 @@
             );
 
             _alunoRepository.Add(aluno);
+
+            return ParaDTO(aluno);
         }
 
         public List<DadosAlunoDTO> ListarAlunos()

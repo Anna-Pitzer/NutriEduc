@@ -2,14 +2,19 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Ntc.Domain.Interface;
 using Microsoft.EntityFrameworkCore;
 using Ntc.Database;
+using Ntc.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls(builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5001");
 
+var connectionString = builder.Configuration.GetConnectionString("Default")
+                       ?? "Data Source = database.db";
+
 builder.Services.AddControllers();
+builder.Services.AddContratoDeErro();
 
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
-builder.Services.AddTransient<UsuarioService>();
+builder.Services.AddScoped<UsuarioService>();
 
 builder.Services.AddScoped<AlunoService>();
 builder.Services.AddScoped<IAlunoRepository, AlunoRepository>();
@@ -26,23 +31,26 @@ builder.Services
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
 
-        options.Events.OnRedirectToLogin = context =>
+        options.Events.OnRedirectToLogin = async context =>
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return Task.CompletedTask;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new { erro = "Sessão inválida ou ausente." });
         };
 
-        options.Events.OnRedirectToAccessDenied = context =>
+        options.Events.OnRedirectToAccessDenied = async context =>
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            return Task.CompletedTask;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new { erro = "Acesso negado." });
         };
     });
 
 
 
 builder.Services.AddAuthorization();
-builder.Services.AddDbContext<ConnectionContext>();
+builder.Services.AddDbContext<ConnectionContext>(options =>
+    options.UseSqlite(connectionString));
 
 var app = builder.Build();
 
@@ -52,10 +60,22 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+app.UseContratoDeErro();
+app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+if (app.Environment.IsEnvironment("Testing"))
+{
+    app.MapGet("/api/diagnostico/erro",
+        () => Task.FromException(new Exception("Falha de teste.")));
+    app.MapGet("/api/diagnostico/conflito",
+        () => Task.FromException(new InvalidOperationException("Conflito de teste.")));
+    app.MapGet("/api/diagnostico/inexistente",
+        () => Task.FromException(new KeyNotFoundException("Não encontrado.")));
+}
 
 app.Run();
 

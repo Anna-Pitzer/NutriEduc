@@ -74,15 +74,15 @@ a Spec 009.
 
 ## Critérios de aceitação
 
-- [ ] `GET /api/aluno` sem sessão devolve 401 e corpo sem alunos.
-- [ ] `GET /api/aluno/perfil/{id}` sem sessão devolve 401.
-- [ ] `POST /api/aluno/registrar` sem sessão devolve 401 e não persiste.
-- [ ] `PUT /api/aluno/{id}` sem sessão devolve 401.
-- [ ] `DELETE /api/aluno/{id}` sem sessão devolve 401.
-- [ ] Com sessão, os cinco endpoints mantêm os status previstos na RF2.
-- [ ] `AlunoApi.ts` tem `credentials: "include"` nas cinco chamadas.
-- [ ] Tela de aluno redireciona para login ao receber 401.
-- [ ] `dotnet build`, `dotnet test`, `npm run build` e `npm run lint` sem erro.
+- [x] `GET /api/aluno` sem sessão devolve 401 e corpo sem alunos.
+- [x] `GET /api/aluno/perfil/{id}` sem sessão devolve 401.
+- [x] `POST /api/aluno/registrar` sem sessão devolve 401 e não persiste.
+- [x] `PUT /api/aluno/{id}` sem sessão devolve 401.
+- [x] `DELETE /api/aluno/{id}` sem sessão devolve 401.
+- [x] Com sessão, os cinco endpoints mantêm os status previstos na RF2.
+- [x] `AlunoApi.ts` tem `credentials: "include"` nas cinco chamadas.
+- [x] Tela de aluno redireciona para login ao receber 401.
+- [x] `dotnet build`, `dotnet test`, `npm run build` e `npm run lint` sem erro.
 
 ## Validação
 

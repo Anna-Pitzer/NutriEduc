@@ -37,6 +37,7 @@
 | 017 | solicitacoes | planned | V6; ADR-004; L7 |
 | 018 | feedback-e-notificacoes | planned | V6; ADR-004; L7 |
 | 019 | relatorios-e-exportacao | planned | V6; ADR-004; L6 |
+| 020 | padronizacao-contrato-rotas | planned | V9; V8; ADR-005; L6; L7 |
 
 ---
 

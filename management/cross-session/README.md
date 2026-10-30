@@ -40,9 +40,9 @@ conversation history alone is not durable memory.
 
 ## Estado do código (verificado em 2026-10-30)
 
-- `dotnet test backend.Tests`: 152/152 verdes (140 unitários + 12 de integração HTTP).
+- `dotnet test backend.Tests`: 170/170 verdes (138 unitários + 32 de integração HTTP).
 - Gates de frontend passam: `npm run build` OK e `npm run lint` com 0 erros.
 - 2 controllers (`AlunoController`, `UsuarioController`), 5 migrations (a última
   documental: `HashSenhaUsuario`).
-- Specs 001–005: todas as tasks executadas. Especificadas e não implementadas:
-  006–019 (006–008 prontas para o pipeline; 009–019 com documentos).
+- Specs 001–008 e 020: todas as tasks executadas. Especificadas e não implementadas:
+  009–019.
