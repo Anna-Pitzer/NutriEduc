@@ -90,11 +90,13 @@ possui domínio de cardápio, embora o frontend já chame seis rotas inexistente
 
 **Valor entregue:** cardápios e alimentos existem como domínio com cálculo
 nutricional próprio; a compatibilidade entre cardápio e restrições alimentares é uma
-regra de domínio testada, não uma checagem visual.
+regra de domínio testada, não uma checagem visual. O ciclo operacional — ocorrências,
+solicitações, feedback, notificações e relatórios exportáveis — existe como fluxo com
+estado, histórico append-only e escopo por papel.
 
 **Canonical creation path:** `backend/Domain/Entities/`, `backend/API/Controllers/`, `backend/API/Services/`
 
-**Delivered by:** Spec 009 (papeis-e-escopo-dados), Spec 010 (dominio-alimentos-cardapios), Spec 011 (compatibilidade-cardapio-restricoes), Spec 012 (ocorrencias-solicitacoes-relatorios)
+**Delivered by:** Spec 009 (papeis-e-estrutura-escolar), Spec 010 (restricoes-e-alergias), Spec 011 (catalogo-alimentos), Spec 012 (dominio-cardapio), Spec 013 (geracao-automatica-cardapios), Spec 014 (compatibilidade-cardapio-restricoes), Spec 015 (publicacao-historico-cardapio), Spec 016 (ocorrencias), Spec 017 (solicitacoes), Spec 018 (feedback-e-notificacoes), Spec 019 (relatorios-e-exportacao)
 
 ---
 
@@ -110,3 +112,13 @@ contrato, e a tabela de endpoints coincide com o mapa de controllers.
 **Canonical creation path:** `README.md`, `frontend/src/routes/routes.tsx`, `frontend/src/services/`
 
 **Delivered by:** Spec 008 (higiene-frontend)
+
+### V8: Contrato de erro único e infraestrutura de DI
+
+**Problema:** cada controller inventa o próprio texto e status de erro, e `UsuarioRepository` instancia `new ConnectionContext()` em vez de receber o `DbContext` pelo construtor, ignorando o ciclo de vida Scoped.
+
+**Valor entregue:** um middleware global traduz `ArgumentException` em 400 e exceções não tratadas em 500, sempre no formato `{ "erro": "mensagem" }`; os repositórios recebem o `ConnectionContext` por injeção de dependência e os serviços são registrados com o mesmo ciclo de vida do contexto.
+
+**Canonical creation path:** `backend/API/Middleware/`, `backend/Program.cs`, `backend/Infrastructure/Repository/UsuarioRepository.cs`
+
+**Delivered by:** Spec 007 (contrato-erro-e-infra-di)

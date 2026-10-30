@@ -6,7 +6,13 @@ using Ntc.Domain.Interface;
 namespace Ntc.Database;
 public class UsuarioRepository : IUsuarioRepository
 {
-    private readonly ConnectionContext _context = new();
+    private readonly ConnectionContext _context;
+
+    public UsuarioRepository(ConnectionContext context)
+    {
+        _context = context;
+    }
+
     public void Add(Usuario usuario) {
         _context.Usuarios.Add(usuario);
         _context.SaveChanges();  

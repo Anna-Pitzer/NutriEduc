@@ -5,11 +5,23 @@ namespace Ntc.Database;
 
 public class ConnectionContext : DbContext
 {
+    public ConnectionContext()
+    {
+    }
+
+    public ConnectionContext(DbContextOptions<ConnectionContext> options)
+        : base(options)
+    {
+    }
+
     public DbSet<Usuario> Usuarios {get;set;}
     public DbSet<Aluno> Alunos {get;set;}
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
+        if (options.IsConfigured)
+            return;
+
         options.UseSqlite("Data Source = database.db");
     }
 

@@ -67,16 +67,16 @@ de escrita produz estado inválido.
 
 ## Critérios de aceitação
 
-- [ ] Construtor rejeita cada campo obrigatório vazio com mensagem específica.
-- [ ] Nascimento futuro e nascimento anterior a 1900 são rejeitados.
-- [ ] Telefone com 9 e com 12 dígitos são rejeitados; com 10 e 11 são aceitos.
-- [ ] Telefone com máscara é normalizado para dígitos.
-- [ ] `AtualizarDados` com payload inválido não altera nenhuma propriedade nem a
+- [x] Construtor rejeita cada campo obrigatório vazio com mensagem específica.
+- [x] Nascimento futuro e nascimento anterior a 1900 são rejeitados.
+- [x] Telefone com 9 e com 12 dígitos são rejeitados; com 10 e 11 são aceitos.
+- [x] Telefone com máscara é normalizado para dígitos.
+- [x] `AtualizarDados` com payload inválido não altera nenhuma propriedade nem a
   coleção de restrições.
-- [ ] `AtualizarDados` válido altera todas as propriedades informadas.
-- [ ] `AtualizarDados` substitui a coleção de restrições pelo conjunto informado.
-- [ ] `AlunoService` não contém `if` de validação de campo.
-- [ ] Testes unitários cobrem todos os casos desta seção.
+- [x] `AtualizarDados` válido altera todas as propriedades informadas.
+- [x] `AtualizarDados` substitui a coleção de restrições pelo conjunto informado.
+- [x] `AlunoService` não contém `if` de validação de campo.
+- [x] Testes unitários cobrem todos os casos desta seção.
 
 ## Validação
 

@@ -119,3 +119,124 @@ sem duplicata case-insensitive, máximo 20 itens). A persistência continua na c
 - Positivo: encapsulamento real sem migration de schema.
 - Negativo: consultas por restrição continuam impossíveis em SQL; normalização fica
   dependente da entidade `Restricao` (Spec 010).
+
+---
+
+## ADR-007: Escola e unidade são escopo de autorização, não texto
+
+**Status:** aceito (2026-10-30)
+
+**Contexto:** `Aluno.Turma.Escola` é uma string e `Usuario` não tem papel nem vínculo
+institucional. Sem chave, filtrar "alunos da minha unidade" exigiria comparar texto,
+e o mesmo nome de escola em unidades diferentes seria indistinguível.
+
+**Decisão:** `Escola` e `UnidadeEscolar` viram entidades. `Usuario` recebe `Papel`,
+`EscolaId`, `UnidadeId` e `Ativo`; `Aluno` recebe `UnidadeId` anulável. `Turma.Escola`
+permanece apenas como rótulo de exibição. O escopo é resolvido no backend
+(`EscopoService`) e aplicado na consulta SQL.
+
+**Consequências:**
+- Positivo: autorização por chave, não por texto; uma única fonte de escopo.
+- Negativo: dados legados ficam sem `UnidadeId` e só são visíveis para nutrição e
+  secretaria até serem vinculados.
+- Negativo: `AdminEscola` passa a depender de migração de dados para enxergar alunos
+  antigos; a alternativa (inferir escola por texto) foi rejeitada por não ser chave.
+
+---
+
+## ADR-008: Desativação em vez de exclusão física para cadastros referenciados
+
+**Status:** aceito (2026-10-30)
+
+**Contexto:** escola, unidade, usuário, alimento, restrição e cardápio são
+referenciados por histórico, ocorrências e relatórios. Excluir a linha quebraria
+referências ou apagaria auditoria.
+
+**Decisão:** cadastros referenciados têm `Ativo` (ou situação equivalente) e operação
+`Desativar`/`Reativar`. Exclusão física só é permitida onde não há referência
+(cardápio em `Rascunho`, por exemplo, com cascata no próprio histórico).
+
+**Consequências:**
+- Positivo: histórico e relatórios continuam íntegros; reativação é trivial.
+- Negativo: toda consulta de seleção precisa filtrar `Ativo` explicitamente; a
+  ausência do filtro é um defeito de teste, não uma escolha.
+
+---
+
+## ADR-009: Histórico append-only com snapshots de autor e alvo
+
+**Status:** aceito (2026-10-30)
+
+**Contexto:** restrições do aluno, status de cardápio, ocorrências e solicitações
+precisam de rastro de "quem mudou o quê e quando". Se o histórico guardar apenas FKs,
+renomear ou desativar o autor reescreve o passado; excluir o aluno apaga o motivo do
+registro.
+
+**Decisão:** cada agregado com ciclo de vida tem uma coleção de eventos somente
+inserção, com `AutorNome`, `CriadoEmUtc` e cópia dos nomes relevantes do alvo
+(`RestricaoNome`, `AlunoId` + nome no DTO da ocorrência). Não há endpoint de edição
+ou exclusão de evento.
+
+**Consequências:**
+- Positivo: auditoria imutável e legível sem joins.
+- Negativo: duplicação controlada de nomes; renomear um aluno não corrige o histórico
+  antigo — isso é intencional.
+- Negativo: coleções crescem sem limite; toda leitura é paginada e indexada.
+
+---
+
+## ADR-010: Concorrência otimista com `ConcurrencyCheck` no SQLite
+
+**Status:** aceito (2026-10-30)
+
+**Contexto:** publicar cardápio e decidir solicitação são operações com pré-condição
+de estado. Duas requisições simultâneas poderiam publicar duas vezes ou aprovar duas
+vezes. SQLite não oferece `rowversion` como o SQL Server.
+
+**Decisão:** as propriedades de estado (`Situacao`, `Status`) e `Versao` recebem
+`[ConcurrencyCheck]`. O `UPDATE` inclui os valores originais; conflito gera
+`DbUpdateConcurrencyException`, traduzida para 409 pelo middleware.
+
+**Consequências:**
+- Positivo: sem lock explícito e sem dependência de banco específico.
+- Negativo: colunas de estado passam a fazer parte do `WHERE`; atualização em massa
+  fora do agregado precisa respeitar isso.
+
+---
+
+## ADR-011: Compatibilidade é função pura com severidade única
+
+**Status:** aceito (2026-10-30)
+
+**Contexto:** três fluxos precisam da mesma resposta — geração (013), consulta (014) e
+publicação (015). Implementar o cruzamento em cada um garantiria divergência na
+primeira correção.
+
+**Decisão:** `AnaliseCompatibilidade.Analisar` recebe records já carregados e devolve
+achados com severidade (`Bloqueante` para vínculo `Alergenico`, `Alerta` para
+`Restricao`). O domínio não consulta banco, relógio nem serviço. Geração consome
+`AlimentosNaoPermitidos`; publicação consome `Compativel`.
+
+**Consequências:**
+- Positivo: uma regra, três consumidores, testável sem infraestrutura.
+- Negativo: o serviço de aplicação precisa carregar itens, vínculos e alunos antes de
+  chamar; a função não resolve dados por conta própria.
+
+---
+
+## ADR-012: Relatório é tabela; exportador é plugável
+
+**Status:** aceito (2026-10-30)
+
+**Contexto:** PDF, Excel e Word compartilham os mesmos dados e filtros. Se cada
+exportador montasse sua consulta, os totais divergiriam entre formatos.
+
+**Decisão:** todo relatório produz `RelatorioGerado` (colunas tipadas, linhas, totais,
+ordenação, filtros aplicados). Os exportadores implementam `IRelatorioExportador` e
+recebem esse objeto pronto, sem acesso a banco. A pré-visualização usa o mesmo
+objeto, limitado a 200 linhas, com total agregado separado.
+
+**Consequências:**
+- Positivo: preview e arquivo nunca divergem; novo formato não altera relatório.
+- Negativo: materializar 50.000 linhas em memória é o limite aceito; acima disso,
+  413 — não há streaming nesta fase.

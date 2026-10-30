@@ -19,6 +19,7 @@ backend.Tests/
 │   ├── UsuarioServiceTests.cs
 │   └── AlunoServiceTests.cs
 ├── Integration/
+│   ├── ApiFactory.cs
 │   ├── AlunoApiTests.cs
 │   └── UsuarioApiTests.cs
 └── Fakes/
@@ -43,16 +44,27 @@ backend.Tests/
   `Metodo_Cenario_Esperado` (ex.: `AtualizarPerfil_NomeCurto_LancaArgumentException`).
 - Fakes implementam `IUsuarioRepository`/`IAlunoRepository` com `List<T>` em memória e
   contadores de chamada para verificar persistência.
-- Integração usa `WebApplicationFactory<Program>`, exigindo tornar `Program`
-  acessível: `public partial class Program { }` em `backend/Program.cs` (única
-  alteração permitida no projeto de produção).
+- Integração usa `WebApplicationFactory<Program>` através de `ApiFactory`, que
+  substitui o `ConnectionContext` por SQLite em memória. Além de tornar `Program`
+  parcial, a infraestrutura exigiu duas mudanças no projeto de produção:
+  `ConnectionContext` ganhou construtor com `DbContextOptions<T>` e `OnConfiguring`
+  respeita `options.IsConfigured`; `UsuarioRepository` passou a receber o contexto
+  por injeção (antes instanciava `new ConnectionContext()`).
 
 ```csharp
-public class AlunoApiTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ApiFactory : WebApplicationFactory<Program>
 {
-    private readonly HttpClient _client;
-    public AlunoApiTests(WebApplicationFactory<Program> factory) =>
-        _client = factory.CreateClient();
+    private readonly SqliteConnection _connection = new("Data Source=:memory:");
+
+    public ApiFactory() => _connection.Open();
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<DbContextOptions<ConnectionContext>>();
+            services.RemoveAll<ConnectionContext>();
+            services.AddDbContext<ConnectionContext>(o => o.UseSqlite(_connection));
+        });
 }
 ```
 
@@ -64,13 +76,17 @@ public class AlunoApiTests : IClassFixture<WebApplicationFactory<Program>>
 | `Aluno` | 12 casos de invariantes + 4 de restrições |
 | `UsuarioService` | 7 casos |
 | `AlunoService` | 9 casos |
-| API de integração | 6 contratos (status e formato de erro) |
+| API de integração | 12 testes (6 de aluno, 6 de usuário) |
 
 ## Isolamento
 
-- Cada teste de integração cria seu próprio `WebApplicationFactory` com banco
-  `:memory:` injetado por `ConfigureTestServices`, substituindo o `ConnectionContext`.
-- Nenhum teste compartilha `DbContext`, evitando dependência de ordem.
+- Cada classe de teste de integração compartilha uma `ApiFactory` (`IClassFixture`),
+  com uma única conexão SQLite `:memory:` aberta enquanto a fábrica existir.
+- A fábrica remove os registros de `DbContextOptions<ConnectionContext>` e
+  `ConnectionContext` e registra um `AddDbContext` apontando para a conexão em
+  memória; assim o `Database.Migrate()` do startup cria o schema no banco de teste.
+- Nenhum teste toca `database.db`; a conexão em memória é descartada ao final da
+  classe, o que isola as classes entre si.
 
 ## Riscos
 

@@ -59,13 +59,13 @@ acessa `Senha.Length` sem guard clause.
 
 ## Critérios de aceitação
 
-- [ ] `Senha` persistida em cadastro novo difere do valor informado.
-- [ ] `SenhaConfere` retorna `false` para `null`, vazio e hash malformado, sem exceção.
-- [ ] Dois usuários com a mesma senha possuem hashes diferentes (salt distinto).
-- [ ] Login com registro legado re-hasheia e o registro passa a ter o prefixo do formato.
-- [ ] `SenhaValida()` não existe mais no código.
-- [ ] Nenhum ponto do código compara `dto.Senha == usuario.Senha`.
-- [ ] `dotnet test` verde cobrindo hash, verificação, salt e migração.
+- [x] `Senha` persistida em cadastro novo difere do valor informado.
+- [x] `SenhaConfere` retorna `false` para `null`, vazio e hash malformado, sem exceção.
+- [x] Dois usuários com a mesma senha possuem hashes diferentes (salt distinto).
+- [x] Login com registro legado re-hasheia e o registro passa a ter o prefixo do formato.
+- [x] `SenhaValida()` não existe mais no código.
+- [x] Nenhum ponto do código compara `dto.Senha == usuario.Senha`.
+- [x] `dotnet test` verde cobrindo hash, verificação, salt e migração.
 
 ## Validação
 

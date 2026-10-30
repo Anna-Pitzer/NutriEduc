@@ -143,3 +143,52 @@ verificação.
 **Observação de verificação:** propriedades de tipo complexo não aparecem em
 `IEntityType.GetProperties()`; use `GetComplexProperties()` para inspecioná-las.
 
+---
+
+## L11: Spec planejada exige caminho canônico na visão e seção na arquitetura
+
+**Observado:** a primeira tentativa de commitar as 19 specs no índice canônico falhou
+sem gravar linha alguma: a ferramenta de plano valida que cada spec planejada tenha
+`Canonical creation path` em um bloco de visão e uma seção própria em `arch.md`. A
+Spec 007 não tinha bloco de visão (as demais estavam cobertas por V1–V7 e V6) e a
+seção `## Spec 007` havia sido renomeada. Corrigidos V8 e o título da seção, a mesma
+chamada commitou 19 linhas. A numeração 001–019 foi aceita pelo pipeline.
+
+**Lição:** o índice canônico tem pré-condições de qualidade por spec, e a mensagem de
+erro nomeia exatamente qual spec e qual artefato falta. O bloqueio anterior atribuído
+à faixa de numeração estava errado.
+
+**Regra:** antes de commitar specs no roadmap, garantir para cada uma: bloco de visão
+com `Canonical creation path` e seção correspondente em `arch.md`. Tratar o erro da
+ferramenta como diagnóstico por spec, não como bloqueio global.
+
+---
+
+## L12: Cobertura de funcionalidade declarada em duas specs ao mesmo tempo
+
+**Observado:** ao dividir `implementacoes.md` em specs, os itens "solicitar inclusão de
+alergia" e "solicitar alteração de restrição" foram listados como cobertura da Spec
+010 (catálogo) e da Spec 017 (solicitações). A soma dava 129 para um total de 128.
+
+**Lição:** cobertura precisa ser uma partição, não uma interseção. "Base para" e
+"entregue por" são relações diferentes e precisam de rótulos diferentes no documento.
+
+**Regra:** a seção de cobertura de uma spec só lista funcionalidades que ela entrega
+ponta a ponta. Dependência de outra spec entra como "Base para", com o número da spec
+que entrega. A soma das coberturas deve fechar exatamente com a fonte.
+
+---
+
+## L13: A ordem de execução não é a ordem dos números
+
+**Observado:** a numeração coloca 013 (geração) antes de 014 (compatibilidade), mas a
+geração consome `AnaliseCompatibilidade`; e 015 (publicação) também. Executar na ordem
+numérica obrigaria a duplicar a regra ou a criar stub descartável.
+
+**Lição:** número de spec é identidade, não cronograma. A ordem real é o grafo de
+consumo de contratos entre módulos.
+
+**Regra:** todo plano de execução declara o grafo de dependências e a ordem derivada
+dele; quando a ordem divergir da numeração, isso fica escrito no `arch.md` (regra de
+dependência entre módulos) e no `design.md` das specs envolvidas.
+

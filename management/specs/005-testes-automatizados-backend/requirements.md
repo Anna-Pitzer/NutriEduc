@@ -66,11 +66,11 @@ aposta.
 
 ## Critérios de aceitação
 
-- [ ] `backend.Tests/backend.Tests.csproj` existe e compila.
-- [ ] `dotnet test` executa e passa com contagem reportada.
-- [ ] Cobertura mínima: todos os itens de RF2 a RF5 têm teste nominal.
-- [ ] Nenhum teste faz I/O de rede.
-- [ ] Nenhum teste depende de ordem de execução.
+- [x] `backend.Tests/backend.Tests.csproj` existe e compila.
+- [x] `dotnet test` executa e passa com contagem reportada.
+- [x] Cobertura mínima: todos os itens de RF2 a RF5 têm teste nominal.
+- [x] Nenhum teste faz I/O de rede.
+- [x] Nenhum teste depende de ordem de execução.
 
 ## Validação
 

@@ -61,17 +61,17 @@ funcional na mesma entidade.
 
 ## Critérios de aceitação
 
-- [ ] `PUT /api/aluno/{id}` devolve 200 com o aluno atualizado.
-- [ ] `PUT` com ID inexistente devolve 404.
-- [ ] `GET /api/aluno/perfil/{id}` após o `PUT` devolve os valores gravados.
-- [ ] `AlunoService.AtualizarAluno` não contém regra de validação própria.
-- [ ] `atualizarAluno` existe em `frontend/src/services/AlunoApi.ts` e envia `PUT`.
-- [ ] A tela de alunos abre um aluno em modo de edição e salva a alteração.
-- [ ] `dotnet build backend/backend.csproj` conclui sem erro.
-- [ ] `npm run build` no frontend conclui sem erro.
-- [ ] `npm run lint` no frontend conclui sem erro.
+- [x] `PUT /api/aluno/{id}` devolve 200 com o aluno atualizado.
+- [x] `PUT` com ID inexistente devolve 404.
+- [x] `GET /api/aluno/perfil/{id}` após o `PUT` devolve os valores gravados.
+- [x] `AlunoService.AtualizarAluno` não contém regra de validação própria.
+- [x] `atualizarAluno` existe em `frontend/src/services/AlunoApi.ts` e envia `PUT`.
+- [x] A tela de alunos abre um aluno em modo de edição e salva a alteração.
+- [x] `dotnet build backend/backend.csproj` conclui sem erro.
+- [x] `npm run build` no frontend conclui sem erro.
+- [x] `npm run lint` no frontend conclui sem erro.
 
 ## Validação
 
-Cadastrar aluno, editar, reabrir a listagem e confirmar os valores. Gates em
-`PLANEJAMENTO.md` §Gates por fase.
+Cadastrar aluno, editar, reabrir a listagem e confirmar os valores. Executar os gates: `dotnet build backend/backend.csproj`,
+`dotnet test backend.Tests/backend.Tests.csproj` e `cd frontend && npm run build && npm run lint`.

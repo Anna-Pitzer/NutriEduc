@@ -33,7 +33,7 @@ API  ASP.NET Core 10 — http://localhost:5001
   ├── Application      DTOs de entrada e saída
   ├── Domain           Usuario, Aluno + IUsuarioRepository, IAlunoRepository
   ├── Infrastructure   ConnectionContext (EF Core), UsuarioRepository, AlunoRepository
-  └── Migrations       4 migrations, aplicadas no startup
+  └── Migrations       5 migrations, aplicadas no startup
 
 Persistência
   SQLite — database.db (tabelas Usuarios, Alunos)
@@ -104,8 +104,8 @@ Formato único de erro:
 
 - EF Core 10 + SQLite; `Database.Migrate()` no startup.
 - Migrations são versionadas e nunca editadas após aplicadas.
-- `Restricoes` é armazenada como coluna `TEXT` (JSON). A normalização em tabela
-  própria depende da entidade `Restricao` (Spec 010).
+- `Restricoes` é armazenada como coluna `TEXT` (JSON). A normalização em catálogo
+  próprio depende da entidade `RestricaoAlimentar` (Spec 010).
 - Toda mudança de schema exige migration nova, nunca alteração do snapshot manual.
 
 ## 8. Regras de evolução
@@ -123,11 +123,56 @@ Formato único de erro:
 
 | Item | Situação | Encaminhamento |
 | --- | --- | --- |
-| Sem domínio de cardápio/alimento | Frontend chama 6 rotas inexistentes | Spec 010 |
+| Sem domínio de cardápio/alimento | Frontend chama 6 rotas inexistentes | Specs 011 (alimentos) e 012 (cardápio) |
 | Um único tipo de usuário | Cinco perfis em `implementacoes.md` | Spec 009 |
-| `Restricoes` como JSON | Impede consulta por restrição | Spec 010 |
-| Sem paginação em `/api/aluno` | Listagem cresce sem limite | Spec 010 |
+| `Restricoes` como JSON | Impede consulta por restrição e não há histórico | Spec 010 |
+| Sem paginação em `/api/aluno` | Listagem cresce sem limite | Spec 009 (listagens escopadas e paginadas) |
 | Sem versionamento de API | Contrato muda sem sinal | Pós-F2 |
+
+## 10. Estado atual verificado (2026-10-30)
+
+| Verificação | Resultado |
+| --- | --- |
+| `dotnet test backend.Tests` | 152 testes, 152 aprovados, 0 falhas (12 de integração HTTP) |
+| Warnings de build | 8 `CS8604` em `UsuarioService`/`UsuarioController` (propriedades anuláveis de `Usuario`) |
+| `npm run build` / `npm run lint` | passam: build Vite OK (1846 módulos); lint 0 erros e 5 avisos |
+| Migrations | 5, aplicadas no startup por `Database.Migrate()` (a última é documental: `HashSenhaUsuario`) |
+| Domínio implementado | `Aluno` (invariantes, `Turma`, `Responsavel`, restrições protegidas) e `Usuario` (hash PBKDF2), sem papel |
+| Domínio especificado e não implementado | Specs 009–019 (33 documentos, status `created`) |
+| Superfície HTTP | 2 controllers (`AlunoController`, `UsuarioController`) |
+| Índice canônico | `management/roadmap.md` com 19 linhas, todas `planned`, criadas por `roadmap-plan-commit` em 2026-10-30 |
+
+Estado formal por spec: no roadmap, as 19 estão `planned` e a promoção para
+`verified`/`implemented` é feita pelos comandos do pipeline (`/spec-new`,
+`/spec-implement`, `/spec-test`). 001–005 têm os três documentos e todas as tasks
+executadas; 006–008 têm os três documentos e nenhuma task executada; 009–019 têm os
+três documentos e nenhuma task executada.
+
+## 11. Mapa de módulos especificados (009–019)
+
+| Spec | Módulo | Entidades / tipos principais | Superfície HTTP |
+| --- | --- | --- | --- |
+| 009 | Identidade e estrutura escolar | `Escola`, `UnidadeEscolar`, `VinculoResponsavelAluno`, `PapelUsuario` | `EscolaController`, `UnidadeController`, `VinculoController`, ampliação de `UsuarioController` |
+| 010 | Restrições e alergias | `RestricaoAlimentar`, `HistoricoRestricaoAluno` | `RestricaoController`, histórico em `AlunoController` |
+| 011 | Catálogo de alimentos | `CategoriaAlimento`, `Alimento`, `AlimentoRestricao`, `ValoresNutricionais` | `AlimentoController`, `CategoriaAlimentoController` |
+| 012 | Cardápio | `Cardapio`, `Refeicao`, `ItemRefeicao`, `PeriodoVigencia` | `CardapioController` (interno + público) |
+| 013 | Geração automática | `ParametroGeracao`, `GeradorCardapioAutomatico` | `GeracaoController` |
+| 014 | Compatibilidade | `AnaliseCompatibilidade` (função pura) | rota em `CardapioController` |
+| 015 | Publicação e histórico | `HistoricoCardapio`, `EventoCardapio`, transições de `Cardapio` | `CardapioController` |
+| 016 | Ocorrências | `Ocorrencia`, `HistoricoOcorrencia` | `OcorrenciaController` |
+| 017 | Solicitações | `Solicitacao`, `HistoricoSolicitacao` | `SolicitacaoController` |
+| 018 | Feedback e notificações | `Feedback`, `Notificacao` | `FeedbackController`, `NotificacaoController` |
+| 019 | Relatórios | `RelatorioGerado`, `IRelatorio`, exportadores | `RelatorioController` |
+
+**Regra de dependência entre módulos:** o fluxo de dados é
+`009 → 010 → 011 → 012 → 014 → {013, 015} → 016 → 017 → 018 → 019`. A seta
+significa "o módulo à direita consome contrato do módulo à esquerda". Nenhum módulo
+reimplementa regra de outro: compatibilidade (014) é a única fonte de severidade, e
+notificação (018) é a única fonte de `Notificacao`.
+
+**Regra de escrita entre agregados:** operações que tocam dois agregados (ex.: aprovar
+solicitação de restrição, em 017) usam o mesmo `ConnectionContext` Scoped e uma
+transação explícita. Não existe repositório que abre conexão própria (L4).
 
 ## Spec 007 — contrato-erro-e-infra-di
 

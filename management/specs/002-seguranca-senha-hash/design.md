@@ -87,9 +87,9 @@ public bool VerificarLogin(LoginUsuarioDTO dto)
 
 ## Persistência
 
-- Nova migration `HashSenhaUsuario`: amplia `Senha` para `TEXT` sem limite prático
-  (o valor formatado tem ~120 caracteres). SQLite não exige alteração de tipo para
-  `TEXT`; a migration documenta a mudança semântica do conteúdo.
+- Nova migration `HashSenhaUsuario`: **documental, sem operação de schema**. A coluna
+  `Senha` já é `TEXT` e comporta o valor formatado (~120 caracteres); a migration
+  registra apenas o marco da mudança semântica do conteúdo.
 - Nenhum `Down` destrutivo: reverter exigiria re-hash, fora de escopo.
 
 ## Testes obrigatórios (Spec 005)

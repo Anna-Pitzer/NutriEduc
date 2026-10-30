@@ -59,15 +59,15 @@ invariante sem passar por método da entidade.
 
 ## Critérios de aceitação
 
-- [ ] `aluno.Restricoes.Add("x")` não compila a partir de outro arquivo.
-- [ ] `((List<string>)aluno.Restricoes)` lança `InvalidCastException` — a coleção real
+- [x] `aluno.Restricoes.Add("x")` não compila a partir de outro arquivo.
+- [x] `((List<string>)aluno.Restricoes)` lança `InvalidCastException` — a coleção real
   não é exposta, apenas o wrapper readonly.
-- [ ] Duplicata case-insensitive lança `ArgumentException`.
-- [ ] Item vazio ou composto apenas de espaços lança `ArgumentException`.
-- [ ] 21ª restrição lança `ArgumentException`.
-- [ ] `RemoverRestricao` devolve `false` para item ausente.
-- [ ] `GET /api/aluno` devolve `restricoes` como array com os valores gravados.
-- [ ] Testes unitários cobrem todos os casos desta seção.
+- [x] Duplicata case-insensitive lança `ArgumentException`.
+- [x] Item vazio ou composto apenas de espaços lança `ArgumentException`.
+- [x] 21ª restrição lança `ArgumentException`.
+- [x] `RemoverRestricao` devolve `false` para item ausente.
+- [x] `GET /api/aluno` devolve `restricoes` como array com os valores gravados.
+- [x] Testes unitários cobrem todos os casos desta seção.
 
 ## Validação
 
