@@ -53,10 +53,13 @@ async function buscarOuVazio<T>(url: string): Promise<T[]> {
 }
 ```
 
-As telas exibem `EmptyState` com "Cardápio disponível em breve" quando a lista vem
-vazia e a API está indisponível. `salvarCardapio` mantém o erro visível ao usuário
-(ação explícita não pode falhar em silêncio). A Spec 012 remove o fallback de 404 e
-reaponta as rotas.
+As telas exibem estado vazio: `HomeNutricao` mostra "Nenhum cardápio criado ainda" e
+`Cardapio` deixa os quatro cartões vazios. O texto literal "Cardápio disponível em
+breve" não foi usado porque as telas ainda não distinguem "carregado e vazio" de
+"indisponível" — decisão registrada em D2 e resolvida pela Spec 012, que remove o
+fallback de 404 e reaponta as rotas. 5xx chega ao `catch` da tela, que o registra no
+console sem exceção não tratada. `salvarCardapio` mantém o erro visível ao usuário
+(ação explícita não pode falhar em silêncio).
 
 Remover as quatro funções sem consumidor e os tipos que só elas usam. `Serie` e
 `CardapioHistorico` permanecem porque `HomeNutricao` usa o histórico.
@@ -70,28 +73,30 @@ O teste lê `README.md` e os controllers por reflexão:
 public void Readme_ListaTodosOsEndpoints()
 {
     var readme = File.ReadAllText(CaminhoDoReadme());
-    var rotas = typeof(AlunoController).Assembly.GetTypes()
-        .Where(t => typeof(ControllerBase).IsAssignableFrom(t))
-        .SelectMany(ExtrairRotas);          // "GET /api/aluno", "PUT /api/aluno/{id}"
+    var codigo = RotasDosControllers();          // HashSet: "GET /api/aluno"
+    var documentadas = LinhaDocumentada.Matches(readme)
+        .Select(m => $"{m.Groups["verbo"].Value} {m.Groups["rota"].Value}")
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-    var ausentes = rotas.Where(r => !readme.Contains(r)).ToList();
-    Assert.Empty(ausentes);
+    Assert.Empty(codigo.Except(documentadas));   // ausentes no README
+    Assert.Empty(documentadas.Except(codigo));   // excedentes no README
 }
 ```
 
-`ExtrairRotas` combina `[Route]` da classe com `[Http*]` do método, normaliza
-`[controller]` para o nome sem sufixo e usa `{id}` para parâmetros. O teste excedente
-(varre o README e procura rotas que não existem) é feito com a lista de pares
-extraída da própria tabela markdown.
+`RotasDosControllers` combina `[Route]` da classe com `[Http*]` do método, normaliza
+`[controller]` e usa `{id}` para parâmetros. `LinhaDocumentada` é uma regex sobre as
+linhas da tabela markdown, então a comparação vale nos dois sentidos — uma rota
+documentada que não existe também falha.
 
-Limite conhecido: o teste valida **presença de texto**, não semântica da descrição.
+Limite conhecido: o teste valida **presença do par método+rota**, não semântica da
+descrição.
 Ele impede o envelhecimento silencioso (L6) sem exigir parser de markdown completo.
 
 ## README
 
-A tabela passa a ter as colunas `Método | Rota | Descrição | Sessão` e é atualizada na
-mesma mudança que altera controller. As rotas de aluno aparecem como `Sim` somente
-após a Spec 006; enquanto 006 não estiver implementada, a coluna reflete o código real.
+A tabela passa a ter as colunas `Método | Caminho | Descrição | Autenticação` (a coluna
+de sessão se chama `Autenticação`) e é atualizada na mesma mudança que altera
+controller. As rotas de aluno aparecem como `Sim` desde a Spec 006.
 
 ## Sequência
 

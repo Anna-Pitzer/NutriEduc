@@ -28,26 +28,27 @@ references: V1, ADR-004, L1
 
 ## Registro de execução
 
-Verificado contra o código em 2026-10-30. O `status` do frontmatter não foi alterado
+Verificado contra o código em 2026-10-30 e reauditado em 2026-10-31. O `status` do frontmatter não foi alterado
 (ver Spec 001, mesmo registro).
 
 **Concluído**
 
 | Task | Evidência |
 | --- | --- |
-| T1 | `ValidarDados`, `ValidarNome`, `ValidarTelefone` e `ValidarNascimento` (`Aluno.cs:151-206`) — ver D1 |
-| T2 | construtor público valida tudo e só então atribui (`Aluno.cs:63-85`) |
-| T3 | `AtualizarDados` reutiliza `ValidarDados` (`Aluno.cs:91-113`); `AlunoTests:282` prova que payload inválido não altera estado |
-| T4 | `AlunoService.CriarAluno` passou a compor o aluno (`AlunoService.cs:14-28`) — ver D2 |
-| T5 | comentário do construtor privado (`Aluno.cs:21-23` e `:58`) |
-| T6 | `dotnet test`: 152 aprovados, 0 falhas (2026-10-30) |
+| T1 | `ValidarDados`, `ValidarNascimento` e `ValidacaoDeCampo.Texto/Telefone` (`backend/Domain/Entities/Aluno.cs`, `backend/Domain/Entities/ValidacaoDeCampo.cs`) — ver D1 |
+| T2 | construtor público valida tudo e só então atribui (`Aluno.cs`) |
+| T3 | `AtualizarDados` reutiliza `ValidarDados` (`Aluno.cs`); `AtualizarDados_ComPayloadInvalido_NaoAlteraEstado` e `AtualizarDados_ComRestricoesInvalidas_NaoAlteraEstado` |
+| T4 | `AlunoService.CriarAluno` compõe `Turma` e `Responsavel` (`backend/API/Services/AlunoService.cs`) — ver D2 |
+| T5 | comentário do construtor privado (`Aluno.cs`) |
+| T6 | 2026-10-31 (auditoria): `dotnet test` 248/248, 0 falhas |
 
 **Desvios registrados**
 
-- D1: não existe `ValidarTexto` em `Aluno`. Cada campo tem validador próprio porque a
-  regra é distinta (nome 2–100, telefone 10 ou 11 dígitos, nascimento entre 1900 e hoje).
-  O helper genérico `ValidarTexto` ficou em `Turma` e `Responsavel`, que têm regras
-  uniformes de texto.
+- D1 (corrigido na auditoria de 2026-10-31): a versão anterior dizia que o helper
+  genérico ficou apenas em `Turma` e `Responsavel`, mas `Responsavel` tinha a própria
+  cópia e `Aluno` também. As regras de texto e telefone foram unificadas em
+  `ValidacaoDeCampo.Texto`/`Telefone`, usadas pelas três classes. Restaram apenas
+  `ValidarNascimento` e o limite de `Observacao`, exclusivos de `Aluno`.
 - D2: a task previa apenas trocar a assinatura das restrições. A implementação foi além
   e compôs `Turma` e `Responsavel` como objetos de valor (lição L10), o que mudou a
   assinatura do construtor para receber `Turma` e `Responsavel`.

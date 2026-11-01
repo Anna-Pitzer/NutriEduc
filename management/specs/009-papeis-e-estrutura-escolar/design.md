@@ -59,14 +59,12 @@ public class Escola
 public class UnidadeEscolar
 {
     public int Id { get; private set; }
-    public int EscolaId { get; private set; }
+    public int? EscolaId { get; private set; }   // legado (ADR-013); unidade é da rede
     public string Nome { get; private set; } = string.Empty;
     public bool Ativa { get; private set; }
 
-    public UnidadeEscolar(int escolaId, string nome)
+    public UnidadeEscolar(string nome)
     {
-        if (escolaId <= 0) throw new ArgumentException("Unidade exige escola válida.");
-        EscolaId = escolaId;
         DefinirNome(nome);
         Ativa = true;
     }
@@ -77,14 +75,14 @@ public class UnidadeEscolar
 `Usuario` muda de estado, não de responsabilidade:
 
 ```csharp
-public PapelUsuario Papel { get; private set; }
+public PapelUsuario? Papel { get; private set; }   // anulável (D2): "sem papel" != Nutricionista
 public int? EscolaId { get; private set; }
 public int? UnidadeId { get; private set; }
 public bool Ativo { get; private set; } = true;
 
 // Construtor único de criação (substitui os construtores parciais apontados em PEND-002)
 public Usuario(string nome, string cpf, DateOnly dataNascimento, string email,
-               PapelUsuario papel, int? escolaId = null, int? unidadeId = null)
+               PapelUsuario? papel = null, int? escolaId = null, int? unidadeId = null)
 {
     AtualizarPerfil(nome, email);
     AtualizarCpf(cpf);
@@ -93,14 +91,16 @@ public Usuario(string nome, string cpf, DateOnly dataNascimento, string email,
     Ativo = true;
 }
 
-public void DefinirPapel(PapelUsuario papel, int? escolaId, int? unidadeId)
+public void DefinirPapel(PapelUsuario? papel, int? escolaId, int? unidadeId)
 {
     bool exigeEscola = papel is PapelUsuario.AdminEscola or PapelUsuario.Merendeira
                             or PapelUsuario.Responsavel;
     if (exigeEscola && escolaId is null)
         throw new ArgumentException("Este papel exige escola.");
-    if (papel is not (PapelUsuario.Merendeira or PapelUsuario.Responsavel) && unidadeId is not null)
-        throw new ArgumentException("Unidade só se aplica a merendeira ou responsável.");
+    if (papel is not (PapelUsuario.Merendeira or PapelUsuario.Responsavel
+                       or PapelUsuario.AdminSecretaria) && unidadeId is not null)
+        throw new ArgumentException(
+            "Unidade só se aplica a merendeira, responsável ou secretaria.");
     Papel = papel; EscolaId = escolaId; UnidadeId = unidadeId;
 }
 
@@ -129,6 +129,10 @@ builder.Services.AddAuthorization(o =>
     o.AddPolicy("SessaoValida", p => p.RequireAuthenticatedUser());
 });
 ```
+
+**Atualização (D4/D5 e Spec 022):** o `Program.cs` vigente acrescenta `LeituraAluno`
+(todos os papéis, filtrados por escopo), `GestaoAluno` (escrita), `Admin` (secretaria ou
+escola) e inclui `AdminSecretaria` em `EquipeEscolar`.
 
 Claims no login (`UsuarioController.PostLogin`): acrescentar
 
@@ -171,8 +175,7 @@ public sealed record EscopoUsuario(
 | `PUT` | `/api/escolas/{id}` | `AdminSecretaria` |
 | `POST` | `/api/escolas/{id}/desativar` | `AdminSecretaria` |
 | `POST` | `/api/escolas/{id}/reativar` | `AdminSecretaria` |
-| `POST` | `/api/escolas/{id}/unidades` | `AdminSecretaria` |
-| `GET` | `/api/escolas/{id}/unidades` | `SessaoValida` |
+| `GET` | `/api/unidades` | `SessaoValida` (unidade da rede — ADR-013) |
 | `PUT` | `/api/unidades/{id}` | `AdminSecretaria` |
 | `POST` | `/api/unidades/{id}/desativar` | `AdminSecretaria` |
 | `POST` | `/api/usuarios` | `AdminSecretaria` ou `AdminEscola` |
@@ -180,9 +183,9 @@ public sealed record EscopoUsuario(
 | `PUT` | `/api/usuarios/{id}` | dono do perfil ou admin do escopo |
 | `POST` | `/api/usuarios/{id}/ativar` | admin do escopo |
 | `POST` | `/api/usuarios/{id}/desativar` | admin do escopo |
-| `POST` | `/api/alunos/{id}/responsaveis/{usuarioId}` | `AdminEscola` do aluno |
-| `DELETE` | `/api/alunos/{id}/responsaveis/{usuarioId}` | `AdminEscola` do aluno |
-| `GET` | `/api/alunos/{id}/responsaveis` | `EquipeEscolar` do aluno |
+| `POST` | `/api/aluno/{id}/responsaveis/{usuarioId}` | `Admin` do escopo do aluno |
+| `DELETE` | `/api/aluno/{id}/responsaveis/{usuarioId}` | `Admin` do escopo do aluno |
+| `GET` | `/api/aluno/{id}/responsaveis` | `EquipeEscolar` do aluno |
 | `GET` | `/api/usuario/me` | `SessaoValida` (acrescenta papel e escopo) |
 
 `POST /api/usuarios` recebe `papel`; `AdminEscola` só pode enviar `Responsavel` ou
@@ -197,7 +200,8 @@ public DbSet<UnidadeEscolar> Unidades { get; set; }
 public DbSet<VinculoResponsavelAluno> Vinculos { get; set; }
 ```
 
-- `Escolas.Nome` único (índice); `Unidades` único por `(EscolaId, Nome)`.
+- `Escolas.Nome` único (índice); `Unidades` único por `(EscolaId, Nome)` — **alterado
+  pela ADR-013:** hoje o nome é único na rede e `EscolaId` é opcional (legado).
 - `Vinculos` único por `(AlunoId, ResponsavelUsuarioId)`; `AlunoId` com FK e
   `OnDelete(Cascade)`.
 - `Usuario.EscolaId`/`UnidadeId` com `OnDelete(Restrict)`: escola não é apagada com
@@ -211,7 +215,8 @@ nunca é escrita no código nem no repositório.
 
 ## Frontend
 
-- `frontend/src/context/SessaoContext.tsx`: expõe `papel`, `escolaId`, `unidadeId`.
+- Sessão: `papel`, `escolaId` e `unidadeId` são expostos pelo `authContext`
+  (`frontend/src/context/authContext.tsx`) — D6; um contexto novo duplicaria o estado.
 - `frontend/src/routes/ProtegidaPorPapel.tsx`: componente de rota que recebe
   `papeis: PapelUsuario[]`; sem papel permitido → `/login`.
 - `pages/secretaria/` e `pages/escolas/` deixam de ser placeholders: listas,
@@ -253,3 +258,9 @@ nunca é escrita no código nem no repositório.
 - **`Aluno.UnidadeId` nulo em dados legados**: escola não vê o aluno até vinculá-lo;
   a nutrição continua vendo. Isso é preferível a inferir escola pelo texto de
   `Turma.Escola`, que não é chave.
+
+> **Atualização de 2026-10-31 (auditoria):** a ADR-013/Spec 022 tornou a unidade da
+> rede (nome único, `EscolaId` opcional, rotas `/api/unidades`); o papel passou a ser
+> anulável (D2) e as políticas foram ampliadas (D4/D5). Consequência aberta: sem
+> `Aluno.EscolaId`, o escopo de `AdminEscola` para aluno e vínculo depende de unidade
+> legada — registrado em PEND-024.

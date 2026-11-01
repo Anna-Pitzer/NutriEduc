@@ -19,6 +19,7 @@ interface FormularioAluno {
     anafilaxia: boolean;
     contatoEmerNome: string;
     contatoEmerTelefone: string;
+    unidadeId: number | null;
 }
 
 const estadoInicial: FormularioAluno = {
@@ -31,7 +32,8 @@ const estadoInicial: FormularioAluno = {
     restricoes: [],
     anafilaxia: false,
     contatoEmerNome: "",
-    contatoEmerTelefone: ""
+    contatoEmerTelefone: "",
+    unidadeId: null
 };
 
 /** Converte o aluno vindo da API no estado do formulário (cadastro e edição). */
@@ -47,6 +49,7 @@ function mapearAlunoParaFormulario(aluno: AlunoResposta): FormularioAluno {
         anafilaxia: aluno.anafilaxia,
         contatoEmerNome: aluno.nomeResponsavel,
         contatoEmerTelefone: aluno.telefoneResponsavel,
+        unidadeId: aluno.unidadeId ?? null,
     };
 }
 
@@ -285,6 +288,7 @@ export function CadastroAlunos() {
             anafilaxia: form.anafilaxia,
             nomeResponsavel: limparTexto(form.contatoEmerNome, 100),
             telefoneResponsavel: limparTelefone(form.contatoEmerTelefone),
+            unidadeId: form.unidadeId,
         };
     };
 

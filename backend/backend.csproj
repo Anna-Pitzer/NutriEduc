@@ -5,6 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Token de bootstrap fica fora do repositório (user-secrets). Ver README §Bootstrap. -->
+    <UserSecretsId>nutrieduc-bootstrap-dev</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

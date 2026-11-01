@@ -84,6 +84,9 @@ options e o caminho do banco fica fixo no `OnConfiguring`, enquanto `UsuarioServ
 - [x] `POST /api/aluno/registrar` inválido devolve 400 com `{ erro }`.
 - [x] `GET /api/aluno/perfil/{id}` inexistente devolve 404 com `{ erro }`.
 - [x] `GET /api/usuario/perfil/{id}` inexistente devolve 404 com `{ erro }` (não string).
+  **Observação (Spec 020):** com sessão e checagem de dono, id diferente do autenticado
+  responde 403; o 404 só seria alcançável se a conta desaparecesse entre a autenticação
+  e a consulta.
 - [x] `POST /api/usuario/login` inválido devolve 401 com `{ erro }`.
 - [x] Exceção não tratada devolve 500 com `{ erro: "Erro interno." }` e sem stack.
 - [x] Nenhum `try/catch (ArgumentException)` permanece nos controllers.

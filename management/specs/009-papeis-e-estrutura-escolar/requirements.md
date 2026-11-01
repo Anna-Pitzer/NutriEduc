@@ -45,7 +45,8 @@ funcionalidades dependem de saber o papel do usuário e o alcance dos seus dados
   (papel), `escola` e `unidade` (quando aplicáveis). `GET /api/usuario/me` devolve
   `id`, `nome`, `email`, `papel`, `escolaId`, `unidadeId`.
 - RF3: `AdminSecretaria` cria, edita e desativa escolas e unidades. Escola tem nome
-  único; unidade pertence a exatamente uma escola e tem nome único dentro dela.
+  único. **Superado pela ADR-013 (Spec 022):** a unidade passou a ser da rede — nome
+  único na rede, sem escola obrigatória; `EscolaId` sobrevive como dado legado opcional.
 - RF4: `AdminSecretaria` cria e edita `AdminSecretaria` e `AdminEscola`.
   `AdminEscola` cria e edita apenas `Responsavel` e `Merendeira` da própria escola.
   Nenhum outro papel cria usuários.
@@ -53,12 +54,19 @@ funcionalidades dependem de saber o papel do usuário e o alcance dos seus dados
   `AdminEscola` (usuários da própria escola). Usuário desativado: o próximo login
   devolve 401 e uma sessão já emitida é rejeitada na requisição seguinte.
 - RF6: `AdminEscola` vincula e desvincula um `Responsavel` a um `Aluno` da própria
-  escola. O vínculo é N:N e único por par (aluno, responsável).
+  escola. O vínculo é N:N e único por par (aluno, responsável). **Limitação aberta
+  (PEND-024):** com a unidade da rede (ADR-013), o aluno não guarda escola derivável;
+  para unidades novas o vínculo por `AdminEscola` fica bloqueado até existir
+  `Aluno.EscolaId`. Os testes usam `AdminSecretaria`.
 - RF7: `AdminSecretaria` lista usuários com filtros `papel`, `escolaId`, `unidadeId`,
   `ativo` e `busca` (nome ou e-mail). `AdminEscola` vê apenas usuários da própria
   escola e filtra por unidade.
 - RF8: `Merendeira` consulta alunos, restrições e alergias da própria unidade; a
-  resposta não inclui CPF, e-mail, telefone ou foto de responsável.
+  resposta não inclui CPF, e-mail, telefone ou foto de responsável. **Precisão:** o que
+  não aparece é dado de **conta** do responsável (`cpf`, `email`, `foto`, `telefone` do
+  `Usuario`); `nomeResponsavel` e `telefoneResponsavel` são o contato de emergência do
+  aluno e permanecem por decisão de segurança alimentar. O teste da matriz verifica a
+  ausência de `cpf`, `email` e `foto`.
 - RF9: `Responsavel` consulta apenas alunos vinculados a ele; qualquer outro id
   devolve 403 (não 404), para não revelar existência.
 - RF10: todas as decisões de acesso acontecem no backend; esconder item de menu no
@@ -70,8 +78,9 @@ funcionalidades dependem de saber o papel do usuário e o alcance dos seus dados
   escopo é resolvido em um serviço dedicado.
 - RNF2: negar acesso devolve 403 com o contrato `{ erro }` da ADR-005; ausência de
   sessão devolve 401.
-- RNF3: `Usuario` valida papel e escopo no construtor e em `DefinirPapel`
-  (ADR-004); não existe `Usuario` válido sem papel.
+- RNF3: `Usuario` valida papel e escopo no construtor e em `DefinirPapel` (ADR-004).
+  **Ajustado pela D3:** o autocadastro cria conta com `Papel == null` — válida, mas
+  incapaz de autenticar — até um administrador definir o papel.
 - RNF4: consultas filtradas por escola/unidade aplicam o filtro no banco, não em
   memória.
 - RNF5: nomes de escola e unidade são normalizados (trim + caixa única) antes de
@@ -107,18 +116,31 @@ funcionalidades dependem de saber o papel do usuário e o alcance dos seus dados
 
 ## Critérios de aceitação
 
-- [ ] `Usuario` possui `Papel`, `EscolaId`, `UnidadeId` e `Ativo`; não existe
-      construtor público que produza usuário sem papel.
-- [ ] Login de usuário desativado devolve 401.
-- [ ] Sessão de usuário desativado após o login é rejeitada na requisição seguinte.
-- [ ] `POST /api/escolas` por `AdminEscola` devolve 403.
-- [ ] `POST /api/usuarios` por `AdminEscola` com papel `AdminSecretaria` devolve 403.
-- [ ] `GET /api/alunos` por `Merendeira` devolve somente alunos da própria unidade.
-- [ ] `GET /api/alunos/{id}` por `Responsavel` não vinculado devolve 403.
-- [ ] `POST /api/alunos/{id}/responsaveis/{usuarioId}` duplicado devolve 409.
-- [ ] Menu e rotas do frontend exibem apenas áreas permitidas ao papel da sessão.
-- [ ] `dotnet build backend/backend.csproj` e `dotnet test` concluem sem erro.
-- [ ] `npm run build` e `npm run lint` no frontend concluem sem erro.
+- [x] `Usuario` possui `Papel`, `EscolaId`, `UnidadeId` e `Ativo`; o único construtor
+      público cria a conta com papel **opcional** e `Papel == null` bloqueia o login
+      (autocadastro — desvio D3).
+- [x] Login de usuário desativado devolve 401.
+- [x] Sessão de usuário desativado após o login é rejeitada na requisição seguinte.
+- [x] `POST /api/escolas` por `AdminEscola` devolve 403.
+- [x] `POST /api/usuarios` por `AdminEscola` com papel `AdminSecretaria` devolve 403.
+- [x] `GET /api/aluno` por `Merendeira` devolve somente alunos da própria unidade.
+- [x] `GET /api/aluno/{id}` por `Responsavel` não vinculado devolve 403.
+- [x] `POST /api/aluno/{id}/responsaveis/{usuarioId}` duplicado devolve 409.
+- [x] Menu e rotas do frontend exibem apenas áreas permitidas ao papel da sessão.
+- [x] `dotnet build backend/backend.csproj` e `dotnet test` concluem sem erro.
+- [x] `npm run build` e `npm run lint` no frontend concluem sem erro.
+
+As rotas de aluno permanecem no **singular** (`/api/aluno`), inclusive o sub-recurso de
+responsáveis (desvio D1). Onde este documento escreveu `/api/alunos`, leia-se
+`/api/aluno`.
+
+## Evidência
+
+- `backend.Tests/Domain/PapeisEEscolasTests.cs` — 15 casos de invariante.
+- `backend.Tests/Services/UsuarioServiceTests.cs` — `Autenticar` sem papel, inativo e ok.
+- `backend.Tests/Integration/PapeisApiTests.cs` — 11 casos da matriz de acesso.
+- Gates (reauditados em 2026-10-31): build 0 erros; **250/250** testes; `npm run build`
+  OK; `npm run lint` 0 erros e 5 avisos (baseline).
 
 ## Validação
 

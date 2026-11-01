@@ -55,6 +55,13 @@ public class Aluno
     /// <summary>Preenchido pelo EF Core ao materializar; nunca nulo em objeto válido.</summary>
     public Responsavel Responsavel { get; private set; } = null!;
 
+    /// <summary>
+    /// Unidade institucional do aluno (Spec 009). Nulo em registros legados ou ainda
+    /// não vinculados: nesse caso apenas Nutricionista e AdminSecretaria enxergam o
+    /// aluno. `Turma.Escola` continua sendo apenas rótulo de exibição.
+    /// </summary>
+    public int? UnidadeId { get; private set; }
+
     /// <summary>Somente para o EF Core. Não valida e não deve ser usado pela aplicação.</summary>
     private Aluno()
     {
@@ -114,12 +121,10 @@ public class Aluno
 
     public void AdicionarRestricao(string restricao)
     {
-        var valor = (restricao ?? string.Empty).Trim();
+        var valor = NormalizarRestricao(restricao)
+            ?? throw new ArgumentException("A restrição não pode ser vazia.");
 
-        if (valor.Length == 0)
-            throw new ArgumentException("A restrição não pode ser vazia.");
-
-        if (_restricoes.Any(r => string.Equals(r, valor, StringComparison.OrdinalIgnoreCase)))
+        if (ContemRestricao(_restricoes, valor))
             throw new ArgumentException("Restrição já cadastrada para este aluno.");
 
         if (_restricoes.Count >= MaxRestricoes)
@@ -140,6 +145,20 @@ public class Aluno
 
         _restricoes.RemoveAt(indice);
         return true;
+    }
+
+    /// <summary>
+    /// Vincula o aluno a uma unidade institucional (Spec 009). A existência e a
+    /// atividade da unidade são responsabilidade do serviço; aqui só se registra o id.
+    /// </summary>
+    public void DefinirUnidade(int? unidadeId)
+    {
+        if (unidadeId is <= 0)
+        {
+            throw new ArgumentException("Unidade inválida.");
+        }
+
+        UnidadeId = unidadeId;
     }
 
     private readonly record struct DadosValidados(
@@ -169,29 +188,12 @@ public class Aluno
 
     private static string ValidarNome(string? nome)
     {
-        var texto = (nome ?? string.Empty).Trim();
-
-        if (texto.Length == 0)
-            throw new ArgumentException("O campo Nome é obrigatório.");
-
-        if (texto.Length < NomeMin || texto.Length > NomeMax)
-            throw new ArgumentException(
-                $"O campo Nome deve ter entre {NomeMin} e {NomeMax} caracteres.");
-
-        return texto;
+        return ValidacaoDeCampo.Texto(nome, "Nome", NomeMin, NomeMax);
     }
 
     private static string ValidarTelefone(string? valor)
     {
-        if (string.IsNullOrWhiteSpace(valor))
-            return string.Empty;
-
-        var digitos = new string(valor.Where(char.IsDigit).ToArray());
-
-        if (digitos.Length != 10 && digitos.Length != 11)
-            throw new ArgumentException("O campo Telefone deve ter 10 ou 11 dígitos.");
-
-        return digitos;
+        return ValidacaoDeCampo.Telefone(valor, "Telefone");
     }
 
     private static DateOnly ValidarNascimento(DateOnly valor)
@@ -203,6 +205,22 @@ public class Aluno
             throw new ArgumentException("A data de nascimento não pode estar no futuro.");
 
         return valor;
+    }
+
+    /// <summary>
+    /// Regra única de normalização de item (trim e rejeição de vazio), usada por
+    /// <see cref="AdicionarRestricao"/> e pelo buffer do construtor.
+    /// </summary>
+    private static string? NormalizarRestricao(string? restricao)
+    {
+        var valor = (restricao ?? string.Empty).Trim();
+        return valor.Length == 0 ? null : valor;
+    }
+
+    /// <summary>Comparação case-insensitive — regra única de duplicidade (RF2/RF5).</summary>
+    private static bool ContemRestricao(IReadOnlyCollection<string> restricoes, string valor)
+    {
+        return restricoes.Any(r => string.Equals(r, valor, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -219,12 +237,9 @@ public class Aluno
 
         foreach (var item in restricoes)
         {
-            var valor = (item ?? string.Empty).Trim();
+            var valor = NormalizarRestricao(item);
 
-            if (valor.Length == 0)
-                continue;
-
-            if (buffer.Any(r => string.Equals(r, valor, StringComparison.OrdinalIgnoreCase)))
+            if (valor is null || ContemRestricao(buffer, valor))
                 continue;
 
             if (buffer.Count >= MaxRestricoes)

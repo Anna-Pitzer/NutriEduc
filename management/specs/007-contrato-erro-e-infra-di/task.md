@@ -63,7 +63,7 @@ references: V8, ADR-005, L4
 
 ## Registro de execução
 
-Executado em 2026-10-30. Sem migration e sem mudança de schema.
+Executado em 2026-10-30 e reauditado em 2026-10-31. Sem migration e sem mudança de schema.
 
 **Concluído**
 
@@ -79,7 +79,7 @@ Executado em 2026-10-30. Sem migration e sem mudança de schema.
 | T8 | `ErroApiTests` cobre 400, 401 (login e cookie), 404 (aluno e usuário) e 409 |
 | T9 | `ErroApiTests.ExcecaoNaoTratada_Retorna500SemStackTrace`; endpoints `/api/diagnostico/*` só existem em `Testing` |
 | T10 | Parágrafo de erros no `README.md` lista 400/401/403/404/409/500 no contrato |
-| T11 | `dotnet test` → **160/160** (140 unitários + 20 integração); `npm run build` OK; `npm run lint` 0 erros e 5 avisos (baseline) |
+| T11 | 2026-10-31 (auditoria): `dotnet test` 250/250; `npm run build` OK; `npm run lint` 0 erros e 5 avisos (baseline) |
 
 **Desvios registrados**
 
@@ -95,7 +95,12 @@ Executado em 2026-10-30. Sem migration e sem mudança de schema.
   de integração substituindo o `ConnectionContext` por SQLite em memória.
 - D4: T7 foi verificado por inspeção do `Program.cs`; um teste de resolução por escopo
   seria redundante com o próprio `AddScoped`.
+- D5 (auditoria de 2026-10-31): RF2 exigia identificador de correlação no log; o
+  middleware passou a registrar `context.TraceIdentifier` nas três mensagens. O endpoint
+  `/api/diagnostico/inexistente` ganhou teste, fechando a cobertura do mapeamento
+  `KeyNotFoundException` → 404 (RF3/RF12).
 
 **Pendências**
 
-Nenhuma task pendente. O status no roadmap continua `planned`.
+Nenhuma task pendente. A promoção de status no roadmap é feita pelos comandos do
+pipeline (`/spec-implement`, `/spec-test`); esta auditoria marcou a spec como `audited`.

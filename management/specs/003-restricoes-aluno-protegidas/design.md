@@ -38,8 +38,10 @@ public bool RemoverRestricao(string restricao)
 }
 ```
 
-O construtor itera a coleção recebida e chama `AdicionarRestricao`, ignorando itens
-vazios em vez de falhar a materialização do objeto.
+O construtor (e `AtualizarDados`) normaliza a coleção em um buffer privado
+(`NormalizarRestricoes`), que compartilha com `AdicionarRestricao` as regras de trim e
+de duplicidade case-insensitive. Itens vazios e duplicatas são ignorados; exceder 20
+lança antes de qualquer atribuição, preservando a atomicidade do objeto.
 
 > **Correção nesta revisão:** a versão anterior expunha `=> _restricoes;`. O critério
 > "`aluno.Restricoes.Add(\"x\")` não compila" era atendido, mas
@@ -72,14 +74,14 @@ modelBuilder.Entity<Aluno>()
 > `HasField` + `UsePropertyAccessMode` para uma propriedade somente leitura.
 > Assinaturas conferidas em `Microsoft.EntityFrameworkCore.dll` 10.0.11.
 
-Para o EF Core, a propriedade sombreada `Restricoes` continua sendo `List<string>` (o
-campo). A API lê o mesmo JSON de hoje, sem mudança de contrato.
+Para o EF Core, a coleção mapeada é o campo `_restricoes` (`List<string>`), acessado por
+campo. A API lê o mesmo JSON de hoje, sem mudança de contrato.
 
 ## Conversão DTO
 
-`AlunoService` deixa de passar `dto.Restricoes` direto ao construtor e passa
-`dto.Restricoes ?? new()`. `DadosAlunoDTO` continua com `List<string>` na saída,
-alimentado por `aluno.Restricoes.ToList()`.
+`AlunoService` passa `dto.Restricoes` ao construtor sem cópia; o construtor aceita
+`IEnumerable<string>?` e trata `null` (o DTO já nasce com lista vazia). `DadosAlunoDTO`
+continua com `List<string>` na saída, alimentado por `aluno.Restricoes.ToList()`.
 
 ## Testes obrigatórios (Spec 005)
 

@@ -1,30 +1,80 @@
-import { Users, UserRound, Utensils, ChevronRight, CircleUserRound } from "lucide-react"
+import { Users, UserRound, Utensils, ChevronRight, CircleUserRound, Building2, School, Apple, HeartHandshake } from "lucide-react"
 import { Link } from "react-router-dom";
+import { useAuth, type PapelUsuario } from "../context/authContext";
+
+type OpcaoMenu = {
+    nome: string;
+    caminho: string;
+    icone: typeof UserRound;
+    papeis: PapelUsuario[];
+};
+
+const TODOS: PapelUsuario[] = [
+    "Nutricionista",
+    "Merendeira",
+    "Responsavel",
+    "AdminSecretaria",
+    "AdminEscola",
+];
 
 export default function Navbar() {
+    const { userLogin } = useAuth();
 
-    const opcoes = [
+    const opcoes: OpcaoMenu[] = [
         {
             nome: "Perfil",
             caminho: "/Perfil",
-            icone: UserRound
+            icone: UserRound,
+            papeis: TODOS,
         },
         {
             nome: "Cadastro de alunos com restrição",
             caminho: "/aluno/registrar",
             icone: Users,
+            papeis: ["Nutricionista", "AdminSecretaria"],
         },
         {
             nome: "Cardápio",
             caminho: "/cardapio",
             icone: Utensils,
+            papeis: ["Nutricionista", "AdminSecretaria"],
         },
         {
             nome: "Vizualizar Alunos",
             caminho: "/aluno/vizualizar",
             icone: CircleUserRound,
-        }
+            papeis: ["Nutricionista", "AdminSecretaria"],
+        },
+        {
+            nome: "Merendeiras",
+            caminho: "/merendeiras",
+            icone: Apple,
+            papeis: ["Merendeira"],
+        },
+        {
+            nome: "Pais",
+            caminho: "/pais",
+            icone: HeartHandshake,
+            papeis: ["Responsavel"],
+        },
+        {
+            nome: "Secretaria",
+            caminho: "/secretaria",
+            icone: Building2,
+            papeis: ["AdminSecretaria"],
+        },
+        {
+            nome: "Escolas",
+            caminho: "/escolas",
+            icone: School,
+            papeis: ["AdminEscola"],
+        },
     ];
+
+    // Conveniência de navegação: o backend recusa requisição fora do papel (RF10).
+    const visiveis = opcoes.filter(
+        (opcao) => userLogin?.papel && opcao.papeis.includes(userLogin.papel)
+    );
 
     return (
         <aside className="relative z-30  w-auto px-5">
@@ -34,7 +84,7 @@ export default function Navbar() {
                 </div>
 
                 <nav className="flex flex-col gap-1.5">
-                    {opcoes.map((opcao) => {
+                    {visiveis.map((opcao) => {
                         const Icon = opcao.icone;
 
                         return (

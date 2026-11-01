@@ -1,8 +1,10 @@
 import { Routes, Route } from "react-router-dom"
 import { ProtectedRoutes } from "./protectedRoutes"
+import { ProtegidaPorPapel } from "./protegidaPorPapel"
 
 // Comum — telas compartilhadas por todas as áreas
 import { LoginPage } from "../pages/comum/login"
+import { BootstrapAdmin } from "../pages/comum/BootstrapAdmin"
 import { Perfil } from "../pages/comum/Perfil"
 import { TermosDeUso } from "../pages/comum/TermosDeUso"
 import { PoliticaDePrivaciade } from "../pages/comum/PoliticaDePrivacidade"
@@ -23,6 +25,9 @@ import { HomePais } from "../pages/pais/HomePais"
 
 // Secretaria
 import { HomeSecretaria } from "../pages/secretaria/HomeSecretaria"
+import { Escolas } from "../pages/secretaria/Escolas"
+import { Unidades } from "../pages/secretaria/Unidades"
+import { Usuarios } from "../pages/secretaria/Usuarios"
 
 // Administração Escolar
 import { HomeEscolas } from "../pages/escolas/HomeEscolas"
@@ -32,20 +37,39 @@ export function Rotas() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
-      <Route element={<ProtectedRoutes />}>
-        {/* Nutrição — área principal do sistema hoje */}
-        <Route path="/" element={<HomeNutricao />} />
-        <Route path="/aluno/registrar" element={<CadastroAlunos />} />
-        <Route path="/aluno/vizualizar" element={<VisualizarAlunos />} />
-        <Route path="/alunos/editar/:id" element={<CadastroAlunos />} />
-        <Route path="/cardapio" element={<Cardapio />} />
-        <Route path="/cardapio/montar/:refeicao" element={<MontarCardapio />} />
+      {/* Rota de configuração: link + token, fora do ProtectedRoutes (Spec 022). */}
+      <Route path="/bootstrap" element={<BootstrapAdmin />} />
 
-        {/* Demais áreas — homes vazias, conteúdo entra em etapa posterior */}
-        <Route path="/merendeiras" element={<HomeMerendeiras />} />
-        <Route path="/pais" element={<HomePais />} />
-        <Route path="/secretaria" element={<HomeSecretaria />} />
-        <Route path="/escolas" element={<HomeEscolas />} />
+      <Route element={<ProtectedRoutes />}>
+        {/* Nutrição — áreas de gestão nutricional */}
+        <Route element={<ProtegidaPorPapel papeis={["Nutricionista", "AdminSecretaria"]} />}>
+          <Route path="/" element={<HomeNutricao />} />
+          <Route path="/aluno/registrar" element={<CadastroAlunos />} />
+          <Route path="/aluno/vizualizar" element={<VisualizarAlunos />} />
+          <Route path="/alunos/editar/:id" element={<CadastroAlunos />} />
+          <Route path="/cardapio" element={<Cardapio />} />
+          <Route path="/cardapio/montar/:refeicao" element={<MontarCardapio />} />
+        </Route>
+
+        {/* Demais áreas — guarda por papel; conteúdo entra em etapa posterior */}
+        <Route element={<ProtegidaPorPapel papeis={["Merendeira"]} />}>
+          <Route path="/merendeiras" element={<HomeMerendeiras />} />
+        </Route>
+
+        <Route element={<ProtegidaPorPapel papeis={["Responsavel"]} />}>
+          <Route path="/pais" element={<HomePais />} />
+        </Route>
+
+        <Route element={<ProtegidaPorPapel papeis={["AdminSecretaria"]} />}>
+          <Route path="/secretaria" element={<HomeSecretaria />} />
+          <Route path="/secretaria/escolas" element={<Escolas />} />
+          <Route path="/secretaria/unidades" element={<Unidades />} />
+          <Route path="/secretaria/usuarios" element={<Usuarios />} />
+        </Route>
+
+        <Route element={<ProtegidaPorPapel papeis={["AdminEscola"]} />}>
+          <Route path="/escolas" element={<HomeEscolas />} />
+        </Route>
 
         {/* Comum */}
         <Route path="/perfil" element={<Perfil />} />

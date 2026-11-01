@@ -34,7 +34,9 @@ a Spec 009.
   de erro genérica.
 - RF5: nenhuma rota, payload ou assinatura de método muda.
 - RF6: a autorização é declarada uma única vez no controller, não repetida endpoint
-  a endpoint.
+  a endpoint. **Superado pela Spec 009:** com papéis, cada endpoint declara a policy que
+  lhe cabe (`LeituraAluno` ou `GestaoAluno`), porque a unicidade deixou de expressar a
+  regra.
 - RF7: os testes de integração de aluno passam a autenticar antes de chamar a API;
   um teste dedicado prova o 401 anônimo em cada verbo.
 - RF8: `GET /api/aluno` anônimo não devolve nenhum dado de aluno no corpo.
@@ -44,8 +46,9 @@ a Spec 009.
 - RNF1: usa o esquema de cookie existente (`NutriEduc.Auth`), sem token novo.
 - RNF2: 401 não redireciona para HTML; o evento `OnRedirectToLogin` já devolve o
   status 401.
-- RNF3: o corpo do 401 pode ser vazio nesta spec; o contrato `{ erro }` para 401 é
-  responsabilidade da Spec 007.
+- RNF3: o corpo do 401 podia ser vazio nesta spec; o contrato `{ erro }` para 401 é
+  responsabilidade da Spec 007. **Resolvido pela Spec 007:** o 401 responde
+  `{ "erro": "Sessão inválida ou ausente." }`.
 - RNF4: nenhuma regra de autorização no frontend é tratada como controle; o backend
   é a fonte de verdade.
 

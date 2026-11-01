@@ -56,23 +56,23 @@ references: V3, ADR-003, L3
 
 ## Registro de execução
 
-Verificado contra o código em 2026-10-30. O `status` do frontmatter não foi alterado
+Verificado contra o código em 2026-10-30 e reauditado em 2026-10-31. O `status` do frontmatter não foi alterado
 (ver Spec 001, mesmo registro).
 
 **Concluído**
 
 | Task | Evidência |
 | --- | --- |
-| T1 | `HashSenha.cs` com `Criar`/`Confere`/`TentarLer`/`ToString`; `HashSenhaTests` cobre round-trip e valor malformado |
-| T2 | `DefinirSenha`/`SenhaConfere`/`SenhaLegada` (`Usuario.cs:128-175`); `SenhaValida` ausente (busca textual sem ocorrências); construtor de 4 parâmetros (`Usuario.cs:21`) |
-| T3 | guard clause → comprimento → derivação → atribuição em `DefinirSenha` (`Usuario.cs:128-142`) — ver D1 |
-| T4 | `CriarUsuario` usa `DefinirSenha` (`UsuarioService.cs:24`) — ver D2 |
-| T5 | `VerificarLogin` migra legado (`UsuarioService.cs:55-79`); testes `UsuarioServiceTests:211` e `:232` |
-| T7 | os 8 casos da tabela cobertos: `UsuarioTests:165,175,183,191,203` e `HashSenhaTests:9-79` |
-| T8 | única comparação em claro é `Senha == senha` dentro de `SenhaLegada` (`Usuario.cs:174`), permitida pela task |
-| T9 | formato e migração automática documentados em `README.md:159-161` |
-| T10 | `dotnet test`: 152 aprovados, 0 falhas (2026-10-30) |
-| T6 | `20261030141405_HashSenhaUsuario.cs` criada com `dotnet ef` 10.0.12; migration vazia com comentário justificando; `dotnet ef migrations list` e `dotnet build` sem erro |
+| T1 | `HashSenha.cs` com `Criar`/`Confere`/`TentarLer`/`ToString`; `HashSenhaTests` cobre round-trip, salt distinto e valores malformados |
+| T2 | `DefinirSenha`/`SenhaConfere`/`SenhaLegada` em `backend/Domain/Entities/Usuario.cs`; `SenhaValida` ausente (busca textual sem ocorrências); construtor `(nome, cpf, dataNascimento, email, papel?, escolaId?, unidadeId?)` |
+| T3 | guard clause → comprimento → derivação → atribuição em `DefinirSenha` — ver D1 |
+| T4 | `CriarUsuario` usa `DefinirSenha` (`backend/API/Services/UsuarioService.cs`) — ver D2 |
+| T5 | `VerificarLogin` migra legado (`UsuarioService.cs`); testes `VerificarLogin_ComSenhaLegada_AutenticaEMigra` e `..._Incorreta_NaoMigra` |
+| T6 | `backend/Migrations/20261030141405_HashSenhaUsuario.cs` documental, sem operação de schema |
+| T7 | os 8 casos da tabela cobertos por `UsuarioTests` (hash, guard clauses, salt) e `HashSenhaTests` |
+| T8 | única comparação em claro é `Senha == senha` dentro de `SenhaLegada`, permitida pela task |
+| T9 | formato e migração automática documentados em `README.md` §Senhas |
+| T10 | 2026-10-31 (auditoria): `dotnet test` 246/246, 0 falhas |
 
 **Pendente**
 
@@ -82,5 +82,9 @@ Verificado contra o código em 2026-10-30. O `status` do frontmatter não foi al
 
 - D1: `AtualizarSenha` não existe mais. A ordem de validação foi implementada em
   `DefinirSenha`, que é o único caminho de escrita de senha.
-- D2: não existe handler global de exceção (ADR-005 / Spec 007). O 400 vem do
-  `catch (ArgumentException)` em `UsuarioController.cs:35-38`.
+- D2 (atualizado na auditoria de 2026-10-31): o 400 de senha inválida vem do
+  `ErrorHandlingMiddleware` (Spec 007), que traduz `ArgumentException`; o `catch` que
+  existia em `UsuarioController` foi removido.
+- D3 (limitação conhecida): a migração de senha legada reusa `DefinirSenha`, que exige 8
+  caracteres. Registro legado com senha curta — possível só por escrita direta no banco,
+  já que a validação antiga também exigia 8 — receberia 400 no login em vez de migrar.

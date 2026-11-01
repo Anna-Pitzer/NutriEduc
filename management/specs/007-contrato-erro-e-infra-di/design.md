@@ -36,15 +36,21 @@ public sealed class ErrorHandlingMiddleware
         {
             if (context.Response.HasStarted)
             {
-                _logger.LogError(excecao, "Falha após o início da resposta.");
+                _logger.LogError(excecao,
+                    "Falha após o início da resposta em {Rota} (correlação {Correlacao}).",
+                    context.Request.Path, context.TraceIdentifier);
                 throw;
             }
 
             var (status, mensagem) = Mapear(excecao);
             if (status >= 500)
-                _logger.LogError(excecao, "Erro não tratado em {Rota}.", context.Request.Path);
+                _logger.LogError(excecao,
+                    "Erro não tratado em {Rota} (correlação {Correlacao}).",
+                    context.Request.Path, context.TraceIdentifier);
             else
-                _logger.LogWarning("Erro previsível em {Rota}: {Mensagem}", context.Request.Path, excecao.Message);
+                _logger.LogWarning(
+                    "Erro previsível em {Rota} (correlação {Correlacao}): {Mensagem}",
+                    context.Request.Path, context.TraceIdentifier, excecao.Message);
 
             context.Response.Clear();
             context.Response.StatusCode = status;
@@ -55,7 +61,8 @@ public sealed class ErrorHandlingMiddleware
 
     private static (int Status, string Mensagem) Mapear(Exception excecao) => excecao switch
     {
-        ArgumentException => (400, excecao.Message),
+        ArgumentException => (400,
+            string.IsNullOrWhiteSpace(excecao.Message) ? "Dados inválidos." : excecao.Message),
         KeyNotFoundException => (404, excecao.Message),
         InvalidOperationException => (409, excecao.Message),
         DbUpdateConcurrencyException => (409, "O registro foi alterado por outra operação."),
@@ -139,6 +146,7 @@ constroem o contexto direto continuam funcionando).
 |---|---|
 | `POST /api/aluno/registrar` inválido | 400, `erro` string não vazia |
 | `GET /api/aluno/perfil/999999` | 404, `erro` |
+| `GET /api/diagnostico/inexistente` (`KeyNotFoundException`) | 404, `erro` |
 | `GET /api/usuario/perfil/999999` | 404, `erro` (regressão do formato string) |
 | `POST /api/usuario/login` inválido | 401, `erro` |
 | Rota que força exceção não tratada (apenas no ambiente de teste) | 500, `erro = "Erro interno."`, sem `stack` |
@@ -166,3 +174,9 @@ expor superfície em produção.
   fallback é idêntico ao valor atual.
 - **500 em teste**: expor rota de diagnóstico só em `Testing` evita superfície em
   produção; se o pipeline não permitir, testar o mapeamento por unidade.
+
+> **Atualização de 2026-10-31 (auditoria):** o log passou a incluir
+> `context.TraceIdentifier` (RF2) e `/api/diagnostico/inexistente` ganhou teste de
+> integração, fechando o mapeamento `KeyNotFoundException` → 404. A Spec 020 acrescentou
+> `ContratoDeErro`, registrado antes deste middleware, que traduz modelo inválido, 404 de
+> rota, 405 e 415 no mesmo contrato.

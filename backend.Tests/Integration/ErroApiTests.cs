@@ -114,6 +114,18 @@ public class ErroApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task ExcecaoDeRecursoInexistente_Retorna404ComErro()
+    {
+        var client = _factory.CreateClient();
+
+        var resposta = await client.GetAsync("/api/diagnostico/inexistente");
+
+        Assert.Equal(HttpStatusCode.NotFound, resposta.StatusCode);
+        var corpo = await LerCorpo(resposta);
+        Assert.Equal("Não encontrado.", corpo.GetProperty("erro").GetString());
+    }
+
+    [Fact]
     public async Task ExcecaoNaoTratada_Retorna500SemStackTrace()
     {
         var client = _factory.CreateClient();

@@ -18,15 +18,17 @@ que **nenhuma spec cobre** ou que atravessam mais de uma spec. Revisados em
 
 | ID | Date | Status | Title | Evidence | Next action |
 |---|---|---|---|---|---|
-| PEND-002 | 2026-10-27 | open | `Usuario` possui construtores que produzem objeto inválido | `Usuario.cs:12-19` — `Usuario(string email)` e vazio público deixam nome, CPF e senha nulos | Spec 009 reduz a um construtor público de criação e torna o vazio privado |
-| PEND-003 | 2026-10-27 | open | Criação de usuário não valida domínio; atualização valida — cadastro inválido que nunca pode ser editado | `UsuarioService.cs:14-31` valida só e-mail duplicado e tamanho da senha; `Usuario.cs:35-56` valida nome e formato de e-mail | Mover as invariantes para o construtor (Spec 009) e reutilizá-las em criar e atualizar (ADR-004) |
 | PEND-007 | 2026-10-27 | open | `DadosAlunoDTO` serve a entrada e saída e carrega dados de saúde (`Anafilaxia`, `Restricoes`) | `DadosAlunoDTO.cs`; `001/design.md` §Decisões justifica "não contém dado sensível" — justificativa incorreta | Separar DTOs de entrada e saída ao criar contratos novos (Specs 009 e 012) ou abrir exceção explícita em `arch.md` §5 |
 | PEND-010 | 2026-10-30 | open | `/colors` (paleta de teste) pública fora do `ProtectedRoutes`; duplicata de `/cardapio` já não existe | `routes.tsx:37` expõe `/colors`; a duplicata de `/cardapio` foi verificada como inexistente em 2026-10-30 | Remover `/colors` das rotas de produção — candidata à Spec 008 |
 | PEND-011 | 2026-10-27 | open | `buscarEstatisticas` chama endpoint inexistente e com prefixo errado | `Perfil.ts:13-19` — `/usuarios/${id}/estatisticas` (sem `/api/`) | Remover ou implementar o endpoint correspondente — candidata à Spec 008 |
 | PEND-014 | 2026-10-28 | open | Dois recursos de cardápio ficaram sem UI; estado e handler removidos para destravar o build | `Cardapio.tsx`: `handleExcluirCardapio` nunca era chamado e `setResponsavel` nunca era atribuído — o bloco de responsável técnico era inalcançável e não havia fonte de dados para `Responsavel` | Implementar quando a tela de cardápio for finalizada: botão de excluir refeição e exibição do responsável técnico |
 | PEND-018 | 2026-10-28 | open | Persistência SQLite exercitada apenas em memória; o arquivo real não é testado | `ConnectionContextTests` valida só o modelo; a partir de 2026-10-30, `Integration/ApiFactory` abre SQLite em memória e os 21 testes de integração gravam e leem alunos e usuários. Nenhum teste abre `database.db` | Verificar com o app no ar: cadastrar aluno com restrições, reiniciar, ler `GET /api/aluno` e conferir as colunas |
+| PEND-024 | 2026-10-31 | open | `AdminEscola` perdeu o vínculo aluno→escola derivado da unidade | `UnidadeEscolar` deixou de pertencer a escola (ADR-013). `AlunoRepository.Filtrar` ainda usa `Unidade.EscolaId` (agora opcional e nulo em unidades novas) e `VinculoService.EscolaDoAluno` não encontra escola; os testes de vínculo passaram a usar `AdminSecretaria` | Adicionar `Aluno.EscolaId` (com select de escola no cadastro do aluno) e filtrar por ele; depois reativar o escopo de aluno para `AdminEscola` |
 
 ## Resolved
+
+| PEND-002 | 2026-10-30 | done | `Usuario` possui construtores que produzem objeto inválido | Spec 009 implementada: `Usuario` tem um único construtor público (nome, cpf, nascimento, email e papel opcional) e o construtor vazio foi removido; `PapelUsuario? Papel` fecha o buraco de enum 0 = Nutricionista | `PapeisEEscolasTests` cobre papel que exige escola, unidade em papel que não aceita e conta sem papel |
+| PEND-003 | 2026-10-30 | done | Criação de usuário não valida domínio; atualização valida | Spec 009 implementada: o construtor de `Usuario` valida nome, CPF, e-mail e senha, então `CriarUsuario` e `CriarUsuarioAdministrado` falham igual a `AtualizarPerfil` (ADR-004) | `Assert.Throws<ArgumentException>` em `CriarUsuario_SemSenha_LancaENaoPersiste` e nos testes de escola |
 
 | ID | Date | Status | Title | Evidence |
 |---|---|---|---|---|

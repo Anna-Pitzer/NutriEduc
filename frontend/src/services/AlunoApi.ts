@@ -13,6 +13,8 @@ export interface AlunoCadastro {
     anafilaxia: boolean;
     nomeResponsavel: string;
     telefoneResponsavel: string;
+    /** Unidade vinculada (Spec 009). Enviada no PUT para não apagar o escopo do aluno. */
+    unidadeId?: number | null;
 }
 
 export interface AlunoResposta extends AlunoCadastro {

@@ -9,11 +9,13 @@ references: V5, ADR-002, L6
 ## Estrutura
 
 ```text
-backend/API/Controllers/AlunoController.cs   (+ [Authorize])
+backend/API/Controllers/AlunoController.cs   ([Authorize] por endpoint desde a Spec 009)
+backend/Program.cs                           (policies LeituraAluno/GestaoAluno e eventos do cookie)
 frontend/src/services/AlunoApi.ts            (+ credentials em 5 chamadas)
-frontend/src/context/authContext.tsx         (+ tratamento de 401)
+frontend/src/services/erroApi.ts             (+ ErroRequisicao/naoAutorizado)
+frontend/src/pages/nutricao/alunos/*.tsx     (logout() ao receber 401)
 backend.Tests/Integration/ApiFactory.cs      (+ CreateAuthenticatedClientAsync)
-backend.Tests/Integration/AlunoApiTests.cs   (autenticado + teste de 401)
+backend.Tests/Integration/AlunoApiTests.cs   (autenticado + 401 anônimo e cookie inválido)
 ```
 
 Nenhuma entidade, migration ou serviço novo. A mudança é de borda.
@@ -22,14 +24,16 @@ Nenhuma entidade, migration ou serviço novo. A mudança é de borda.
 
 ```csharp
 [ApiController]
-[Authorize]
 [Route("api/[controller]")]
 public class AlunoController : ControllerBase
 ```
 
-`[Authorize]` no controller cobre os cinco endpoints de uma vez (RF6). Não há
-`[AllowAnonymous]` em nenhum deles. O esquema de cookie já está configurado em
-`Program.cs` e o evento `OnRedirectToLogin` devolve 401 em vez de redirecionar.
+Na Spec 006 era `[Authorize]` na classe, cobrindo os cinco endpoints de uma vez (RF6).
+A Spec 009 o substituiu por `[Authorize(Policy = "LeituraAluno")]` nos `GET` e
+`[Authorize(Policy = "GestaoAluno")]` nos verbos de escrita, porque a regra passou a
+depender do papel. Não há `[AllowAnonymous]` em nenhum endpoint. O esquema de cookie
+está em `Program.cs`, e `OnRedirectToLogin`/`OnRedirectToAccessDenied` devolvem 401/403
+em JSON em vez de redirecionar para HTML.
 
 Não se cria policy nem `RequireRole`: qualquer sessão válida passa. A distinção de
 papel e o escopo por unidade entram na Spec 009, que substituirá o atributo por
@@ -46,10 +50,10 @@ await fetch(`${ApiURL}/api/aluno`, { credentials: "include" });
 O `ApiURL` é vazio e o proxy do Vite encaminha `/api` para `http://localhost:5001`;
 o cookie é same-origin e `SameSite=Lax` continua válido.
 
-Tratamento de 401: `extrairErro` devolve a mensagem do backend; quando o status é
-401, a tela chama `logout()`/`navigate("/login")` em vez de mostrar "Erro ao buscar
-alunos". A decisão fica em um helper (`tratarNaoAutorizado`) usado pelas telas de
-aluno, não duplicada em cada `catch`.
+Tratamento de 401: `ErroRequisicao` carrega o status e `naoAutorizado(error)` responde
+por `status === 401`; as telas de aluno chamam `logout()` nesse caso, em vez de mostrar
+"Erro ao buscar alunos". `logout()` limpa a sessão e `ProtectedRoutes` redireciona para
+`/login`. O helper vive em `erroApi.ts`, não duplicado em cada `catch`.
 
 ## Testes de integração
 
@@ -106,3 +110,8 @@ troca o cliente anônimo pelo autenticado.
   memória por classe, não há colisão de e-mail.
 - **Rotas públicas futuras**: cardápios publicados (Spec 012) terão controller
   próprio e não herdam este atributo.
+
+> **Atualização de 2026-10-31 (auditoria):** o `[Authorize]` de classe foi substituído
+> pelas policies por endpoint da Spec 009, o 401 passou a ter corpo `{ erro }` (Spec 007)
+> e o teste de integração ganhou o caso de cookie adulterado. Rotas, payloads e o
+> contrato observável de 401 anônimo seguem os mesmos.

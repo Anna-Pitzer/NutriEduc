@@ -88,6 +88,14 @@ dotnet run
 
 A API inicia em `http://localhost:5001`. Na inicialização, o backend aplica automaticamente as migrations pendentes. A conexão atual usa SQLite (`database.db`), configurado em `backend/Infrastructure/DataBase/ConnectionContext.cs`.
 
+> **Se `dotnet run` falhar com `MSB3027`/`MSB3021` ("backend.exe está sendo usado por outro processo")** ou `address already in use`, há uma instância anterior rodando. Encerre-a antes de subir de novo:
+>
+> ```powershell
+> Get-Process backend -ErrorAction SilentlyContinue | Stop-Process -Force
+> ```
+>
+> O mesmo vale para `dotnet test` e `dotnet ef`: o build copia `backend.exe` para `bin/` e não consegue substituir o arquivo em uso.
+
 ### 3. Iniciar o frontend
 
 No segundo terminal, a partir da raiz do repositório:
@@ -157,7 +165,7 @@ A autenticação usa cookie HTTP-only chamado `NutriEduc.Auth`, com validade de 
 
 As senhas nunca são persistidas em claro. `Usuario.DefinirSenha` deriva um hash PBKDF2-SHA256 com salt aleatório de 16 bytes e 100.000 iterações, gravado no formato `pbkdf2-sha256$<iteracoes>$<salt>$<hash>` (salt e hash em base64). `Usuario.SenhaConfere` compara em tempo constante.
 
-Registros gravados antes dessa mudança ainda têm a senha em claro: no primeiro login válido o serviço compara uma única vez, grava o hash e passa a autenticar por ele. Não houve alteração de schema — a coluna `Senha` continua `TEXT` no SQLite —, portanto não existe migration para essa mudança.
+Registros gravados antes dessa mudança ainda têm a senha em claro: no primeiro login válido o serviço compara uma única vez, grava o hash e passa a autenticar por ele. Não houve alteração de schema — a coluna `Senha` continua `TEXT` no SQLite; a migration `HashSenhaUsuario` existe, mas é documental e não executa operação de schema.
 
 ### Alunos
 
@@ -171,6 +179,103 @@ Registros gravados antes dessa mudança ainda têm a senha em claro: no primeiro
 
 O campo de nascimento do DTO é `DateOnly`; envie uma data no formato `yyyy-MM-dd`. `anafilaxia` deve ser um booleano JSON (`true` ou `false`). As restrições alimentares são armazenadas como uma coleção JSON na tabela `Alunos`.
 
+Cada aluno pode ser vinculado a uma unidade (`UnidadeId`). Sem unidade, o aluno só é visível para `Nutricionista` e `AdminSecretaria`; `Escola` continua sendo apenas rótulo de exibição.
+
+### Papéis e escopo
+
+O login grava as claims `NameIdentifier`, `Role`, `escola` e `unidade`. Um usuário sem papel não autentica (`401` com `Conta sem papel definido. Procure a secretaria.`), e o autocadastro cria a conta nesse estado: quem define o papel é um administrador.
+
+| Papel | Escopo de dados |
+| --- | --- |
+| `Nutricionista` | Toda a rede |
+| `AdminSecretaria` | Toda a rede |
+| `AdminEscola` | Só a própria escola |
+| `Merendeira` | Só a própria unidade, somente leitura de aluno |
+| `Responsavel` | Só alunos vinculados a ele |
+
+**Bootstrap por token (duas vias):**
+
+**Token não versionado (setup por máquina):** o valor de `Bootstrap__Token` não está no
+repositório. Distribua-o por canal privado e grave-o uma vez em cada máquina de
+desenvolvimento:
+
+```bash
+dotnet user-secrets set "Bootstrap:Token" "<token>" --project backend
+```
+
+`dotnet run` usa o perfil `Development` (`backend/Properties/launchSettings.json`) e
+carrega esse valor. Em produção/container, defina a variável de ambiente
+`Bootstrap__Token`. O banco SQLite é local — usuários, unidades e o controle de
+"um uso por unidade" não são compartilhados entre máquinas.
+
+1. **Token de ambiente** — com `Bootstrap__Token` definido (mínimo **32 caracteres**), a página `/bootstrap` cria um `AdminSecretaria` informando o **nome exato de uma unidade**. Se a unidade não existir, ela é **criada junto** com o administrador; se existir, o admin é atribuído a ela. O mesmo token vale **uma vez por unidade**: cadastrar duas vezes na mesma unidade responde `409`. Unidade desativada ou sem nome responde `400`.
+2. **Token temporário** — em **Secretaria → painel**, um `AdminSecretaria` vinculado a uma unidade gera um token de **30 minutos**, de **uso único**, exibido uma única vez. Enquanto ele vale, o botão de gerar fica desabilitado com contagem regressiva; ao expirar, o botão volta a liberar um novo token e o cadastro fica bloqueado.
+
+`Bootstrap__Permitir=false` é a trava dura de ambiente: nega as duas vias mesmo com token válido (`403 Criação de administrador desativada.`). O token vai no corpo da requisição, nunca na URL — URL vaza em histórico, log e `Referer`. Sem nenhuma via disponível, a rota responde `404`, como se não existisse.
+
+**Bootstrap por seed:** `AdminInicial__Email` e `AdminInicial__Senha` criam o administrador no startup, de forma idempotente. Sem essas variáveis o startup apenas registra um aviso.
+
+Usuários criados antes da Spec 009 ficam sem papel e não autenticam até um administrador definir o papel.
+
+### Bootstrap
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/bootstrap/status` | Informa se há via de cadastro disponível (`{ disponivel, motivo }`) | Não |
+| `POST` | `/api/bootstrap/admin` | Cria um `AdminSecretaria` com token de ambiente ou token temporário | Token |
+| `GET` | `/api/bootstrap/token` | Estado do token da unidade (`{ ativo, expiraEm }`) | Sim (`AdminSecretaria`) |
+| `POST` | `/api/bootstrap/token` | Gera o token de 30 minutos da unidade (exibido uma única vez) | Sim (`AdminSecretaria`) |
+
+`POST /api/bootstrap/admin` recebe `{ token, unidade?, nome, cpf, dataNascimento, email, senha }` e responde `201 { id }`. `unidade` é obrigatória apenas para o token de ambiente; com o token temporário a unidade vem de quem o gerou. Erros: `400` de validação (inclui unidade inexistente), `403` com `Token inválido ou expirado.`, `409` para e-mail repetido ou unidade que já consumiu o token de ambiente e `404` quando não há nenhuma via configurada.
+
+`POST /api/bootstrap/token` responde `201 { token, expiraEm }`; com um token ainda válido na unidade responde `409`. A conta precisa estar **vinculada a uma unidade** (`403` caso contrário). O valor em claro nunca é persistido — o banco guarda apenas o hash SHA-256.
+
+### Escolas
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/escolas` | Lista escolas | Sessão válida |
+| `POST` | `/api/escolas` | Cria escola | `AdminSecretaria` |
+| `PUT` | `/api/escolas/{id}` | Renomeia escola | `AdminSecretaria` |
+| `POST` | `/api/escolas/{id}/desativar` | Desativa escola | `AdminSecretaria` |
+| `POST` | `/api/escolas/{id}/reativar` | Reativa escola | `AdminSecretaria` |
+| `DELETE` | `/api/escolas/{id}` | Exclui escola sem usuários vinculados (`409` caso contrário) | `AdminSecretaria` |
+
+### Unidades da rede
+
+Unidade é da secretaria, **não pertence a escola**: o nome é único na rede. A unidade **nasce no bootstrap do primeiro administrador**, não há rota de criação.
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/unidades` | Lista as unidades da rede | Sessão válida |
+| `PUT` | `/api/unidades/{id}` | Renomeia unidade | `AdminSecretaria` |
+| `POST` | `/api/unidades/{id}/desativar` | Desativa unidade | `AdminSecretaria` |
+| `POST` | `/api/unidades/{id}/reativar` | Reativa unidade | `AdminSecretaria` |
+| `DELETE` | `/api/unidades/{id}` | Exclui unidade sem usuário, aluno ou token vinculado (`409` caso contrário) | `AdminSecretaria` |
+
+### Gestão de usuários
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/usuarios` | Lista usuários com filtros `papel`, `escolaId`, `unidadeId`, `ativo`, `busca` | `AdminSecretaria` ou `AdminEscola` (escopo da escola) |
+| `POST` | `/api/usuarios` | Cria usuário com papel | `AdminSecretaria` ou `AdminEscola` (só `Responsavel`/`Merendeira` da própria escola) |
+| `PUT` | `/api/usuarios/{id}` | Atualiza usuário; papel e unidade só por administrador | Dono do perfil ou administrador do escopo |
+| `POST` | `/api/usuarios/{id}/ativar` | Reativa usuário | Administrador do escopo |
+| `POST` | `/api/usuarios/{id}/desativar` | Desativa usuário e invalida a sessão na requisição seguinte | Administrador do escopo |
+| `DELETE` | `/api/usuarios/{id}` | Exclui conta sem vínculo nem token emitido; bloqueia própria conta e último admin (`409`) | Administrador do escopo |
+
+`PUT /api/usuarios/{id}` aceita `unidadeId` apenas quando o papel resultante é `AdminSecretaria` (atribuição de origem, não escopo); nos demais papéis a unidade continua restrita a `Merendeira` e `Responsavel`, que também exigem escola. Papel e unidade viram claims **no login**: ao alterar a própria conta, saia e entre novamente para o painel reconhecer a unidade.
+
+### Vínculo responsável↔aluno
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/aluno/{alunoId}/responsaveis` | Lista responsáveis do aluno | `EquipeEscolar` do aluno |
+| `POST` | `/api/aluno/{alunoId}/responsaveis/{usuarioId}` | Vincula responsável | `AdminSecretaria` ou `AdminEscola` do aluno |
+| `DELETE` | `/api/aluno/{alunoId}/responsaveis/{usuarioId}` | Desvincula responsável | `AdminSecretaria` ou `AdminEscola` do aluno |
+
+O vínculo é único por par `(aluno, responsável)`: repetir devolve `409`. O responsável e o aluno precisam pertencer à mesma escola.
+
 Erros seguem um contrato único: corpo `{ "erro": "mensagem" }` em `400` (validação de domínio, modelo inválido ou JSON malformado), `401` (sem sessão), `403` (acesso negado), `404` (recurso ou rota inexistente), `405` (verbo não permitido), `409` (conflito de estado), `415` (content-type não suportado) e `500` (erro interno, sem detalhe técnico). As exceções são traduzidas por `ErrorHandlingMiddleware`; modelo inválido, `404` de rota inexistente, `405` e `415` são traduzidos por `API/Middleware/ContratoDeErro.cs`. Nenhum controller monta resposta de erro fora desse formato.
 
 As rotas de criação (`POST /api/usuario/registrar` e `POST /api/aluno/registrar`) respondem `201 Created` com o cabeçalho `Location` apontando para o recurso criado e o recurso no corpo. `DELETE` e `logout` respondem `204 No Content`. Toda rota com `id` usa a constraint `{id:int}`.
@@ -179,7 +284,7 @@ O perfil de usuário devolve apenas `id`, `nome`, `email`, `telefone` e `foto`; 
 
 ## Testes
 
-A suíte automatizada fica em `backend.Tests` (xUnit) e cobre as regras de domínio de `Usuario` e `Aluno` e os serviços `UsuarioService` e `AlunoService`, usando repositórios em memória.
+A suíte automatizada fica em `backend.Tests` (xUnit) e cobre as regras de domínio de `Usuario` e `Aluno`, os serviços `UsuarioService` e `AlunoService` (com repositórios em memória) e os contratos HTTP via `WebApplicationFactory` com SQLite em memória.
 
 ```bash
 dotnet test backend.Tests/backend.Tests.csproj

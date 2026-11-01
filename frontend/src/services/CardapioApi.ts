@@ -1,3 +1,5 @@
+import { extrairErro } from "./erroApi";
+
 const ApiURL = "";
 
 export type Refeicao = "cafe" | "almoco" | "lanche" | "jantar";
@@ -45,7 +47,7 @@ async function buscarOuVazio<T>(url: string): Promise<T[]> {
 
     if (resposta.status === 404) return [];
 
-    if (!resposta.ok) throw new Error("Erro ao carregar dados do cardápio");
+    if (!resposta.ok) throw new Error(await extrairErro(resposta, "Erro ao carregar dados do cardápio"));
 
     return resposta.json();
 }
@@ -74,7 +76,7 @@ export async function salvarCardapio(dados: CardapioCadastro) {
         body: JSON.stringify(dados)
     });
 
-    if (!resposta.ok) throw new Error("Erro ao salvar cardápio");
+    if (!resposta.ok) throw new Error(await extrairErro(resposta, "Erro ao salvar cardápio"));
 
     if (resposta.status === 204) return;
 

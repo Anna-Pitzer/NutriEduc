@@ -46,6 +46,9 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Responsavel", "Ntc.Domain.Entity.Aluno.Responsavel#Responsavel", b1 =>
                         {
                             b1.IsRequired();
@@ -78,7 +81,115 @@ namespace backend.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("UnidadeId");
+
                     b.ToTable("Alunos");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.ConsumoBootstrap", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ConsumidoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UnidadeId")
+                        .IsUnique();
+
+                    b.ToTable("ConsumosBootstrap");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Escola", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Ativa")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nome")
+                        .IsUnique();
+
+                    b.ToTable("Escolas");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.TokenDeCadastro", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CriadoPorUsuarioId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UsadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CriadoPorUsuarioId");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("UnidadeId", "ExpiraEm");
+
+                    b.ToTable("TokensDeCadastro");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.UnidadeEscolar", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Ativa")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("EscolaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EscolaId");
+
+                    b.HasIndex("Nome")
+                        .IsUnique();
+
+                    b.ToTable("Unidades");
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.Usuario", b =>
@@ -86,6 +197,11 @@ namespace backend.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("Cpf")
                         .HasColumnType("TEXT");
@@ -96,11 +212,17 @@ namespace backend.Migrations
                     b.Property<string>("Email")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("EscolaId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Foto")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Nome")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("Papel")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Senha")
                         .HasColumnType("TEXT");
@@ -108,12 +230,102 @@ namespace backend.Migrations
                     b.Property<string>("Telefone")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
                         .IsUnique();
 
+                    b.HasIndex("EscolaId");
+
+                    b.HasIndex("UnidadeId");
+
                     b.ToTable("Usuarios");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.VinculoResponsavelAluno", b =>
+                {
+                    b.Property<int>("AlunoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ResponsavelUsuarioId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("AlunoId", "ResponsavelUsuarioId");
+
+                    b.HasIndex("ResponsavelUsuarioId");
+
+                    b.ToTable("Vinculos");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Aluno", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.ConsumoBootstrap", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.TokenDeCadastro", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("CriadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.UnidadeEscolar", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Escola", null)
+                        .WithMany()
+                        .HasForeignKey("EscolaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Usuario", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Escola", null)
+                        .WithMany()
+                        .HasForeignKey("EscolaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.VinculoResponsavelAluno", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Aluno", null)
+                        .WithMany()
+                        .HasForeignKey("AlunoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Ntc.Domain.Entity.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("ResponsavelUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

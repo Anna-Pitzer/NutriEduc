@@ -191,6 +191,7 @@ public class AlunoTests
         var restricoes = Assert.IsAssignableFrom<IReadOnlyList<string>>(aluno.Restricoes);
 
         Assert.False(restricoes is List<string>);
+        Assert.Throws<InvalidCastException>(() => _ = (List<string>)restricoes);
     }
 
     [Fact]
@@ -296,6 +297,29 @@ public class AlunoTests
         Assert.Equal("Maria Silva", aluno.Nome);
         Assert.Equal("Escola Municipal", aluno.Turma.Escola);
         Assert.Equal("Ana Silva", aluno.Responsavel.Nome);
+        Assert.False(aluno.Anafilaxia);
+        Assert.Single(aluno.Restricoes);
+        Assert.Equal("APVL", aluno.Restricoes[0]);
+    }
+
+    [Fact]
+    public void AtualizarDados_ComRestricoesInvalidas_NaoAlteraEstado()
+    {
+        var aluno = Criar(restricoes: new[] { "APVL" });
+        var excedidas = Enumerable.Range(1, 21).Select(numero => $"Restrição {numero}");
+
+        Assert.Throws<ArgumentException>(() => aluno.AtualizarDados(
+            "Maria Atualizada",
+            new DateOnly(2014, 3, 10),
+            new Turma("Escola Nova", "6 ano"),
+            null,
+            null,
+            excedidas,
+            true,
+            new Responsavel("Carlos Souza", null)));
+
+        Assert.Equal("Maria Silva", aluno.Nome);
+        Assert.Equal("Escola Municipal", aluno.Turma.Escola);
         Assert.False(aluno.Anafilaxia);
         Assert.Single(aluno.Restricoes);
         Assert.Equal("APVL", aluno.Restricoes[0]);

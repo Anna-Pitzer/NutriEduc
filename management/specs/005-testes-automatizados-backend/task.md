@@ -44,24 +44,24 @@ Spec 001, criava um ciclo em que nenhuma das duas specs podia vir primeiro.
 
 ## Registro de execução
 
-Verificado contra o código em 2026-10-30. O `status` do frontmatter não foi alterado
+Verificado contra o código em 2026-10-30 e reauditado em 2026-10-31. O `status` do frontmatter não foi alterado
 (ver Spec 001, mesmo registro).
 
 **Concluído**
 
 | Task | Evidência |
 | --- | --- |
-| T1 | `backend.Tests.csproj` criado e executando — ver D1 |
-| T2 | `public partial class Program { }` (`Program.cs:67`) |
-| T3 | `Fakes/UsuarioRepositoryFake.cs` e `Fakes/AlunoRepositoryFake.cs` |
-| T4 | `Domain/UsuarioTests.cs` (25 métodos, incluindo senha e hash) |
-| T5 | `Domain/AlunoTests.cs` (26 métodos) |
+| T1 | `backend.Tests/backend.Tests.csproj` criado e executando — ver D1 |
+| T2 | `public partial class Program { }` (`backend/Program.cs`) |
+| T3 | `Fakes/UsuarioRepositoryFake.cs` e `Fakes/AlunoRepositoryFake.cs` — ver D4 |
+| T4 | `Domain/UsuarioTests.cs` (29 métodos, incluindo foto, senha e hash) |
+| T5 | `Domain/AlunoTests.cs` (27 métodos) |
 | T6 | `Domain/HashSenhaTests.cs` (8 métodos) |
-| T7 | `Services/UsuarioServiceTests.cs` (14) e `Services/AlunoServiceTests.cs` (10) |
-| T8 | `Integration/ApiFactory.cs`, `AlunoApiTests.cs` (6) e `UsuarioApiTests.cs` (6); `--filter Integration` → 12/12 |
-| T9 | comando e filtro documentados em `README.md:177-185` |
+| T7 | `Services/UsuarioServiceTests.cs` (15) e `Services/AlunoServiceTests.cs` (10) |
+| T8 | `Integration/ApiFactory.cs`, `AlunoApiTests.cs` (8) e `UsuarioApiTests.cs` (6); demais classes de integração entraram com as specs 006–022 |
+| T9 | comando e filtro documentados em `README.md` §Testes; filtro verificado (`--filter Domain.AlunoTests` → 37 casos) |
 
-Total executado em 2026-10-30: **152 testes, 152 aprovados, 0 falhas**.
+Total executado em 2026-10-31: **248 testes, 248 aprovados, 0 falhas**.
 
 **Pendente**
 
@@ -80,3 +80,6 @@ Total executado em 2026-10-30: **152 testes, 152 aprovados, 0 falhas**.
 - Arquivos fora da matriz original, criados por causa da composição de `Aluno`:
   `Domain/TurmaTests.cs`, `Domain/ResponsavelTests.cs`,
   `Infrastructure/ConnectionContextTests.cs` e `Support/UsuarioFabrica.cs`.
+- D4 (auditoria de 2026-10-31): a atribuição de `Id` por reflexão estava duplicada nos
+  três fakes (`Aluno`, `Usuario`, `Escola`) e em `UsuarioFabrica`. Unificada em
+  `Support/PropriedadesPrivadas`, usado pelos quatro; o comportamento dos fakes não mudou.

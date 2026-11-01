@@ -27,6 +27,13 @@ backend.Tests/
     └── AlunoRepositoryFake.cs
 ```
 
+> **Evolução posterior (2026-10-31):** a suíte cresceu com as specs 006–022. Arquivos
+> acrescentados fora do plano original: `Domain/{PapeisEEscolasTests,TokenDeCadastroTests,TurmaTests,ResponsavelTests}.cs`,
+> `Fakes/EscolaRepositoryFake.cs`,
+> `Integration/{ContratoRotas,ErroApi,PapeisApi,ExclusaoApi,BootstrapApi,BootstrapTokenApi,DocumentationTests}.cs`
+> e `Support/{UsuarioFabrica,RelogioFalso,PropriedadesPrivadas}.cs`. A matriz de cobertura
+> abaixo é o plano original; a suíte atual soma 248 casos.
+
 ## Pacotes
 
 | Pacote | Uso |

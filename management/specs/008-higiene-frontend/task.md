@@ -51,8 +51,8 @@ references: V7, L6, L8
 
 ## Registro de execução
 
-Executado em 2026-10-30. Sem migration e sem mudança de backend além do teste de
-documentação.
+Executado em 2026-10-30 e reauditado em 2026-10-31. Sem migration e sem mudança de
+backend além do teste de documentação.
 
 **Concluído**
 
@@ -61,12 +61,12 @@ documentação.
 | T1 | `routes.tsx` sem `/colors` e sem import de `PaletaDeCor`; `pages/dev/colorsTESTE.tsx` removido e pasta `pages/dev/` apagada |
 | T2 | `buscarEstatisticas` removida de `Perfil.ts`; estado, efeito e três cartões removidos de `Perfil.tsx`; `const ApiURL` órfão também removido |
 | T3 | `CardapioApi.ts` mantém `buscarAlimentos`, `buscarCardapio`, `buscarHistoricoCardapios` e `salvarCardapio`; as quatro funções sem consumidor saíram |
-| T4 | `buscarOuVazio` devolve `[]` em 404; `HomeNutricao` mostra "Nenhum cardápio criado ainda"; `Cardapio` renderiza cartões vazios; `MontarCardapio` mantém o catálogo local quando a API está indisponível (D1) |
+| T4 | `buscarOuVazio` devolve `[]` em 404 e usa `extrairErro` em 5xx (D4); `HomeNutricao` mostra "Nenhum cardápio criado ainda"; `Cardapio` renderiza cartões vazios; `MontarCardapio` mantém o catálogo local quando a API está indisponível (D1) |
 | T5 | `credentials: "include"` em `buscarOuVazio` e em `salvarCardapio` |
 | T6 | Tabela de alunos com coluna `Autenticação`; tabela de usuários já a tinha |
 | T7 | `DocumentationTests.Readme_ListaTodosOsEndpoints` extrai `[Route]` + `[Http*]` por reflexão e compara nos dois sentidos |
 | T8 | Removida a linha "Lista alunos" do README; o teste falhou com `Rotas sem linha no README: GET /api/aluno`; README restaurado em seguida |
-| T9 | `dotnet test` → **161/161** (140 unitários + 21 integração); `npm run build` OK; `npm run lint` 0 erros e 5 avisos (baseline; um arquivo a menos) |
+| T9 | 2026-10-31 (auditoria): `dotnet test` 250/250; `npm run build` OK; `npm run lint` 0 erros e 5 avisos (baseline) |
 
 **Desvios registrados**
 
@@ -78,7 +78,11 @@ documentação.
   tem hoje — fica para a Spec 012, quando as rotas passarem a existir.
 - D3: o teste de documentação valida o par `MÉTODO /rota`, não a descrição textual da
   tabela. É o limite declarado no design.
+- D4 (auditoria de 2026-10-31): `buscarOuVazio` e `salvarCardapio` lançavam mensagem
+  genérica e descartavam o corpo `{ erro }` da Spec 007. Passaram a usar `extrairErro`,
+  como os demais serviços; 404 continua virando lista vazia.
 
 **Pendências**
 
-Nenhuma task pendente. O status no roadmap continua `planned`.
+Nenhuma task pendente. A promoção de status no roadmap é feita pelos comandos do
+pipeline (`/spec-implement`, `/spec-test`); esta auditoria marcou a spec como `audited`.

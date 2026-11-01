@@ -52,21 +52,21 @@ references: V5, ADR-002, L6
 
 ## Registro de execução
 
-Executado em 2026-10-30. Sem migration: a mudança é de borda (atributo + cliente +
-serviço), sem alteração de schema.
+Executado em 2026-10-30 e reauditado em 2026-10-31. Sem migration: a mudança é de borda
+(atributo + cliente + serviço), sem alteração de schema.
 
 **Concluído**
 
 | Task | Evidência |
 | --- | --- |
-| T1 | `using Microsoft.AspNetCore.Authorization` e `[Authorize]` na classe (`AlunoController.cs:1-8`) |
-| T2 | `CreateAuthenticatedClientAsync()` registra usuário único e faz login com `HandleCookies` (`ApiFactory.cs:47-79`) |
+| T1 | `[Authorize(Policy = "LeituraAluno"/"GestaoAluno")]` em cada endpoint (`backend/API/Controllers/AlunoController.cs`); policies em `backend/Program.cs` — ver D5 |
+| T2 | `CreateAuthenticatedClientAsync()` registra usuário único e faz login com `HandleCookies` (`backend.Tests/Integration/ApiFactory.cs`) |
 | T3 | `AlunoApiTests` não usa mais cliente anônimo; cada teste obtém o seu via fábrica |
-| T4 | `Endpoints_SemSessao_Retornam401SemDados` cobre POST/GET/GET-perfil/PUT/DELETE e confere que o corpo não contém `nome` |
-| T5 | `credentials: "include"` nas 5 chamadas de `AlunoApi.ts` |
-| T6 | `ErroRequisicao` + `naoAutorizado` (`erroApi.ts:19-33`); as duas telas chamam `logout()` ao receber 401; `logout` memoizado com `useCallback` (`authContext.tsx:123`) |
-| T7 | Tabela de alunos com coluna `Autenticação = Sim` (`README.md:165-171`) |
-| T8 | `dotnet test` → **153/153** (140 unitários + 13 integração); `npm run build` OK; `npm run lint` 0 erros e 5 avisos (baseline) |
+| T4 | `Endpoints_SemSessao_Retornam401SemDados` cobre POST/GET/GET-perfil/PUT/DELETE e confere que o corpo não contém `nome`; `Get_ComCookieInvalido_Retorna401` cobre cookie adulterado |
+| T5 | `credentials: "include"` nas 5 chamadas de `frontend/src/services/AlunoApi.ts` |
+| T6 | `ErroRequisicao` + `naoAutorizado` (`frontend/src/services/erroApi.ts`); as duas telas chamam `logout()` ao receber 401; `logout` memoizado com `useCallback` (`authContext.tsx`) |
+| T7 | Tabela de alunos com coluna `Autenticação = Sim` (`README.md` §Endpoints disponíveis) |
+| T8 | 2026-10-31 (auditoria): `dotnet test` 249/249; `npm run build` OK; `npm run lint` 0 erros e 5 avisos (baseline) |
 
 **Desvios registrados**
 
@@ -82,8 +82,12 @@ serviço), sem alteração de schema.
 - D4: o teste anônimo verifica status e ausência de dados no corpo, não a ausência de
   persistência; o `[Authorize]` bloqueia antes do service, então não há caminho de
   escrita.
+- D5 (auditoria de 2026-10-31): a Spec 009 substituiu o `[Authorize]` de classe por
+  policies por endpoint (`LeituraAluno`/`GestaoAluno`) e acrescentou escopo de dados.
+  RF6 desta spec deixou de valer; o 401 anônimo (e o de cookie inválido) continua
+  garantido e testado.
 
 **Pendências**
 
-Nenhuma task pendente. O status no roadmap continua `planned`: a promoção para
-`verified`/`implemented` é feita pelos comandos do pipeline.
+Nenhuma task pendente. A promoção de status no roadmap é feita pelos comandos do
+pipeline (`/spec-implement`, `/spec-test`); esta auditoria marcou a spec como `audited`.

@@ -16,9 +16,8 @@ Navegador
   │   ├── nutricao/       HomeNutricao + alunos/ + cardapios/
   │   ├── merendeiras/    HomeMerendeiras (em construção)
   │   ├── pais/           HomePais (em construção)
-  │   ├── secretaria/     HomeSecretaria (em construção)
-  │   ├── escolas/        HomeEscolas (em construção)
-  │   └── dev/            colorsTESTE (paleta de cores, fora de produção)
+  │   ├── secretaria/     HomeSecretaria, Escolas, Unidades, Usuarios
+  │   └── escolas/        HomeEscolas (em construção)
   ├── components/     Header, Navbar, Footer, Button, CardapiosDiv, Notificacoes
   ├── context/        authContext (sessão via cookie)
   └── services/       AlunoApi, CardapioApi, Perfil  → fetch /api via proxy Vite
@@ -28,15 +27,20 @@ Regra de organização das telas: cada tela nova entra na pasta da área que a u
 não entra em `comum/`.
 
 API  ASP.NET Core 10 — http://localhost:5001
-  ├── API/Controllers  UsuarioController, AlunoController
-  ├── API/Services     UsuarioService, AlunoService
+  ├── API/Controllers  UsuarioController, AlunoController, UsuarioAdminController,
+  │                    EscolaController, UnidadeController, VinculoController,
+  │                    BootstrapController (+ RespostaController, base)
+  ├── API/Services     UsuarioService, AlunoService, EscolaService, VinculoService,
+  │                    BootstrapService, EscopoService
   ├── Application      DTOs de entrada e saída
-  ├── Domain           Usuario, Aluno + IUsuarioRepository, IAlunoRepository
-  ├── Infrastructure   ConnectionContext (EF Core), UsuarioRepository, AlunoRepository
-  └── Migrations       5 migrations, aplicadas no startup
+  ├── Domain           Usuario, Aluno, Escola, UnidadeEscolar, ConsumoBootstrap,
+  │                    TokenDeCadastro + contratos de repositório
+  ├── Infrastructure   ConnectionContext (EF Core) e repositórios
+  └── Migrations       8 migrations, aplicadas no startup
 
 Persistência
-  SQLite — database.db (tabelas Usuarios, Alunos)
+  SQLite — database.db (Usuarios, Alunos, Escolas, Unidades, Vinculos,
+  ConsumosBootstrap, TokensDeCadastro)
 ```
 
 ## 2. Camadas e responsabilidades
@@ -124,30 +128,34 @@ Formato único de erro:
 | Item | Situação | Encaminhamento |
 | --- | --- | --- |
 | Sem domínio de cardápio/alimento | Frontend chama 6 rotas inexistentes | Specs 011 (alimentos) e 012 (cardápio) |
-| Um único tipo de usuário | Cinco perfis em `implementacoes.md` | Spec 009 |
+| Um único tipo de usuário | Cinco papéis implementados na Spec 009 | Resolvido em 2026-10-30 |
 | `Restricoes` como JSON | Impede consulta por restrição e não há histórico | Spec 010 |
 | Sem paginação em `/api/aluno` | Listagem cresce sem limite | Spec 009 (listagens escopadas e paginadas) |
 | Sem versionamento de API | Contrato muda sem sinal | Pós-F2 |
+| Bootstrap grava dois agregados sem transação | Usuário e consumo em `SaveChanges` separados | Unidade de trabalho transacional (Spec 022, limitação registrada) |
+| `AdminEscola` sem vínculo aluno→escola | Unidade deixou de pertencer a escola (ADR-013) | PEND-024: adicionar `Aluno.EscolaId` |
+| Exclusão definitiva sem auditoria | `DELETE` remove o registro; resta só o log da requisição (ADR-014) | Registrar exclusões em histórico se auditoria for exigida |
 
 ## 10. Estado atual verificado (2026-10-30)
 
 | Verificação | Resultado |
 | --- | --- |
-| `dotnet test backend.Tests` | 170 testes, 170 aprovados, 0 falhas (32 de integração HTTP) |
-| Warnings de build | 7 `CS8604` em `UsuarioService`/`UsuarioController` (propriedades anuláveis de `Usuario`) |
-| `npm run build` / `npm run lint` | passam: build Vite OK (1846 módulos); lint 0 erros e 5 avisos |
-| Migrations | 5, aplicadas no startup por `Database.Migrate()` (a última é documental: `HashSenhaUsuario`) |
-| Domínio implementado | `Aluno` (invariantes, `Turma`, `Responsavel`, restrições protegidas) e `Usuario` (hash PBKDF2), sem papel |
-| Domínio especificado e não implementado | Specs 009–019 (33 documentos, status `created`) |
-| Superfície HTTP | 2 controllers (`AlunoController`, `UsuarioController`) |
-| Índice canônico | `management/roadmap.md` com 20 linhas, todas `planned`, criadas por `roadmap-plan-commit` em 2026-10-30 |
+| `dotnet test backend.Tests` | 246 testes, 246 aprovados, 0 falhas (157 unitários + 89 de integração HTTP) |
+| Warnings de build | 0 (o `Usuario` reescrito na Spec 009 eliminou os 7 `CS8604`) |
+| `npm run build` / `npm run lint` | passam: build Vite OK (1855 módulos); lint 0 erros e 5 avisos |
+| Migrations | 9, aplicadas no startup por `Database.Migrate()`: duas do bootstrap (`BootstrapPorUnidade`, `UnidadesDaRede`) e a anterior `BootstrapPainel` |
+| Domínio implementado | `Aluno`, `Usuario` (hash PBKDF2 + papel/escopo), `Escola`, `UnidadeEscolar` (da rede, ADR-013), `VinculoResponsavelAluno`, `ConsumoBootstrap`, `TokenDeCadastro` |
+| Domínio especificado e não implementado | Specs 010–019 (30 documentos, status `created`) |
+| Superfície HTTP | 8 controllers (`Aluno`, `Usuario`, `UsuarioAdmin`, `Escola`, `Unidade`, `Vinculo`, `Bootstrap`, `Resposta` base), com `DELETE` em escola, unidade e usuário |
+| Índice canônico | `management/roadmap.md` com 22 linhas, todas `planned`, criadas por `roadmap-plan-commit` |
 
-Estado formal por spec: no roadmap, as 20 estão `planned` e a promoção para
+Estado formal por spec: no roadmap, as 22 estão `planned` e a promoção para
 `verified`/`implemented` é feita pelos comandos do pipeline (`/spec-new`,
-`/spec-implement`, `/spec-test`). 001–008 e 020 têm os três documentos e todas as tasks
-executadas; 009–019 têm os três documentos e nenhuma task executada.
+`/spec-implement`, `/spec-test`). 001–009 e 020–022 têm os três documentos e as tasks
+executadas (a 009 com T13 transferida para a 021); 010–019 têm os três documentos e
+nenhuma task executada.
 
-## 11. Mapa de módulos especificados (009–019)
+## 11. Mapa de módulos especificados (009–019) e telas (021)
 
 | Spec | Módulo | Entidades / tipos principais | Superfície HTTP |
 | --- | --- | --- | --- |
@@ -162,6 +170,8 @@ executadas; 009–019 têm os três documentos e nenhuma task executada.
 | 017 | Solicitações | `Solicitacao`, `HistoricoSolicitacao` | `SolicitacaoController` |
 | 018 | Feedback e notificações | `Feedback`, `Notificacao` | `FeedbackController`, `NotificacaoController` |
 | 019 | Relatórios | `RelatorioGerado`, `IRelatorio`, exportadores | `RelatorioController` |
+| 021 | Telas de secretaria (V10) | nenhuma entidade nova | consome `/api/escolas`, `/api/unidades` e `/api/usuarios`, incluindo os `DELETE` |
+| 022 | Bootstrap de admin por token (V11) | `ConsumoBootstrap` (1 uso por unidade), `TokenDeCadastro` (30 min, uso único), `BootstrapService`; unidade da rede (ADR-013) | `/api/bootstrap/status`, `POST /api/bootstrap/admin`, `GET`/`POST /api/bootstrap/token`, `GET`/`POST /api/unidades` |
 
 **Regra de dependência entre módulos:** o fluxo de dados é
 `009 → 010 → 011 → 012 → 014 → {013, 015} → 016 → 017 → 018 → 019`. A seta

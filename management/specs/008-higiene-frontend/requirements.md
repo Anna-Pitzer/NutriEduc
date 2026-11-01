@@ -35,7 +35,11 @@ mantém documentação e controllers alinhados.
   `excluirCardapioHistorico` são removidas.
 - RF4: enquanto a Spec 012 não existir, as chamadas de cardápio tratam 404/5xx como
   indisponibilidade: a tela mostra estado vazio ("Cardápio disponível em breve") e
-  não registra erro não tratado no console.
+  não registra erro não tratado no console. **Execução (D2):** o estado vazio usa os
+  textos que as telas já tinham — `HomeNutricao` mostra "Nenhum cardápio criado ainda"
+  e `Cardapio` deixa os cartões vazios; o texto literal entra com a Spec 012, quando a
+  tela passar a distinguir "sem dados" de "indisponível". 5xx é capturado pelo `catch`
+  da tela, sem exceção não tratada.
 - RF5: as chamadas internas de cardápio usam `credentials: "include"`; a rota
   pública de cardápios publicados (Spec 012) fica sem credencial por decisão dela.
 - RF6: a tabela de endpoints do `README.md` lista todos os pares método+rota dos

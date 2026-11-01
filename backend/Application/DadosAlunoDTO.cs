@@ -14,6 +14,12 @@ public class DadosAlunoDTO
     public string NomeResponsavel { get; set; } = "";
     public string TelefoneResponsavel { get; set; } = "";
 
+    /// <summary>
+    /// Unidade institucional opcional (Spec 009). Sem unidade, o aluno só é visível
+    /// para Nutricionista e AdminSecretaria; `Escola` continua sendo rótulo de exibição.
+    /// </summary>
+    public int? UnidadeId { get; set; }
+
     public DadosAlunoDTO() { }
 
     public DadosAlunoDTO(string nome, DateOnly nascimento, string escola, string serie, string telefone, string observacao, List<string> restricoes, bool anafilaxia, string nomeResponsavel, string telefoneResponsavel)

@@ -1,11 +1,17 @@
 using Backend.Tests.Fakes;
 using Ntc.Application;
+using Ntc.Domain;
+using Ntc.Domain.Entity;
 using Xunit;
 
 namespace Backend.Tests.Services;
 
 public class AlunoServiceTests
 {
+    /// <summary>Escopo global: a nutrição enxerga toda a rede (Spec 009).</summary>
+    private static readonly EscopoUsuario Escopo =
+        new(1, PapelUsuario.Nutricionista, null, null);
+
     private static DadosAlunoDTO DtoValido(
         string nome = "Maria Silva",
         List<string>? restricoes = null)
@@ -57,7 +63,7 @@ public class AlunoServiceTests
         var servico = new AlunoService(repositorio);
         servico.CriarAluno(DtoValido(restricoes: new List<string> { "APVL", "Diabetes" }));
 
-        var alunos = servico.ListarAlunos();
+        var alunos = servico.ListarAlunos(Escopo);
 
         var aluno = Assert.Single(alunos);
         Assert.Equal(1, aluno.Id);
@@ -71,7 +77,7 @@ public class AlunoServiceTests
         var servico = new AlunoService(repositorio);
         servico.CriarAluno(DtoValido());
 
-        var aluno = servico.ObterAlunoPorId(1);
+        var aluno = servico.ObterAlunoPorId(1, Escopo);
 
         Assert.NotNull(aluno);
         Assert.Equal("Maria Silva", aluno!.Nome);
@@ -82,7 +88,7 @@ public class AlunoServiceTests
     {
         var servico = new AlunoService(new AlunoRepositoryFake());
 
-        Assert.Null(servico.ObterAlunoPorId(99));
+        Assert.Null(servico.ObterAlunoPorId(99, Escopo));
     }
 
     [Fact]
@@ -94,7 +100,8 @@ public class AlunoServiceTests
 
         var atualizado = servico.AtualizarAluno(
             1,
-            DtoValido(nome: "João Souza", restricoes: new List<string> { "Diabetes" }));
+            DtoValido(nome: "João Souza", restricoes: new List<string> { "Diabetes" }),
+            Escopo);
 
         Assert.NotNull(atualizado);
         Assert.Equal("João Souza", atualizado!.Nome);
@@ -111,7 +118,7 @@ public class AlunoServiceTests
     {
         var servico = new AlunoService(new AlunoRepositoryFake());
 
-        Assert.Null(servico.AtualizarAluno(99, DtoValido()));
+        Assert.Null(servico.AtualizarAluno(99, DtoValido(), Escopo));
     }
 
     [Fact]
@@ -123,7 +130,10 @@ public class AlunoServiceTests
 
         Assert.Throws<ArgumentException>(() =>
         {
-            servico.AtualizarAluno(1, DtoValido(nome: "", restricoes: new List<string> { "Diabetes" }));
+            servico.AtualizarAluno(
+                1,
+                DtoValido(nome: "", restricoes: new List<string> { "Diabetes" }),
+                Escopo);
         });
 
         var persistido = repositorio.GetAluno(1);
@@ -140,7 +150,7 @@ public class AlunoServiceTests
         var servico = new AlunoService(repositorio);
         servico.CriarAluno(DtoValido());
 
-        Assert.True(servico.ExcluirAluno(1));
+        Assert.True(servico.ExcluirAluno(1, Escopo));
         Assert.Null(repositorio.GetAluno(1));
     }
 
@@ -149,6 +159,6 @@ public class AlunoServiceTests
     {
         var servico = new AlunoService(new AlunoRepositoryFake());
 
-        Assert.False(servico.ExcluirAluno(99));
+        Assert.False(servico.ExcluirAluno(99, Escopo));
     }
 }

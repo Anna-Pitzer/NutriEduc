@@ -1,3 +1,5 @@
+using Backend.Tests.Support;
+using Ntc.Domain;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
 
@@ -44,11 +46,63 @@ public class UsuarioRepositoryFake : IUsuarioRepository
         _usuarios[indice] = usuario;
     }
 
+    public List<Usuario> Listar(FiltroUsuarios filtro, EscopoUsuario escopo)
+    {
+        var consulta = _usuarios.AsEnumerable();
+
+        if (!escopo.Global)
+        {
+            consulta = consulta.Where(usuario => usuario.EscolaId == escopo.EscolaId);
+        }
+
+        if (filtro.Papel is not null)
+        {
+            consulta = consulta.Where(usuario => usuario.Papel == filtro.Papel);
+        }
+
+        if (filtro.EscolaId is not null)
+        {
+            consulta = consulta.Where(usuario => usuario.EscolaId == filtro.EscolaId);
+        }
+
+        if (filtro.UnidadeId is not null)
+        {
+            consulta = consulta.Where(usuario => usuario.UnidadeId == filtro.UnidadeId);
+        }
+
+        if (filtro.Ativo is not null)
+        {
+            consulta = consulta.Where(usuario => usuario.Ativo == filtro.Ativo);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filtro.Busca))
+        {
+            var termo = filtro.Busca.Trim();
+
+            consulta = consulta.Where(usuario =>
+                (usuario.Nome ?? string.Empty).Contains(termo, StringComparison.OrdinalIgnoreCase) ||
+                (usuario.Email ?? string.Empty).Contains(termo, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return consulta.OrderBy(usuario => usuario.Nome).ToList();
+    }
+
+    public void Delete(Usuario usuario)
+    {
+        _usuarios.RemoveAll(item => item.Id == usuario.Id);
+    }
+
+    public bool ExistePorEscola(int escolaId) =>
+        _usuarios.Any(usuario => usuario.EscolaId == escolaId);
+
+    public bool ExistePorUnidade(int unidadeId) =>
+        _usuarios.Any(usuario => usuario.UnidadeId == unidadeId);
+
+    public int ContarPorPapel(PapelUsuario papel) =>
+        _usuarios.Count(usuario => usuario.Papel == papel);
+
     private static void DefinirId(Usuario usuario, int id)
     {
-        typeof(Usuario)
-            .GetProperty(nameof(Usuario.Id))!
-            .GetSetMethod(nonPublic: true)!
-            .Invoke(usuario, new object[] { id });
+        PropriedadesPrivadas.Definir(usuario, nameof(Usuario.Id), id);
     }
 }

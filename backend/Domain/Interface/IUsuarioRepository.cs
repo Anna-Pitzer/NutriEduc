@@ -9,5 +9,16 @@ public interface IUsuarioRepository
     bool ExistsByEmail(string email);
     void Update(Usuario usuario);
 
-    
+    /// <summary>
+    /// Lista usuários aplicando o escopo do solicitante e os filtros da RF7. O escopo
+    /// vai para a consulta SQL; AdminEscola nunca enxerga outra escola.
+    /// </summary>
+    List<Usuario> Listar(FiltroUsuarios filtro, EscopoUsuario escopo);
+
+    /// <summary>Exclusão definitiva: o chamador já verificou que não há referências.</summary>
+    void Delete(Usuario usuario);
+
+    bool ExistePorEscola(int escolaId);
+    bool ExistePorUnidade(int unidadeId);
+    int ContarPorPapel(PapelUsuario papel);
 }

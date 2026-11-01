@@ -63,7 +63,8 @@ public class ConnectionContextTests
                 "Restricoes",
                 "Serie",
                 "Telefone",
-                "TelefoneResponsavel"
+                "TelefoneResponsavel",
+                "UnidadeId"
             },
             colunas);
     }

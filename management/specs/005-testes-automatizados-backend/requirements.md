@@ -31,7 +31,9 @@ aposta.
 - RF3: `Aluno` é coberto por todas as invariantes da Spec 004 e pelas operações de
   restrição da Spec 003.
 - RF4: `UsuarioService` é coberto em criação válida, e-mail duplicado, senha inválida,
-  login válido, login inválido, login legado com re-hash e troca de senha.
+  login válido, login inválido e login legado com re-hash. A troca de senha citada na
+  versão original foi removida pela Spec 020 (PEND-012): o método era código morto sem
+  endpoint, portanto não há teste correspondente.
 - RF5: `AlunoService` é coberto em criação válida, criação inválida (exceção do
   domínio), listagem vazia, obtenção por ID existente e inexistente, exclusão existente
   e inexistente, atualização existente e inexistente.

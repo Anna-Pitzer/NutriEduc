@@ -11,9 +11,6 @@ internal static class UsuarioFabrica
 {
     public static void DefinirSenhaEmClaro(Usuario usuario, string senha)
     {
-        typeof(Usuario)
-            .GetProperty(nameof(Usuario.Senha))!
-            .GetSetMethod(nonPublic: true)!
-            .Invoke(usuario, new object[] { senha });
+        PropriedadesPrivadas.Definir(usuario, nameof(Usuario.Senha), senha);
     }
 }

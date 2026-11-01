@@ -56,15 +56,22 @@ Ordem obrigatória: guard clause → comprimento → derivação → atribuiçã
 ## Aplicação — `backend/API/Services/UsuarioService.cs`
 
 ```csharp
-public bool CriarUsuario(DadosUsuarioDTO dto)
+public int? CriarUsuario(DadosUsuarioDTO dto)
 {
-    var usuario = new Usuario(dto.Nome, dto.Cpf, dto.DataNascimento, dto.Email);
-    usuario.DefinirSenha(dto.Senha ?? string.Empty);   // lança 400 via handler global
+    Usuario usuario = new(
+        dto.Nome ?? string.Empty,
+        dto.Cpf ?? string.Empty,
+        dto.DataNascimento,
+        dto.Email ?? string.Empty);          // autocadastro nasce sem papel (Spec 009)
 
-    if (_usuarioRepository.ExistsByEmail(usuario.Email!)) return false;
+    usuario.DefinirSenha(dto.Senha ?? string.Empty);   // lança 400 pelo middleware (Spec 007)
+    usuario.AtualizarTelefone(dto.Telefone);
+    usuario.AtualizarFoto(dto.Foto);
+
+    if (_usuarioRepository.ExistsByEmail(usuario.Email!)) return null;
 
     _usuarioRepository.Add(usuario);
-    return true;
+    return usuario.Id;
 }
 
 public bool VerificarLogin(LoginUsuarioDTO dto)
@@ -84,6 +91,9 @@ public bool VerificarLogin(LoginUsuarioDTO dto)
     return false;
 }
 ```
+
+`Autenticar` (Spec 009) envolve `VerificarLogin` e acrescenta as checagens de conta ativa
+e papel definido; a verificação de credencial continua sendo apenas este método.
 
 ## Persistência
 

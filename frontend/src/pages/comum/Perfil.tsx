@@ -199,6 +199,9 @@ export function Perfil() {
         id: perfilAtualizado.id,
         nome: perfilAtualizado.nome,
         email: perfilAtualizado.email,
+        papel: userLogin?.papel ?? null,
+        escolaId: userLogin?.escolaId ?? null,
+        unidadeId: userLogin?.unidadeId ?? null,
     });
 
     const novosDados: DadosPerfil = {

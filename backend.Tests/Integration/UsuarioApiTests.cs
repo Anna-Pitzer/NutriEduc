@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Ntc.Domain.Entity;
 using Xunit;
 
 namespace Backend.Tests.Integration;
@@ -80,6 +81,9 @@ public class UsuarioApiTests : IClassFixture<ApiFactory>
         });
 
         await client.PostAsJsonAsync("/api/usuario/registrar", Payload(email));
+
+        // A conta nasce sem papel (Spec 009): sem esta promoção o login devolve 401.
+        _factory.DefinirPapel(email, PapelUsuario.Nutricionista);
 
         var resposta = await client.PostAsJsonAsync("/api/usuario/login", new { email, senha = "senha12345" });
 

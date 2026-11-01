@@ -53,7 +53,7 @@ references: V2, L8
 
 ## Registro de execução
 
-Verificado contra o código em 2026-10-30. O `status` do frontmatter não foi alterado:
+Verificado contra o código em 2026-10-30 e reauditado em 2026-10-31. O `status` do frontmatter não foi alterado:
 `created` é o valor que o `/spec-new` grava (`templates/prompts/spec_new.md.ejs:125`),
 e o ciclo de vida é propriedade do `roadmap.md`.
 
@@ -61,16 +61,16 @@ e o ciclo de vida é propriedade do `roadmap.md`.
 
 | Task | Evidência |
 | --- | --- |
-| T0 | `Aluno.AtualizarDados` (`Aluno.cs:91`); `backend.Tests.csproj`, `public partial class Program` (`Program.cs:67`) e os dois fakes existem |
-| T1 | `AlunoService.AtualizarAluno` (`AlunoService.cs:47-69`) |
-| T2 | `PUT api/aluno/{id:int}` com 404 (`AlunoController.cs:47-65`) |
-| T3 | `AlunoServiceTests.AtualizarAluno_Existente/Inexistente/ComDadosInvalidos` (`:89`, `:110`, `:118`) |
-| T4 | `atualizarAluno` (`AlunoApi.ts:40-50`) |
-| T5 | `mapearAlunoParaFormulario` (`CadastrarAlunos.tsx:36`) — ver D1 |
-| T6 | botão Editar (`VisualizarAlunos.tsx:392`), `useParams` (`CadastrarAlunos.tsx:128`) e rota `routes.tsx:44` |
-| T7 | mensagens de sucesso/erro (`CadastrarAlunos.tsx:296-320`); lista recarrega no `useEffect` (`VisualizarAlunos.tsx:54-57`) — ver D2 |
-| T8 | `PUT /api/aluno/{id}` na tabela do `README.md:170` |
-| T9 | 2026-10-30: `dotnet build` 0 erros; `dotnet test` 152/152; `npm run build` OK (Vite, 1846 módulos); `npm run lint` 0 erros e 5 avisos |
+| T0 | `Aluno.AtualizarDados` (`backend/Domain/Entities/Aluno.cs`); `backend.Tests/backend.Tests.csproj`; `public partial class Program` (`backend/Program.cs`) e os fakes em `backend.Tests/Fakes/` |
+| T1 | `AlunoService.AtualizarAluno` (`backend/API/Services/AlunoService.cs`) |
+| T2 | `PUT api/aluno/{id:int}` com 404/403 por escopo (`backend/API/Controllers/AlunoController.cs`) |
+| T3 | `AlunoServiceTests.AtualizarAluno_Existente/Inexistente/ComDadosInvalidos` (`backend.Tests/Services/AlunoServiceTests.cs`) |
+| T4 | `atualizarAluno` (`frontend/src/services/AlunoApi.ts`) |
+| T5 | `mapearAlunoParaFormulario` (`frontend/src/pages/nutricao/alunos/CadastrarAlunos.tsx`) — ver D1 |
+| T6 | botão Editar (`VisualizarAlunos.tsx`), `useParams` (`CadastrarAlunos.tsx`) e rota `/alunos/editar/:id` (`frontend/src/routes/routes.tsx`) |
+| T7 | mensagens de sucesso/erro (`CadastrarAlunos.tsx`); lista recarrega no `useEffect` (`VisualizarAlunos.tsx`) — ver D2 |
+| T8 | `PUT /api/aluno/{id}` na tabela do `README.md` |
+| T9 | 2026-10-31 (auditoria): `dotnet test` 246/246; `npm run build` OK (Vite, 1855 módulos); `npm run lint` 0 erros e 5 avisos |
 
 **Pendente**
 
@@ -82,6 +82,12 @@ e o ciclo de vida é propriedade do `roadmap.md`.
   componente (`CadastrarAlunos.tsx`), então a função local já é a única cópia.
 - D2: não há refetch explícito após salvar. A listagem é outra rota e busca os dados no
   `useEffect` de montagem, portanto voltar para ela já relê do backend.
+- D3 (corrigido na auditoria de 2026-10-31): a edição apagava `UnidadeId` do aluno —
+  `AlunoCadastro` não carregava o campo e o `PUT` sem `unidadeId` executava
+  `DefinirUnidade(null)`. O campo passou a ser preservado no formulário e reenviado.
+- D4 (limitação conhecida): escolas e séries em `CadastrarAlunos.tsx` são listas estáticas;
+  editar aluno com `escola` fora delas falha na validação local. Resolver exige consumir
+  `GET /api/escolas` (Spec 021).
 - A validação por HTTP deixou de ser lacuna: `Backend.Tests/Integration/AlunoApiTests`
   cobre POST, GET, PUT e 404 via `WebApplicationFactory`. A persistência real no
   arquivo `database.db` continua não exercitada (PEND-018).

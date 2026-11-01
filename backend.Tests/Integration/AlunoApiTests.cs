@@ -55,6 +55,40 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Post_ComTresRestricoes_GetDevolveOsValoresPersistidos()
+    {
+        var client = await _factory.CreateAuthenticatedClientAsync();
+
+        var payload = new
+        {
+            nome = "Dora Restricoes",
+            nascimento = "2016-02-03",
+            escola = "Escola Teste",
+            serie = "2o ano",
+            telefone = "11999999999",
+            observacao = "",
+            restricoes = new[] { "Lactose", "Gluten", "Diabetes" },
+            anafilaxia = true,
+            nomeResponsavel = "Ana Teste",
+            telefoneResponsavel = "11988888888"
+        };
+
+        var criado = await client.PostAsJsonAsync("/api/aluno/registrar", payload);
+        Assert.Equal(HttpStatusCode.Created, criado.StatusCode);
+
+        var id = (await criado.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetInt32();
+
+        var aluno = await client.GetFromJsonAsync<JsonElement>($"/api/aluno/perfil/{id}");
+        var restricoes = aluno.GetProperty("restricoes")
+            .EnumerateArray()
+            .Select(restricao => restricao.GetString())
+            .ToArray();
+
+        Assert.Equal(new string?[] { "Lactose", "Gluten", "Diabetes" }, restricoes);
+    }
+
+    [Fact]
     public async Task Post_ComDadosInvalidos_Retorna400ComErro()
     {
         var client = await _factory.CreateAuthenticatedClientAsync();
@@ -139,5 +173,19 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
         var respostaLista = await client.GetAsync("/api/aluno");
         var corpo = await respostaLista.Content.ReadAsStringAsync();
         Assert.DoesNotContain("nome", corpo, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Get_ComCookieInvalido_Retorna401()
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("Cookie", "NutriEduc.Auth=valor-adiuterado");
+
+        var resposta = await client.GetAsync("/api/aluno");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, resposta.StatusCode);
+
+        using var corpo = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
+        Assert.True(corpo.RootElement.TryGetProperty("erro", out _));
     }
 }

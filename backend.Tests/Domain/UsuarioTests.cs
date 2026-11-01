@@ -279,4 +279,30 @@ public class UsuarioTests
 
         Assert.False(usuario.SenhaLegada(senha));
     }
+
+    [Fact]
+    public void Construtor_SemDataDeNascimento_Lanca()
+    {
+        Assert.Throws<ArgumentException>(() => new Usuario(
+            "Maria Silva", "12345678901", default, "maria@exemplo.com"));
+    }
+
+    [Fact]
+    public void Construtor_ComDataFutura_Lanca()
+    {
+        var amanha = DateOnly.FromDateTime(DateTime.Today).AddDays(1);
+
+        Assert.Throws<ArgumentException>(() => new Usuario(
+            "Maria Silva", "12345678901", amanha, "maria@exemplo.com"));
+    }
+
+    [Fact]
+    public void Construtor_ComDataValida_PreservaData()
+    {
+        var nascimento = new DateOnly(2000, 5, 20);
+
+        var usuario = new Usuario("Maria Silva", "12345678901", nascimento, "maria@exemplo.com");
+
+        Assert.Equal(nascimento, usuario.DataNascimento);
+    }
 }

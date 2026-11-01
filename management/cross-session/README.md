@@ -30,7 +30,7 @@ conversation history alone is not durable memory.
 
 ## Bloqueios conhecidos
 
-- `management/roadmap.md` é a única fonte de verdade do planejamento, com 19 linhas
+- `management/roadmap.md` é a única fonte de verdade do planejamento, com 21 linhas
   `planned`; `PLANEJAMENTO.md` foi descartado. A promoção de status é feita por
   `/spec-new`, `/spec-implement` e `/spec-test`.
 - Frontmatter `status: created` é o valor que o próprio `/spec-new` grava
@@ -38,11 +38,39 @@ conversation history alone is not durable memory.
 - `frontend/node_modules` instalado (51 pacotes) e `frontend/.env` criado localmente
   (ambos ignorados pelo git).
 
-## Estado do código (verificado em 2026-10-30)
+## Estado do código (verificado em 2026-10-31)
 
-- `dotnet test backend.Tests`: 170/170 verdes (138 unitários + 32 de integração HTTP).
+- `dotnet test backend.Tests`: 236/236 verdes (156 unitários + 80 de integração HTTP).
 - Gates de frontend passam: `npm run build` OK e `npm run lint` com 0 erros.
-- 2 controllers (`AlunoController`, `UsuarioController`), 5 migrations (a última
-  documental: `HashSenhaUsuario`).
-- Specs 001–008 e 020: todas as tasks executadas. Especificadas e não implementadas:
-  009–019.
+- 7 controllers com rota (inclui `BootstrapController`) + `RespostaController` base;
+  8 migrations (a última é `BootstrapPorUnidade`).
+- Specs 001–009 e 020–022: tasks executadas (a 009 com T13 transferida para a 021).
+  Especificadas e não implementadas: 010–019.
+
+## Bootstrap v2 (2026-10-31)
+
+- **Unidade é da rede, não da escola (ADR-013).** `UnidadeEscolar.EscolaId` é opcional
+  (dado legado) e o nome é único na rede. `/api/escolas/{id}/unidades` foi substituído por
+  `GET`/`POST /api/unidades`; a tela `/secretaria/unidades` não pede escola.
+- `ConfiguracaoBootstrap` (interruptor booleano) foi **removida**. O painel agora emite um
+  token de **30 minutos**, de uso único, preso à unidade de quem gerou (`TokensDeCadastro`).
+- O token de ambiente (`Bootstrap__Token`) vale **uma vez por unidade**, registrado em
+  `ConsumosBootstrap`; a unidade é informada pelo nome exato e precisa existir.
+- `AdminSecretaria` passou a aceitar `UnidadeId` como **atribuição**, não escopo — o papel
+  continua global. `Nutricionista` e `AdminEscola` seguem recusando unidade.
+- Efeito colateral em **PEND-024**: sem `Aluno.EscolaId`, o escopo de aluno de
+  `AdminEscola` ficou limitado a unidades legadas com escola; os testes de vínculo passaram
+  a usar `AdminSecretaria`.
+- **Unidade nasce no bootstrap (2026-10-31).** `POST /api/unidades` e
+  `EscolaService.CriarUnidade` foram removidos: o token de ambiente cria a unidade junto
+  com o primeiro administrador (`ResolverOuCriarUnidade`). A tela `/secretaria/unidades`
+  só lista, renomeia, ativa/desativa e exclui.
+- **Exclusão definitiva (ADR-014).** `DELETE /api/escolas/{id}`, `/api/unidades/{id}` e
+  `/api/usuarios/{id}`, sempre com bloqueio por referência (`409`): escola com usuários ou
+  unidade legada; unidade com usuário, aluno, token ou consumo de bootstrap; usuário com
+  própria conta, último `AdminSecretaria`, vínculo de responsável ou token emitido. A
+  checagem vive em `ExclusaoService`.
+- `TimeProvider` é injetado no backend; o relógio falso dos testes parte da hora real
+  porque o cookie de sessão também usa `TimeProvider`.
+- Limitação conhecida: a criação grava usuário e consumo em dois `SaveChanges` (sem
+  transação única), registrada no `design.md` da 022.

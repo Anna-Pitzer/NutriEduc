@@ -35,27 +35,31 @@ references: V1, ADR-006, L2
 
 ## Registro de execução
 
-Verificado contra o código em 2026-10-30. O `status` do frontmatter não foi alterado
+Verificado contra o código em 2026-10-30 e reauditado em 2026-10-31. O `status` do frontmatter não foi alterado
 (ver Spec 001, mesmo registro).
 
 **Concluído**
 
 | Task | Evidência |
 | --- | --- |
-| T1 | `_restricoes` + `public IReadOnlyList<string> Restricoes => _restricoes.AsReadOnly()` (`Aluno.cs:32,51`) |
-| T2 | `AdicionarRestricao`/`RemoverRestricao` (`Aluno.cs:115-143`); testes `AlunoTests:197-252` |
-| T3 | construtor aceita `IEnumerable<string>?` (`Aluno.cs:69`) — ver D1 |
-| T4 | `PrimitiveCollection(...).HasField("_restricoes").UsePropertyAccessMode(Field)` (`ConnectionContext.cs:27-30`) — ver D2 |
-| T5 | `aluno.Restricoes.ToList()` na saída (`AlunoService.cs:80`); `DadosAlunoDTO.Restricoes` continua `List<string>` |
+| T1 | `_restricoes` + `public IReadOnlyList<string> Restricoes => _restricoes.AsReadOnly()` (`backend/Domain/Entities/Aluno.cs`); teste `Restricoes_NaoExpoeListaMutavel` |
+| T2 | `AdicionarRestricao`/`RemoverRestricao` (`Aluno.cs`); testes de normalização, duplicata, vazio e limite em `AlunoTests` |
+| T3 | construtor aceita `IEnumerable<string>?` e usa `NormalizarRestricoes` (`Aluno.cs`) — ver D1 |
+| T4 | `PrimitiveCollection(...).HasField("_restricoes").UsePropertyAccessMode(Field)` (`backend/Infrastructure/DataBase/ConnectionContext.cs`); `ConnectionContextTests` constrói o modelo e `Post_ComTresRestricoes_GetDevolveOsValoresPersistidos` grava e relê via SQLite em memória — ver D2 |
+| T5 | `aluno.Restricoes.ToList()` na saída (`backend/API/Services/AlunoService.cs`); `DadosAlunoDTO.Restricoes` continua `List<string>` |
 | T6 | nenhuma migration nova: a coluna `Restricoes` já existia em `20260930171058_AdicionarRestricoesAluno` |
-| T7 | `dotnet test`: 152 aprovados, 0 falhas (2026-10-30) |
+| T7 | 2026-10-31 (auditoria): `dotnet test` 247/247, 0 falhas |
 
 **Desvios registrados**
 
-- D1: o construtor não chama `AdicionarRestricao` item a item. Usa `NormalizarRestricoes`
-  (`Aluno.cs:213-238`), que valida em buffer e só então aplica — mesma semântica
-  (ignora vazio e duplicata, lança na 21ª) com atomicidade: nada é atribuído se falhar.
-- D2: a validação do T4 foi feita pelo teste que constrói o modelo do EF
-  (`ConnectionContextTests`), não por cadastro e leitura reais. Persistência em SQLite
-  nunca foi exercitada (PEND-018).
-- `dotnet ef migrations list` não foi executado: `dotnet-ef` não está instalado (PEND-020).
+- D1: o construtor não chama `AdicionarRestricao` item a item. Usa `NormalizarRestricoes`,
+  que valida em buffer e só então aplica — mesma semântica (ignora vazio e duplicata,
+  lança na 21ª) com atomicidade: nada é atribuído se falhar. As regras de trim e de
+  duplicidade são compartilhadas com `AdicionarRestricao` (`NormalizarRestricao` e
+  `ContemRestricao`).
+- D2 (atualizado na auditoria de 2026-10-31): o T4 é validado em duas camadas —
+  `ConnectionContextTests` constrói o modelo do EF e
+  `AlunoApiTests.Post_ComTresRestricoes_GetDevolveOsValoresPersistidos` grava e relê via
+  SQLite em memória. O arquivo `database.db` real continua não exercitado (PEND-018).
+- `dotnet ef migrations list` não foi executado: `dotnet-ef` não estava instalado à época
+  (PEND-020, concluído depois com EF Tools 10.0.12); nenhuma migration nova era necessária.

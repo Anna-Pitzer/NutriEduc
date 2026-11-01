@@ -1,20 +1,24 @@
 using Ntc.Application;
+using Ntc.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 
-[ApiController]
-[Authorize]
-[Route("api/[controller]")]
+namespace Ntc.Controllers;
 
-public class AlunoController : ControllerBase
+[ApiController]
+[Route("api/[controller]")]
+public class AlunoController : RespostaController
 {
     private readonly AlunoService _alunoService;
+    private readonly EscopoService _escopo;
 
-    public AlunoController(AlunoService alunoService)
+    public AlunoController(AlunoService alunoService, EscopoService escopo)
     {
-        _alunoService = alunoService ?? throw new ArgumentException();
+        _alunoService = alunoService;
+        _escopo = escopo;
     }
 
+    [Authorize(Policy = "GestaoAluno")]
     [HttpPost("registrar")]
     public IActionResult PostAddAluno([FromBody] DadosAlunoDTO dto)
     {
@@ -22,44 +26,86 @@ public class AlunoController : ControllerBase
         return Created($"/api/aluno/perfil/{criado.Id}", criado);
     }
 
+    [Authorize(Policy = "LeituraAluno")]
     [HttpGet]
     public IActionResult Listar()
     {
-        return Ok(_alunoService.ListarAlunos());
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Ok(_alunoService.ListarAlunos(escopo));
     }
 
+    [Authorize(Policy = "LeituraAluno")]
     [HttpGet("perfil/{id:int}")]
     public IActionResult GetAluno(int id)
     {
-        var dadosAluno = _alunoService.ObterAlunoPorId(id);
-        if (dadosAluno == null)
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
         {
-            return NotFound(new { erro = "Aluno não encontrado." });
+            return SessaoInvalida();
         }
-        return Ok(dadosAluno);
+
+        var dadosAluno = _alunoService.ObterAlunoPorId(id, escopo);
+
+        if (dadosAluno != null)
+        {
+            return Ok(dadosAluno);
+        }
+
+        // RF9: fora do escopo responde 403 sem revelar existência. Apenas o escopo
+        // global distingue "não existe" (404) de "não é seu" (403).
+        return escopo.Global
+            ? NotFound(new { erro = "Aluno não encontrado." })
+            : Forbid();
     }
 
+    [Authorize(Policy = "GestaoAluno")]
     [HttpPut("{id:int}")]
     public IActionResult Atualizar(int id, [FromBody] DadosAlunoDTO dto)
     {
-        var aluno = _alunoService.AtualizarAluno(id, dto);
+        var escopo = ObterEscopo(_escopo);
 
-        if (aluno == null)
+        if (escopo is null)
         {
-            return NotFound(new { erro = "Aluno não encontrado." });
+            return SessaoInvalida();
         }
 
-        return Ok(aluno);
+        var aluno = _alunoService.AtualizarAluno(id, dto, escopo);
+
+        if (aluno != null)
+        {
+            return Ok(aluno);
+        }
+
+        return escopo.Global
+            ? NotFound(new { erro = "Aluno não encontrado." })
+            : Forbid();
     }
 
+    [Authorize(Policy = "GestaoAluno")]
     [HttpDelete("{id:int}")]
     public IActionResult Excluir(int id)
     {
-        if (!_alunoService.ExcluirAluno(id))
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
         {
-            return NotFound(new { erro = "Aluno não encontrado." });
+            return SessaoInvalida();
         }
 
-        return NoContent();
+        if (_alunoService.ExcluirAluno(id, escopo))
+        {
+            return NoContent();
+        }
+
+        return escopo.Global
+            ? NotFound(new { erro = "Aluno não encontrado." })
+            : Forbid();
     }
 }

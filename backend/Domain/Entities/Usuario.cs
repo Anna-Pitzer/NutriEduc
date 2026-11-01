@@ -1,5 +1,10 @@
 namespace Ntc.Domain.Entity;
 
+/// <summary>
+/// Usuário do sistema. O estado de autorização (papel, escola, unidade e ativo) vive
+/// aqui: um usuário sem papel é um cadastro válido que ainda não pode autenticar
+/// (Spec 009, RF1), e não um usuário "Nutricionista" por omissão.
+/// </summary>
 public class Usuario {
     public int Id {get;private set;}
     public string? Nome {get;private set;}
@@ -9,27 +14,102 @@ public class Usuario {
     public string? Telefone{get;private set;}
     public string? Foto{get;private set;}
     public string? Senha {get;private set;}
-    public Usuario()
+
+    /// <summary>
+    /// Nulo significa "aguardando definição de papel". O tipo é anulável de propósito:
+    /// o valor 0 do enum é <see cref="PapelUsuario.Nutricionista"/> e um `default`
+    /// acidental daria escopo global a registros legados.
+    /// </summary>
+    public PapelUsuario? Papel {get;private set;}
+
+    public int? EscolaId {get;private set;}
+
+    public int? UnidadeId {get;private set;}
+
+    public bool Ativo {get;private set;} = true;
+
+    /// <summary>Somente para o EF Core materializar registros existentes.</summary>
+    private Usuario()
     {
-        
-    }
-    public Usuario (string email)
-    {
-        Email = email;
+
     }
 
-    public Usuario(string nome, string cpf, DateOnly dataNascimento, string email)
+    /// <summary>
+    /// Único construtor público de criação. O papel é opcional para permitir o
+    /// autocadastro; a conta só autentica depois que um administrador define o papel.
+    /// </summary>
+    public Usuario(string nome, string cpf, DateOnly dataNascimento, string email,
+                   PapelUsuario? papel = null, int? escolaId = null, int? unidadeId = null)
     {
-        Nome = nome;
+        // `DateOnly` é struct: um JSON sem `dataNascimento` chega como 0001-01-01 e passaria
+        // pela validação de modelo. A invariante é do domínio (ADR-004), não do DTO.
+        if (dataNascimento == default || dataNascimento > DateOnly.FromDateTime(DateTime.Today))
+        {
+            throw new ArgumentException("Data de nascimento inválida.");
+        }
+
+        AtualizarPerfil(nome, email);
         Cpf = cpf;
         DataNascimento = dataNascimento;
-        Email = email;
+        DefinirPapel(papel, escolaId, unidadeId);
+        Ativo = true;
     }   
+
+    /// <summary>
+    /// Define o papel e o escopo. As regras de combinação são do domínio, não do
+    /// serviço: AdminEscola, Merendeira e Responsável exigem escola; unidade só se
+    /// aplica a Merendeira e Responsável; Nutricionista e AdminSecretaria são globais.
+    /// </summary>
+    public void DefinirPapel(PapelUsuario? papel, int? escolaId, int? unidadeId)
+    {
+        if (papel is null)
+        {
+            if (escolaId is not null || unidadeId is not null)
+            {
+                throw new ArgumentException(
+                    "Usuário sem papel não pode ter escola ou unidade.");
+            }
+
+            Papel = null;
+            EscolaId = null;
+            UnidadeId = null;
+            return;
+        }
+
+        var exigeEscola = papel is PapelUsuario.AdminEscola
+            or PapelUsuario.Merendeira
+            or PapelUsuario.Responsavel;
+
+        if (exigeEscola && escolaId is null)
+        {
+            throw new ArgumentException("Este papel exige escola.");
+        }
+
+        if (!exigeEscola && escolaId is not null)
+        {
+            throw new ArgumentException("Este papel não pertence a uma escola.");
+        }
+
+        if (unidadeId is not null &&
+            papel is not (PapelUsuario.Merendeira or PapelUsuario.Responsavel or PapelUsuario.AdminSecretaria))
+        {
+            throw new ArgumentException(
+                "Unidade só se aplica a merendeira, responsável ou secretaria.");
+        }
+
+        Papel = papel;
+        EscolaId = escolaId;
+        UnidadeId = unidadeId;
+    }
+
+    public void Desativar() => Ativo = false;
+
+    public void Reativar() => Ativo = true;
 
     public void AtualizarPerfil(string nome, string email)
     {
-        nome = nome.Trim();
-        email = email.Trim().ToLowerInvariant();
+        nome = (nome ?? string.Empty).Trim();
+        email = (email ?? string.Empty).Trim().ToLowerInvariant();
 
         if (nome.Length < 2 || nome.Length > 100)
         {

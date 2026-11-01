@@ -7,10 +7,20 @@ type UserLogin = {
   password: string;
 };
 
-type UserSession = {
+export type PapelUsuario =
+  | "Nutricionista"
+  | "Merendeira"
+  | "Responsavel"
+  | "AdminSecretaria"
+  | "AdminEscola";
+
+export type UserSession = {
   id: number;
   email: string;
   nome: string;
+  papel: PapelUsuario | null;
+  escolaId: number | null;
+  unidadeId: number | null;
 };
 
 type UserRegister = {
@@ -85,13 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (!resposta.ok) {
-      if (resposta.status === 404 || resposta.status === 401) {
-        throw new Error("Email ou senha incorretos.");
-      }
-
-      throw new Error(
-        "Não foi possível entrar. Verifique o terminal do backend."
-      );
+      throw new Error(await extrairErro(resposta, "Não foi possível entrar."));
     }
 
     const usuario: UserSession = await resposta.json();

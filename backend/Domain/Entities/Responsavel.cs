@@ -48,28 +48,11 @@ public class Responsavel
 
     private static string ValidarNome(string? nome)
     {
-        var texto = (nome ?? string.Empty).Trim();
-
-        if (texto.Length == 0)
-            throw new ArgumentException("O campo Nome do responsável é obrigatório.");
-
-        if (texto.Length < NomeMin || texto.Length > NomeMax)
-            throw new ArgumentException(
-                $"O campo Nome do responsável deve ter entre {NomeMin} e {NomeMax} caracteres.");
-
-        return texto;
+        return ValidacaoDeCampo.Texto(nome, "Nome do responsável", NomeMin, NomeMax);
     }
 
     private static string ValidarTelefone(string? telefone)
     {
-        if (string.IsNullOrWhiteSpace(telefone))
-            return string.Empty;
-
-        var digitos = new string(telefone.Where(char.IsDigit).ToArray());
-
-        if (digitos.Length != 10 && digitos.Length != 11)
-            throw new ArgumentException("O campo Telefone do responsável deve ter 10 ou 11 dígitos.");
-
-        return digitos;
+        return ValidacaoDeCampo.Telefone(telefone, "Telefone do responsável");
     }
 }

@@ -31,18 +31,24 @@ public sealed class ErrorHandlingMiddleware
         {
             if (context.Response.HasStarted)
             {
-                _logger.LogError(excecao, "Falha após o início da resposta em {Rota}.",
-                    context.Request.Path);
+                _logger.LogError(excecao,
+                    "Falha após o início da resposta em {Rota} (correlação {Correlacao}).",
+                    context.Request.Path, context.TraceIdentifier);
                 throw;
             }
 
             var (status, mensagem) = Mapear(excecao);
 
+            // O identificador de correlação liga a resposta ao registro de log sem expor
+            // detalhe técnico ao cliente (RF2/RNF3).
             if (status >= StatusCodes.Status500InternalServerError)
-                _logger.LogError(excecao, "Erro não tratado em {Rota}.", context.Request.Path);
+                _logger.LogError(excecao,
+                    "Erro não tratado em {Rota} (correlação {Correlacao}).",
+                    context.Request.Path, context.TraceIdentifier);
             else
-                _logger.LogWarning("Erro previsível em {Rota}: {Mensagem}",
-                    context.Request.Path, excecao.Message);
+                _logger.LogWarning(
+                    "Erro previsível em {Rota} (correlação {Correlacao}): {Mensagem}",
+                    context.Request.Path, context.TraceIdentifier, excecao.Message);
 
             context.Response.Clear();
             context.Response.StatusCode = status;

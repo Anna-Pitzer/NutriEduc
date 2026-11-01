@@ -49,25 +49,11 @@ public class Turma
 
     private static string ValidarEscola(string? escola)
     {
-        return ValidarTexto(escola, "Escola", EscolaMin, EscolaMax);
+        return ValidacaoDeCampo.Texto(escola, "Escola", EscolaMin, EscolaMax);
     }
 
     private static string ValidarSerie(string? serie)
     {
-        return ValidarTexto(serie, "Série", SerieMin, SerieMax);
-    }
-
-    private static string ValidarTexto(string? valor, string campo, int min, int max)
-    {
-        var texto = (valor ?? string.Empty).Trim();
-
-        if (texto.Length == 0)
-            throw new ArgumentException($"O campo {campo} é obrigatório.");
-
-        if (texto.Length < min || texto.Length > max)
-            throw new ArgumentException(
-                $"O campo {campo} deve ter entre {min} e {max} caracteres.");
-
-        return texto;
+        return ValidacaoDeCampo.Texto(serie, "Série", SerieMin, SerieMax);
     }
 }

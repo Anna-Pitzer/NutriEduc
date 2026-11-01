@@ -236,7 +236,46 @@ ordenação, filtros aplicados). Os exportadores implementam `IRelatorioExportad
 recebem esse objeto pronto, sem acesso a banco. A pré-visualização usa o mesmo
 objeto, limitado a 200 linhas, com total agregado separado.
 
+## ADR-014: Exclusão definitiva com bloqueio por referência
+
+**Status:** aceito (2026-10-31)
+
+**Contexto:** o ADR-008 preferiu desativação para não perder histórico. A secretaria pediu
+excluir escolas, unidades e pessoas: sem exclusão, um cadastro criado por engano fica no
+sistema para sempre e continua aparecendo nas listas.
+
+**Decisão:** `DELETE` em escola, unidade e usuário, permitido **só quando nada referencia**
+o registro; caso contrário `409` com a mensagem do que impede. Desativar continua
+disponível para cadastros em uso. Regras: escola bloqueia com usuário ou unidade legada;
+unidade bloqueia com usuário, aluno, token de cadastro ou consumo de bootstrap; usuário
+bloqueia a própria conta, o último `AdminSecretaria`, vínculo de responsável e token já
+emitido. A checagem vive em `ExclusaoService`, uma única fonte para HTTP e UI.
+
 **Consequências:**
-- Positivo: preview e arquivo nunca divergem; novo formato não altera relatório.
-- Negativo: materializar 50.000 linhas em memória é o limite aceito; acima disso,
-  413 — não há streaming nesta fase.
+- Positivo: cadastro errado é removível; a mensagem diz exatamente o que desbloqueia.
+- Negativo: a exclusão é irreversível e não há trilha de auditoria do registro removido,
+  apenas o log padrão da requisição.
+
+## ADR-013: Unidade é da rede, não da escola
+
+**Status:** aceito (2026-10-31)
+
+**Contexto:** a Spec 009 modelou `UnidadeEscolar` como subdivisão de uma escola, com nome
+único dentro dela. O cadastro por token (Spec 022) precisa de unidades organizacionais da
+secretaria — ex.: "Secretaria Municipal de Educação do Rio de Janeiro" — e o nome é
+digitado por quem não tem sessão. Nome único por escola tornaria a digitação ambígua e
+obrigaria o usuário a conhecer a escola.
+
+**Decisão:** `UnidadeEscolar` é entidade da rede. `EscolaId` passa a ser **opcional**
+(dado legado), o nome é **único na rede** e não há rota pública de listagem: a unidade é
+resolvida pelo nome exato. `AdminSecretaria` recebe a unidade como atribuição de origem,
+não como escopo.
+
+**Consequências:**
+- Positivo: nome único elimina ambiguidade; o bootstrap não depende de escola.
+- Negativo: `AdminEscola` perde o vínculo aluno→escola derivado da unidade — o escopo de
+  aluno desse papel fica limitado a unidades que ainda guardam `EscolaId` legado. A
+  correção definitiva é `Aluno.EscolaId`, registrada como pendência.
+- Negativo: os endpoints `/api/escolas/{id}/unidades` foram substituídos por
+  `/api/unidades` (GET e POST).
+
