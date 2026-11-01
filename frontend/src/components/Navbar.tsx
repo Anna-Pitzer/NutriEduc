@@ -1,4 +1,4 @@
-import { Users, UserRound, Utensils, ChevronRight, CircleUserRound, Building2, School, Apple, HeartHandshake } from "lucide-react"
+import { Users, UserRound, Utensils, ChevronRight, CircleUserRound, Building2, School, Apple, HeartHandshake, Salad } from "lucide-react"
 import { Link } from "react-router-dom";
 import { useAuth, type PapelUsuario } from "../context/authContext";
 
@@ -9,24 +9,10 @@ type OpcaoMenu = {
     papeis: PapelUsuario[];
 };
 
-const TODOS: PapelUsuario[] = [
-    "Nutricionista",
-    "Merendeira",
-    "Responsavel",
-    "AdminSecretaria",
-    "AdminEscola",
-];
-
 export default function Navbar() {
     const { userLogin } = useAuth();
 
     const opcoes: OpcaoMenu[] = [
-        {
-            nome: "Perfil",
-            caminho: "/Perfil",
-            icone: UserRound,
-            papeis: TODOS,
-        },
         {
             nome: "Cadastro de alunos com restrição",
             caminho: "/aluno/registrar",
@@ -34,10 +20,16 @@ export default function Navbar() {
             papeis: ["Nutricionista", "AdminSecretaria"],
         },
         {
+            nome: "Catálogo de alimentos",
+            caminho: "/alimentos",
+            icone: Salad,
+            papeis: ["Nutricionista", "Merendeira"],
+        },
+        {
             nome: "Cardápio",
-            caminho: "/cardapio",
+            caminho: "/cardapios",
             icone: Utensils,
-            papeis: ["Nutricionista", "AdminSecretaria"],
+            papeis: ["Nutricionista", "AdminSecretaria", "Merendeira"],
         },
         {
             nome: "Vizualizar Alunos",

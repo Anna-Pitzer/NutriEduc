@@ -10,19 +10,31 @@ namespace Ntc.Controllers;
 public class AlunoController : RespostaController
 {
     private readonly AlunoService _alunoService;
+    private readonly HistoricoAlunoService _historicoService;
     private readonly EscopoService _escopo;
 
-    public AlunoController(AlunoService alunoService, EscopoService escopo)
+    public AlunoController(
+        AlunoService alunoService,
+        HistoricoAlunoService historicoService,
+        EscopoService escopo)
     {
         _alunoService = alunoService;
+        _historicoService = historicoService;
         _escopo = escopo;
     }
 
     [Authorize(Policy = "GestaoAluno")]
     [HttpPost("registrar")]
-    public IActionResult PostAddAluno([FromBody] DadosAlunoDTO dto)
+    public IActionResult PostAddAluno([FromBody] AlunoEntrada dto)
     {
-        var criado = _alunoService.CriarAluno(dto);
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        var criado = _alunoService.CriarAluno(dto, escopo);
         return Created($"/api/aluno/perfil/{criado.Id}", criado);
     }
 
@@ -65,9 +77,55 @@ public class AlunoController : RespostaController
             : Forbid();
     }
 
+    /// <summary>
+    /// Trilha completa de alterações do aluno (Spec 023, RF6): criação, campos alterados e
+    /// restrições, em ordem decrescente de data, limitada ao escopo do solicitante.
+    /// </summary>
+    [Authorize(Policy = "LeituraAluno")]
+    [HttpGet("{id:int}/historico")]
+    public IActionResult Historico(
+        int id,
+        [FromQuery] int? pagina,
+        [FromQuery] int? tamanho)
+    {
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(
+            _historicoService.Listar(id, pagina, tamanho, escopo),
+            Ok);
+    }
+
+    /// <summary>
+    /// Rota publicada pela Spec 010, mantida por compatibilidade (Spec 023, RF7): devolve o
+    /// recorte de restrições da trilha única com o mesmo JSON de antes.
+    /// </summary>
+    [Authorize(Policy = "LeituraAluno")]
+    [HttpGet("{id:int}/restricoes/historico")]
+    public IActionResult HistoricoRestricoes(
+        int id,
+        [FromQuery] int? pagina,
+        [FromQuery] int? tamanho)
+    {
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(
+            _historicoService.ListarRestricoes(id, pagina, tamanho, escopo),
+            Ok);
+    }
+
     [Authorize(Policy = "GestaoAluno")]
     [HttpPut("{id:int}")]
-    public IActionResult Atualizar(int id, [FromBody] DadosAlunoDTO dto)
+    public IActionResult Atualizar(int id, [FromBody] AlunoEntrada dto)
     {
         var escopo = ObterEscopo(_escopo);
 

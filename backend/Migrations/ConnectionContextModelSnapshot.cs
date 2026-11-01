@@ -18,6 +18,74 @@ namespace backend.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
 
+            modelBuilder.Entity("Ntc.Domain.Entity.Alimento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoriaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NomeNormalizado")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Valores", "Ntc.Domain.Entity.Alimento.Valores#ValoresNutricionais", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("CaloriasKcal")
+                                .HasColumnType("decimal(10,2)");
+
+                            b1.Property<decimal>("CarboidratosG")
+                                .HasColumnType("decimal(10,2)");
+
+                            b1.Property<decimal>("FibrasG")
+                                .HasColumnType("decimal(10,2)");
+
+                            b1.Property<decimal>("GordurasG")
+                                .HasColumnType("decimal(10,2)");
+
+                            b1.Property<decimal>("ProteinasG")
+                                .HasColumnType("decimal(10,2)");
+
+                            b1.Property<decimal>("SodioMg")
+                                .HasColumnType("decimal(10,2)");
+                        });
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
+
+                    b.HasIndex("NomeNormalizado")
+                        .IsUnique();
+
+                    b.ToTable("Alimentos");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.AlimentoRestricao", b =>
+                {
+                    b.Property<int>("AlimentoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RestricaoId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("AlimentoId", "RestricaoId");
+
+                    b.HasIndex("RestricaoId");
+
+                    b.ToTable("AlimentosRestricoes");
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.Aluno", b =>
                 {
                     b.Property<int>("Id")
@@ -86,6 +154,79 @@ namespace backend.Migrations
                     b.ToTable("Alunos");
                 });
 
+            modelBuilder.Entity("Ntc.Domain.Entity.Cardapio", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AtualizadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CardapioDuplicadoDeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Situacao")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Versao")
+                        .HasColumnType("INTEGER");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Periodo", "Ntc.Domain.Entity.Cardapio.Periodo#PeriodoVigencia", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<DateOnly>("Fim")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<DateOnly>("Inicio")
+                                .HasColumnType("TEXT");
+                        });
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Situacao");
+
+                    b.HasIndex("UnidadeId", "Situacao");
+
+                    b.ToTable("Cardapios");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.CategoriaAlimento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Ativa")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NomeNormalizado")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NomeNormalizado")
+                        .IsUnique();
+
+                    b.ToTable("CategoriasAlimento");
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.ConsumoBootstrap", b =>
                 {
                     b.Property<int>("Id")
@@ -126,6 +267,111 @@ namespace backend.Migrations
                         .IsUnique();
 
                     b.ToTable("Escolas");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoAluno", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AlunoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AutorNome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Campo")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ValorAnterior")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ValorNovo")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlunoId", "CriadoEmUtc");
+
+                    b.ToTable("HistoricosAlunos");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.ItemRefeicao", b =>
+                {
+                    b.Property<int>("RefeicaoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AlimentoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("QuantidadeGramas")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("RefeicaoId", "AlimentoId");
+
+                    b.HasIndex("AlimentoId");
+
+                    b.ToTable("ItensRefeicao");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Refeicao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CardapioId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CardapioId", "Ordem")
+                        .IsUnique();
+
+                    b.ToTable("Refeicoes");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.RestricaoAlimentar", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Ativa")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Categoria")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NomeNormalizado")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NomeNormalizado", "Categoria")
+                        .IsUnique();
+
+                    b.ToTable("RestricoesAlimentares");
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.TokenDeCadastro", b =>
@@ -225,7 +471,8 @@ namespace backend.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Senha")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("TEXT")
+                        .HasColumnName("Senha");
 
                     b.Property<string>("Telefone")
                         .HasColumnType("TEXT");
@@ -260,6 +507,34 @@ namespace backend.Migrations
                     b.ToTable("Vinculos");
                 });
 
+            modelBuilder.Entity("Ntc.Domain.Entity.Alimento", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.CategoriaAlimento", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.AlimentoRestricao", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Alimento", null)
+                        .WithMany("Vinculos")
+                        .HasForeignKey("AlimentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Ntc.Domain.Entity.RestricaoAlimentar", "Restricao")
+                        .WithMany()
+                        .HasForeignKey("RestricaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Restricao");
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.Aluno", b =>
                 {
                     b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
@@ -268,12 +543,56 @@ namespace backend.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("Ntc.Domain.Entity.Cardapio", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.ConsumoBootstrap", b =>
                 {
                     b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
                         .WithMany()
                         .HasForeignKey("UnidadeId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoAluno", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Aluno", null)
+                        .WithMany("Historico")
+                        .HasForeignKey("AlunoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.ItemRefeicao", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Alimento", "Alimento")
+                        .WithMany()
+                        .HasForeignKey("AlimentoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ntc.Domain.Entity.Refeicao", null)
+                        .WithMany("Itens")
+                        .HasForeignKey("RefeicaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Alimento");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Refeicao", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Cardapio", null)
+                        .WithMany("Refeicoes")
+                        .HasForeignKey("CardapioId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -326,6 +645,26 @@ namespace backend.Migrations
                         .HasForeignKey("ResponsavelUsuarioId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Alimento", b =>
+                {
+                    b.Navigation("Vinculos");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Aluno", b =>
+                {
+                    b.Navigation("Historico");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Cardapio", b =>
+                {
+                    b.Navigation("Refeicoes");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Refeicao", b =>
+                {
+                    b.Navigation("Itens");
                 });
 #pragma warning restore 612, 618
         }

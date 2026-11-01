@@ -213,9 +213,11 @@ publicação (015). Implementar o cruzamento em cada um garantiria divergência 
 primeira correção.
 
 **Decisão:** `AnaliseCompatibilidade.Analisar` recebe records já carregados e devolve
-achados com severidade (`Bloqueante` para vínculo `Alergenico`, `Alerta` para
-`Restricao`). O domínio não consulta banco, relógio nem serviço. Geração consome
-`AlimentosNaoPermitidos`; publicação consome `Compativel`.
+achados com severidade derivada da **categoria da restrição** (`CategoriaRestricao` da
+Spec 010): `Bloqueante` para `Alergia`, `Alerta` para `Restricao`. O vínculo entre
+alimento e restrição é só o par, sem motivo próprio (Spec 011). O domínio não consulta
+banco, relógio nem serviço. Geração consome `AlimentosNaoPermitidos`; publicação consome
+`Compativel`.
 
 **Consequências:**
 - Positivo: uma regra, três consumidores, testável sem infraestrutura.
@@ -278,4 +280,160 @@ não como escopo.
   correção definitiva é `Aluno.EscolaId`, registrada como pendência.
 - Negativo: os endpoints `/api/escolas/{id}/unidades` foram substituídos por
   `/api/unidades` (GET e POST).
+
+## ADR-015: Catálogo de restrições semeado e regra de vínculo no domínio
+
+**Status:** aceito (2026-11-01)
+
+**Contexto:** a Spec 010 entregou catálogo editável pela interface, com tela própria de
+cadastro, edição e desativação. O proprietário do produto avaliou o resultado e decidiu que
+a interface deve voltar a oferecer a lista fixa de restrições e alergias que existia antes
+da spec, sem qualquer tela para incluir item novo. A primeira implementação também tinha um
+defeito estrutural: `AlunoService` chamava `RestricaoService` para validar a existência do
+nome no catálogo — serviço chamando serviço, com a regra de negócio fora do domínio, em
+desacordo com ADR-004.
+
+**Decisão:**
+
+1. O catálogo continua existindo no backend como fonte de verdade do vínculo, mas deixa de
+   ser gerenciável pela interface. As opções exibidas ao aluno são fixas e vêm do catálogo
+   semeado pela migration `SeedCatalogoRestricoes` (`INSERT OR IGNORE`), com os mesmos nomes
+   que a interface exibia antes da Spec 010.
+2. A tela de catálogo, a rota e o item de menu foram removidos, junto das funções de CRUD
+   sem consumidor no frontend. `POST`/`PUT`/`desativar`/`reativar` continuam existindo na
+   API, disponíveis para administração externa.
+3. A regra de existência saiu do serviço e virou objeto de domínio
+   (`CatalogoDeRestricoes`): recebe as entradas ativas e devolve o nome canônico, lançando
+   `ArgumentException` para nome desconhecido ou inativo. `AlunoService` passou a depender
+   apenas de portas de repositório.
+
+**Consequências:**
+- Positivo: uma regra em um dono só, no domínio, testável sem infraestrutura; nenhum
+  serviço chama outro serviço.
+- Positivo: a interface volta ao comportamento que o proprietário considera correto, sem
+  perder a validação do backend (nenhuma gravação aceita nome fora do catálogo).
+- Negativo: incluir uma restrição nova passa a exigir migration nova ou chamada direta à
+  API — decisão consciente, registrada também em `specs/010-restricoes-e-alergias/`.
+- Negativo: as categorias do vínculo só podem evoluir fora da interface; a tela não é
+  lugar de configurar catálogo.
+
+## ADR-016: Trilha de alterações única para todos os dados do aluno
+
+**Status:** aceito (2026-11-01) — escopo detalhado na Spec 023, ainda não implementada
+
+**Contexto:** a Spec 010 criou `HistoricoRestricaoAluno`, presa a um único atributo. Toda
+outra mudança de cadastro do aluno — nome, nascimento, turma, telefone, observação,
+anafilaxia, responsável, unidade — não deixa rastro: não se sabe o que mudou, quando, nem
+por quem. Repetir o padrão "uma tabela por atributo" reproduziria o mesmo erro que a
+própria Spec 010 corrigiu no catálogo.
+
+**Decisão:** uma trilha append-only genérica por aluno, `HistoricoAluno`, filha do agregado,
+com `Tipo` (`Criado`, `Alterado`, `RestricaoAdicionada`, `RestricaoRemovida`), `Campo`
+opcional, `ValorAnterior`/`ValorNovo` como snapshots textuais, `AutorNome` e `CriadoEmUtc`.
+O diff é calculado no domínio (`Aluno.AtualizarDados` devolve as alterações) e persistido na
+mesma `SaveChanges` do aluno, mantendo ADR-009 e a atomicidade da Spec 010.
+
+A tabela `HistoricosRestricoesAlunos` é migrada para a nova trilha e removida; a rota
+`GET /api/aluno/{id}/restricoes/historico` continua respondendo, agora filtrada da trilha
+única, para não quebrar consumidores.
+
+**Consequências:**
+- Positivo: um lugar para "quem mudou o quê e quando" em todo o cadastro, com o mesmo
+  formato de leitura e de escopo por papel já usado no histórico de restrições.
+- Positivo: novo atributo não exige tabela nova.
+- Negativo: uma edição ampla gera vários eventos (um por campo); a mitigação é comparar
+  valores normalizados e não gravar campo inalterado.
+- Negativo: a trilha cresce mais rápido que a de restrições; toda leitura é paginada e
+  indexada por `(AlunoId, CriadoEmUtc)`.
+
+## ADR-017: Colunas de ação centralizadas na listagem de alunos
+
+**Status:** aceito (2026-11-01)
+
+**Contexto:** na tela `/aluno/vizualizar`, os cabeçalhos "Histórico", "Editar" e "Excluir"
+usavam `text-left`, enquanto os botões dentro das células já estavam centralizados. O
+texto do cabeçalho ficava deslocado em relação ao ícone que ele rotula.
+
+**Decisão:** os três cabeçalhos passaram a usar `text-center`, alinhando rótulo e ícone. As
+colunas de conteúdo (Nome, Escola, Série, Restrições) continuam à esquerda.
+
+**Consequências:**
+- Positivo: cabeçalho e ação na mesma coluna visual; nenhuma mudança de comportamento,
+  contrato ou dado.
+- Regra derivada: coluna que contém apenas ação centralizada tem cabeçalho centralizado.
+- Negativo: nenhum; é mudança de apresentação, reversível em uma linha.
+
+## ADR-018: Fronteiras de camada explícitas
+
+**Status:** aceito (2026-11-01)
+
+**Contexto:** a análise da Spec 024 encontrou sete fronteiras borradas. As entidades
+estavam protegidas (sem setters públicos, sem EF, invariantes no construtor), mas a
+periferia vazava: `DadosAlunoDTO` servia entrada e saída; `BootstrapService` calculava
+SHA-256; `CriarUsuario` sinalizava e-mail duplicado com `null` e o controller traduzia em
+mensagem; `Aluno.DefinirUnidade` e `Usuario.DefinirPapel` aceitavam referência inexistente
+ou desativada; `EscopoUsuario` — vocabulário de autorização — era parâmetro de portos de
+domínio; `ExclusaoService` decidia política e escopo no mesmo método; `Usuario.Senha`
+expunha o material de autenticação.
+
+**Decisão:**
+
+1. **Contratos por operação.** `AlunoEntrada`/`AlunoResposta` e `CriarUsuarioEntrada`/
+   `UsuarioRespostaDTO`. Nenhum tipo de `Application` é entrada e saída na mesma rota;
+   resposta anônima de controller deixa de existir.
+2. **Hash de token no domínio.** `HashDeToken` é objeto de valor (criar, conferir em tempo
+   constante, ler legado); `TokenDeCadastro` recebe o VO. A geração do segredo fica na
+   aplicação porque depende de RNG da plataforma.
+3. **Regra sinalizada por resultado.** `CriarUsuario` devolve `Resultado<int>`; novo
+   `ResultadoStatus.Invalido` traduz para 400 no `RespostaController`. Nenhuma mensagem de
+   regra de negócio vive em controller.
+4. **Referências verificadas antes de mutar.** Existência e situação de unidade/escola são
+   regra de aplicação, checadas antes de construir ou atualizar; a entidade valida o
+   formato.
+5. **Filtros de negócio no lugar de escopo de sessão.** `FiltroAluno` e `FiltroUsuarios`
+   são o vocabulário dos portos; `FiltrosDeConsulta` é o único ponto que conhece a regra
+   papel → recorte. `EscopoUsuario` deixa de atravessar o domínio.
+6. **Política de exclusão pura.** `Domain/Services/PoliticaDeExclusao` recebe fatos e
+   devolve o impedimento; quem pode excluir continua sendo decisão da aplicação.
+7. **Senha encapsulada.** `Usuario.Senha` passa a `internal`, sem getter público; o
+   exterior só pergunta `SenhaConfere`. A coluna `Senha` e o formato do hash não mudam.
+8. **Serviços por intenção.** `AutenticacaoService` sai de `UsuarioService`;
+   `BootstrapTokenService` e `ConfiguracaoDeBootstrap` saem de `BootstrapService`
+   (399 → 262 linhas).
+
+**Consequências:**
+- Positivo: cada regra tem um dono; o domínio não conhece sessão, HTTP, EF nem DTO;
+  controller não conhece mensagem de negócio.
+- Positivo: `HashDeToken` e `PoliticaDeExclusao` são testáveis sem infraestrutura, e os
+  testes de fronteira (`FronteirasDddTests`, `HashDeTokenTests`) provam isso.
+- Negativo: `PostAdd` de usuário passou a devolver `UsuarioRespostaDTO` em vez de um
+  objeto anônimo — campos aditivos, mesmos nomes de antes.
+- Negativo: `UsuarioService` ainda reúne cadastro, perfil e administração (363 linhas);
+  a divisão restante está em PEND-027.
+- Regra derivada: nenhum tipo de `Domain` conhece sessão, HTTP, EF ou DTO; nenhum
+  controller contém mensagem de regra; nenhum DTO de entrada é devolvido por rota.
+
+## ADR-019: Unidade de trabalho no caso de uso, não no repositório
+
+**Status:** aceito (2026-11-01)
+
+**Contexto:** havia 19 chamadas de `SaveChanges` espalhadas pelos repositórios. Cada
+método de escrita decidia sozinho quando confirmar, o que tornava impossível uma operação
+atômica entre agregados: `BootstrapService.Criar` gravava usuário, consumo de unidade e
+token em chamadas separadas, e uma falha no meio deixava estado parcial. A própria
+`arch.md` já registrava a dívida.
+
+**Decisão:** `IUnidadeDeTrabalho.ExecutarEmTransacao` abre transação, executa a operação,
+confirma com `SaveChanges` e desfaz em qualquer exceção. Repositórios apenas preparam o
+estado (`Add`/`Update`/`Delete` sem salvar). Todo caso de uso de escrita envolve sua
+operação na unidade de trabalho, inclusive as de agregado único.
+
+**Consequências:**
+- Positivo: bootstrap e vínculo passam a ser atômicos; nenhuma escrita parcial silenciosa.
+- Positivo: a decisão de transação fica visível no caso de uso, no mesmo lugar em que a
+  regra é decidida.
+- Negativo: um `SaveChanges` esquecido faz a escrita não persistir. A mitigação é teste de
+  integração por fluxo e a rede dos 329 testes existentes.
+- Negativo: código que chama repositório fora de um serviço (setup de teste) precisa usar a
+  unidade de trabalho explicitamente — foi o caso de `ApiFactory`.
 

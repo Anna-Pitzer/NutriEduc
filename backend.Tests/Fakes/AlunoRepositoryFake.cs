@@ -24,14 +24,14 @@ public class AlunoRepositoryFake : IAlunoRepository
         _alunos.Add(aluno);
     }
 
-    public List<Aluno> Listar(EscopoUsuario escopo)
+    public List<Aluno> Listar(FiltroAluno filtro)
     {
-        return Filtrar(escopo).ToList();
+        return Filtrar(filtro).ToList();
     }
 
-    public Aluno? Obter(int id, EscopoUsuario escopo)
+    public Aluno? Obter(int id, FiltroAluno filtro)
     {
-        return Filtrar(escopo).FirstOrDefault(aluno => aluno.Id == id);
+        return Filtrar(filtro).FirstOrDefault(aluno => aluno.Id == id);
     }
 
     /// <summary>Somente para asserções dos testes; ignora escopo de propósito.</summary>
@@ -55,13 +55,24 @@ public class AlunoRepositoryFake : IAlunoRepository
         _alunos.RemoveAll(item => item.Id == aluno.Id);
     }
 
-    private IEnumerable<Aluno> Filtrar(EscopoUsuario escopo) => escopo.Papel switch
+    private IEnumerable<Aluno> Filtrar(FiltroAluno filtro)
     {
-        PapelUsuario.AdminSecretaria or PapelUsuario.Nutricionista => _alunos,
-        PapelUsuario.Merendeira when escopo.UnidadeId is not null =>
-            _alunos.Where(aluno => aluno.UnidadeId == escopo.UnidadeId),
-        _ => Enumerable.Empty<Aluno>()
-    };
+        var consulta = _alunos.AsEnumerable();
+
+        if (filtro.UnidadeId is { } unidadeId)
+        {
+            consulta = consulta.Where(aluno => aluno.UnidadeId == unidadeId);
+        }
+
+        // O fake não modela escola nem vínculo: quando o filtro depende deles, devolve
+        // vazio — o mesmo que o banco faria sem unidade ou vínculo correspondente.
+        if (filtro.EscolaId is not null || filtro.ResponsavelUsuarioId is not null)
+        {
+            return Enumerable.Empty<Aluno>();
+        }
+
+        return consulta;
+    }
 
     public bool ExistePorUnidade(int unidadeId) =>
         _alunos.Any(aluno => aluno.UnidadeId == unidadeId);

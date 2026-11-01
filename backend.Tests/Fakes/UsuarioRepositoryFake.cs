@@ -46,14 +46,9 @@ public class UsuarioRepositoryFake : IUsuarioRepository
         _usuarios[indice] = usuario;
     }
 
-    public List<Usuario> Listar(FiltroUsuarios filtro, EscopoUsuario escopo)
+    public List<Usuario> Listar(FiltroUsuarios filtro)
     {
         var consulta = _usuarios.AsEnumerable();
-
-        if (!escopo.Global)
-        {
-            consulta = consulta.Where(usuario => usuario.EscolaId == escopo.EscolaId);
-        }
 
         if (filtro.Papel is not null)
         {

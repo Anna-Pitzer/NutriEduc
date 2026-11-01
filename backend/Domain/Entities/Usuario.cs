@@ -13,7 +13,13 @@ public class Usuario {
     public string? Email {get;private set;}
     public string? Telefone{get;private set;}
     public string? Foto{get;private set;}
-    public string? Senha {get;private set;}
+
+    /// <summary>
+    /// Hash da senha. Interno de propósito (Spec 024, F8): material de autenticação não é
+    /// parte do contrato da entidade — o exterior só pergunta <see cref="SenhaConfere"/>.
+    /// Persistido na coluna <c>Senha</c> por configuração explícita no mapeamento.
+    /// </summary>
+    internal string? Senha {get;private set;}
 
     /// <summary>
     /// Nulo significa "aguardando definição de papel". O tipo é anulável de propósito:

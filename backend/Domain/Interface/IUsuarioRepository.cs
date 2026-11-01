@@ -13,7 +13,11 @@ public interface IUsuarioRepository
     /// Lista usuários aplicando o escopo do solicitante e os filtros da RF7. O escopo
     /// vai para a consulta SQL; AdminEscola nunca enxerga outra escola.
     /// </summary>
-    List<Usuario> Listar(FiltroUsuarios filtro, EscopoUsuario escopo);
+    /// <summary>
+    /// Filtro de negócio já com o recorte do solicitante incorporado pela aplicação
+    /// (Spec 024, F5). O porto não conhece sessão nem papel.
+    /// </summary>
+    List<Usuario> Listar(FiltroUsuarios filtro);
 
     /// <summary>Exclusão definitiva: o chamador já verificou que não há referências.</summary>
     void Delete(Usuario usuario);

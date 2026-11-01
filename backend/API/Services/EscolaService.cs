@@ -1,4 +1,4 @@
-using Ntc.Application;
+﻿using Ntc.Application;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
 
@@ -9,10 +9,13 @@ using Ntc.Domain.Interface;
 public class EscolaService
 {
     private readonly IEscolaRepository _escolas;
+    private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
 
-    public EscolaService(IEscolaRepository escolas)
+    public EscolaService(IEscolaRepository escolas,
+        IUnidadeDeTrabalho unidadeDeTrabalho)
     {
         _escolas = escolas;
+        _unidadeDeTrabalho = unidadeDeTrabalho;
     }
 
     public List<EscolaRespostaDTO> Listar()
@@ -28,7 +31,7 @@ public class EscolaService
                 "Já existe uma escola com este nome.");
         }
 
-        var escola = _escolas.Add(new Escola(dto.Nome));
+        var escola = _unidadeDeTrabalho.ExecutarEmTransacao(() => _escolas.Add(new Escola(dto.Nome)));
 
         return Resultado<EscolaRespostaDTO>.Ok(ParaDTO(escola));
     }
@@ -49,7 +52,7 @@ public class EscolaService
         }
 
         escola.DefinirNome(dto.Nome);
-        _escolas.Update(escola);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _escolas.Update(escola));
 
         return Resultado<EscolaRespostaDTO>.Ok(ParaDTO(escola));
     }
@@ -72,7 +75,7 @@ public class EscolaService
             escola.Desativar();
         }
 
-        _escolas.Update(escola);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _escolas.Update(escola));
 
         return Resultado<EscolaRespostaDTO>.Ok(ParaDTO(escola));
     }
@@ -98,7 +101,7 @@ public class EscolaService
         }
 
         unidade.DefinirNome(dto.Nome);
-        _escolas.UpdateUnidade(unidade);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _escolas.UpdateUnidade(unidade));
 
         return Resultado<UnidadeRespostaDTO>.Ok(ParaDTO(unidade));
     }
@@ -121,7 +124,7 @@ public class EscolaService
             unidade.Desativar();
         }
 
-        _escolas.UpdateUnidade(unidade);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _escolas.UpdateUnidade(unidade));
 
         return Resultado<UnidadeRespostaDTO>.Ok(ParaDTO(unidade));
     }

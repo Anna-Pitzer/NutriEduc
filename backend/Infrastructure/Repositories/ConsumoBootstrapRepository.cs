@@ -20,6 +20,5 @@ public class ConsumoBootstrapRepository : IConsumoBootstrapRepository
     public void Registrar(ConsumoBootstrap consumo)
     {
         _contexto.ConsumosBootstrap.Add(consumo);
-        _contexto.SaveChanges();
     }
 }

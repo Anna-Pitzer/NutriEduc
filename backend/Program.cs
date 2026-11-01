@@ -23,10 +23,13 @@ builder.Services.AddContratoDeErro();
 
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<UsuarioService>();
+builder.Services.AddScoped<AutenticacaoService>();
 builder.Services.AddScoped<EscopoService>();
 builder.Services.AddScoped<EscolaService>();
 builder.Services.AddScoped<VinculoService>();
+builder.Services.AddScoped<ConfiguracaoDeBootstrap>();
 builder.Services.AddScoped<BootstrapService>();
+builder.Services.AddScoped<BootstrapTokenService>();
 builder.Services.AddScoped<ExclusaoService>();
 builder.Services.AddScoped<IConsumoBootstrapRepository, ConsumoBootstrapRepository>();
 builder.Services.AddScoped<ITokenDeCadastroRepository, TokenDeCadastroRepository>();
@@ -37,6 +40,18 @@ builder.Services.AddScoped<IVinculoRepository, VinculoRepository>();
 
 builder.Services.AddScoped<AlunoService>();
 builder.Services.AddScoped<IAlunoRepository, AlunoRepository>();
+builder.Services.AddScoped<IRestricaoRepository, RestricaoRepository>();
+builder.Services.AddScoped<RestricaoService>();
+builder.Services.AddScoped<IHistoricoAlunoRepository, HistoricoAlunoRepository>();
+builder.Services.AddScoped<HistoricoAlunoService>();
+builder.Services.AddScoped<IUnidadeDeTrabalho, UnidadeDeTrabalho>();
+
+builder.Services.AddScoped<IAlimentoRepository, AlimentoRepository>();
+builder.Services.AddScoped<ICategoriaAlimentoRepository, CategoriaAlimentoRepository>();
+builder.Services.AddScoped<AlimentoService>();
+
+builder.Services.AddScoped<ICardapioRepository, CardapioRepository>();
+builder.Services.AddScoped<CardapioService>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -134,6 +149,10 @@ builder.Services.AddAuthorization(options =>
             nameof(PapelUsuario.Nutricionista),
             nameof(PapelUsuario.AdminEscola),
             nameof(PapelUsuario.AdminSecretaria)));
+
+    // Catálogo de restrições e alergias: somente a nutrição edita (Spec 010, RF2).
+    options.AddPolicy("Nutricionista", politica =>
+        politica.RequireRole(nameof(PapelUsuario.Nutricionista)));
 });
 
 builder.Services.AddDbContext<ConnectionContext>(options =>

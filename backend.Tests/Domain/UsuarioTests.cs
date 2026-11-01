@@ -194,7 +194,7 @@ public class UsuarioTests
 
         usuario.DefinirSenha("abcdefgh");
 
-        Assert.NotNull(usuario.Senha);
+        Assert.False(string.IsNullOrEmpty(usuario.Senha));
         Assert.StartsWith("pbkdf2-sha256$", usuario.Senha);
         Assert.NotEqual("abcdefgh", usuario.Senha);
     }

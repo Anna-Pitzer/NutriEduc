@@ -15,7 +15,6 @@ public class VinculoRepository : IVinculoRepository
     public void Add(VinculoResponsavelAluno vinculo)
     {
         _context.Vinculos.Add(vinculo);
-        _context.SaveChanges();
     }
 
     public bool Existe(int alunoId, int responsavelUsuarioId)
@@ -37,7 +36,6 @@ public class VinculoRepository : IVinculoRepository
         }
 
         _context.Vinculos.Remove(vinculo);
-        _context.SaveChanges();
         return true;
     }
 

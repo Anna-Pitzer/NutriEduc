@@ -1,4 +1,4 @@
-using Ntc.Application;
+﻿using Ntc.Application;
 using Ntc.Domain;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
@@ -14,17 +14,20 @@ public class VinculoService
     private readonly IUsuarioRepository _usuarios;
     private readonly IVinculoRepository _vinculos;
     private readonly IEscolaRepository _escolas;
+    private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
 
     public VinculoService(
         IAlunoRepository alunos,
         IUsuarioRepository usuarios,
         IVinculoRepository vinculos,
-        IEscolaRepository escolas)
+        IEscolaRepository escolas,
+        IUnidadeDeTrabalho unidadeDeTrabalho)
     {
         _alunos = alunos;
         _usuarios = usuarios;
         _vinculos = vinculos;
         _escolas = escolas;
+        _unidadeDeTrabalho = unidadeDeTrabalho;
     }
 
     public Resultado<bool> Vincular(int alunoId, int usuarioId, EscopoUsuario escopo)
@@ -34,7 +37,7 @@ public class VinculoService
             return Resultado<bool>.Proibido();
         }
 
-        var aluno = _alunos.Obter(alunoId, escopo);
+        var aluno = _alunos.Obter(alunoId, FiltrosDeConsulta.ParaAluno(escopo));
 
         if (aluno is null)
         {
@@ -72,7 +75,7 @@ public class VinculoService
                 "Este responsável já está vinculado ao aluno.");
         }
 
-        _vinculos.Add(new VinculoResponsavelAluno(alunoId, usuarioId));
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _vinculos.Add(new VinculoResponsavelAluno(alunoId, usuarioId)));
 
         return Resultado<bool>.Ok(true);
     }
@@ -84,7 +87,7 @@ public class VinculoService
             return Resultado<bool>.Proibido();
         }
 
-        var aluno = _alunos.Obter(alunoId, escopo);
+        var aluno = _alunos.Obter(alunoId, FiltrosDeConsulta.ParaAluno(escopo));
 
         if (aluno is null)
         {
@@ -103,7 +106,7 @@ public class VinculoService
 
     public Resultado<List<ResponsavelVinculadoDTO>> Listar(int alunoId, EscopoUsuario escopo)
     {
-        var aluno = _alunos.Obter(alunoId, escopo);
+        var aluno = _alunos.Obter(alunoId, FiltrosDeConsulta.ParaAluno(escopo));
 
         if (aluno is null)
         {

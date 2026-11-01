@@ -12,7 +12,11 @@ internal static class PropriedadesPrivadas
     public static void Definir(object alvo, string propriedade, object? valor)
     {
         alvo.GetType()
-            .GetProperty(propriedade)!
+            .GetProperty(
+                propriedade,
+                System.Reflection.BindingFlags.Public |
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Instance)!
             .GetSetMethod(nonPublic: true)!
             .Invoke(alvo, new[] { valor });
     }

@@ -21,6 +21,14 @@ public class ConnectionContext : DbContext
     public DbSet<VinculoResponsavelAluno> Vinculos {get;set;}
     public DbSet<ConsumoBootstrap> ConsumosBootstrap {get;set;}
     public DbSet<TokenDeCadastro> TokensDeCadastro {get;set;}
+    public DbSet<RestricaoAlimentar> RestricoesAlimentares {get;set;}
+    public DbSet<HistoricoAluno> HistoricosAlunos {get;set;}
+    public DbSet<CategoriaAlimento> CategoriasAlimento {get;set;}
+    public DbSet<Alimento> Alimentos {get;set;}
+    public DbSet<AlimentoRestricao> AlimentosRestricoes {get;set;}
+    public DbSet<Cardapio> Cardapios {get;set;}
+    public DbSet<Refeicao> Refeicoes {get;set;}
+    public DbSet<ItemRefeicao> ItensRefeicao {get;set;}
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -74,6 +82,13 @@ public class ConnectionContext : DbContext
             .Property(u => u.Ativo)
             .HasDefaultValue(true);
 
+        // O hash da senha é interno à entidade (Spec 024, F8); a coluna continua "Senha"
+        // para preservar o schema. Sem esta configuração o EF não descobriria a propriedade
+        // não pública e o valor não seria persistido.
+        modelBuilder.Entity<Usuario>()
+            .Property<string>(nameof(Usuario.Senha))
+            .HasColumnName("Senha");
+
         modelBuilder.Entity<Usuario>()
             .HasOne<Escola>()
             .WithMany()
@@ -118,6 +133,24 @@ public class ConnectionContext : DbContext
             .WithMany()
             .HasForeignKey(a => a.UnidadeId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Unicidade do catálogo por categoria: a coluna normalizada resolve caixa e acento,
+        // que o SQLite não compara nativamente (Spec 010, RF1).
+        modelBuilder.Entity<RestricaoAlimentar>()
+            .HasIndex(r => new { r.NomeNormalizado, r.Categoria })
+            .IsUnique();
+
+        // Histórico é coleção do agregado Aluno: o EF preenche AlunoId ao gravar o grafo,
+        // inclusive quando o aluno é novo e o id ainda não existe (Spec 010, RNF2).
+        modelBuilder.Entity<Aluno>()
+            .HasMany(a => a.Historico)
+            .WithOne()
+            .HasForeignKey(h => h.AlunoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Leitura paginada sempre por aluno e data decrescente (Spec 023, RF6, ADR-009).
+        modelBuilder.Entity<HistoricoAluno>()
+            .HasIndex(h => new { h.AlunoId, h.CriadoEmUtc });
 
         modelBuilder.Entity<VinculoResponsavelAluno>()
             .HasKey(v => new { v.AlunoId, v.ResponsavelUsuarioId });
@@ -172,5 +205,140 @@ public class ConnectionContext : DbContext
                     .HasColumnName("TelefoneResponsavel")
                     .IsRequired();
             });
+
+        // Nome único por catálogo, sem diferenciar caixa nem acento: a coluna normalizada
+        // carrega o índice único, porque o SQLite não compara assim nativamente
+        // (Spec 011, RF1 e RF2).
+        modelBuilder.Entity<CategoriaAlimento>()
+            .HasIndex(categoria => categoria.NomeNormalizado)
+            .IsUnique();
+
+        modelBuilder.Entity<Alimento>()
+            .HasIndex(alimento => alimento.NomeNormalizado)
+            .IsUnique();
+
+        modelBuilder.Entity<Alimento>()
+            .HasOne(alimento => alimento.Categoria)
+            .WithMany()
+            .HasForeignKey(alimento => alimento.CategoriaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Composição por 100 g como tipo complexo (L10): não tem identidade nem tabela
+        // filha. O SQLite não aplica precisão nem escala; a garantia de duas casas vem da
+        // validação do domínio (Spec 011, RNF1).
+        modelBuilder.Entity<Alimento>()
+            .ComplexProperty(alimento => alimento.Valores, valores =>
+            {
+                valores.Property(v => v.CaloriasKcal)
+                    .HasColumnType("decimal(10,2)")
+                    .IsRequired();
+
+                valores.Property(v => v.ProteinasG)
+                    .HasColumnType("decimal(10,2)")
+                    .IsRequired();
+
+                valores.Property(v => v.CarboidratosG)
+                    .HasColumnType("decimal(10,2)")
+                    .IsRequired();
+
+                valores.Property(v => v.GordurasG)
+                    .HasColumnType("decimal(10,2)")
+                    .IsRequired();
+
+                valores.Property(v => v.FibrasG)
+                    .HasColumnType("decimal(10,2)")
+                    .IsRequired();
+
+                valores.Property(v => v.SodioMg)
+                    .HasColumnType("decimal(10,2)")
+                    .IsRequired();
+            });
+
+        // O vínculo é o par (alimento, restrição): a chave composta impede duplicata e não
+        // existe coluna de motivo (Spec 011, RF4).
+        modelBuilder.Entity<AlimentoRestricao>()
+            .HasKey(vinculo => new { vinculo.AlimentoId, vinculo.RestricaoId });
+
+        modelBuilder.Entity<Alimento>()
+            .HasMany(alimento => alimento.Vinculos)
+            .WithOne()
+            .HasForeignKey(vinculo => vinculo.AlimentoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Vinculos é IReadOnlyList sobre o campo privado _vinculos: sem HasField o EF não
+        // materializa a coleção, porque a propriedade não tem setter (Spec 011, RNF3).
+        modelBuilder.Entity<Alimento>()
+            .Navigation(alimento => alimento.Vinculos)
+            .HasField("_vinculos")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<AlimentoRestricao>()
+            .HasOne(vinculo => vinculo.Restricao)
+            .WithMany()
+            .HasForeignKey(vinculo => vinculo.RestricaoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // ---------- Cardápio (Spec 012) ----------
+
+        // Período como tipo complexo (L10): colunas Periodo_Inicio e Periodo_Fim, sem
+        // tabela filha. A comparação de datas funciona lexicograficamente porque o SQLite
+        // grava DateOnly como TEXT no formato ISO (yyyy-MM-dd).
+        modelBuilder.Entity<Cardapio>()
+            .ComplexProperty(cardapio => cardapio.Periodo, periodo =>
+            {
+                periodo.Property(p => p.Inicio).IsRequired();
+                periodo.Property(p => p.Fim).IsRequired();
+            });
+
+        modelBuilder.Entity<Cardapio>()
+            .HasOne<UnidadeEscolar>()
+            .WithMany()
+            .HasForeignKey(cardapio => cardapio.UnidadeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Cardapio>()
+            .HasIndex(cardapio => new { cardapio.UnidadeId, cardapio.Situacao });
+
+        modelBuilder.Entity<Cardapio>()
+            .HasIndex(cardapio => cardapio.Situacao);
+
+        // Ordem única por cardápio: duas refeições não podem ocupar o mesmo lugar (RF2).
+        modelBuilder.Entity<Refeicao>()
+            .HasIndex(refeicao => new { refeicao.CardapioId, refeicao.Ordem })
+            .IsUnique();
+
+        modelBuilder.Entity<Cardapio>()
+            .HasMany(cardapio => cardapio.Refeicoes)
+            .WithOne()
+            .HasForeignKey(refeicao => refeicao.CardapioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Cardapio>()
+            .Navigation(cardapio => cardapio.Refeicoes)
+            .HasField("_refeicoes")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Item não tem identidade própria: o par (refeição, alimento) é a chave e também
+        // impede repetir o mesmo alimento na refeição (RF3).
+        modelBuilder.Entity<ItemRefeicao>()
+            .HasKey(item => new { item.RefeicaoId, item.AlimentoId });
+
+        modelBuilder.Entity<Refeicao>()
+            .HasMany(refeicao => refeicao.Itens)
+            .WithOne()
+            .HasForeignKey(item => item.RefeicaoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Refeicao>()
+            .Navigation(refeicao => refeicao.Itens)
+            .HasField("_itens")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Alimento desativado continua referenciável por cardápio já existente (RF4).
+        modelBuilder.Entity<ItemRefeicao>()
+            .HasOne(item => item.Alimento)
+            .WithMany()
+            .HasForeignKey(item => item.AlimentoId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -1,12 +1,10 @@
-// Área dos Pais / Responsáveis — home em construção.
-//
-// Escopo planejado (implementacoes.md): verificar e pesquisar cardápios, consultar
-// informações nutricionais, acompanhar ocorrências e solicitações dos próprios alunos.
-//
-// Nota: implementacoes.md classifica esta área como pública. Hoje ela fica dentro do
-// ProtectedRoutes, como todas as demais, porque papéis de usuário ainda não existem
-// (Spec 009). Reavaliar quando a autorização por papel entrar.
+import { CardapiosPublicados } from "../publico/CardapiosPublicados";
 
+/**
+ * Área dos Pais / Responsáveis (Spec 012, RF13): consulta aos cardápios publicados. O
+ * responsável escolhe a unidade porque o vínculo aluno→unidade ainda não é exposto na
+ * sessão; consultar o cardápio por aluno pertence à Spec 025.
+ */
 export function HomePais() {
-  return null;
+  return <CardapiosPublicados titulo="Cardápios publicados" />;
 }

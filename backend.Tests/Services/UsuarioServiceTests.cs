@@ -15,16 +15,24 @@ public class UsuarioServiceTests
     /// testes focados nas regras de usuário.
     /// </summary>
     private static UsuarioService CriarServico(IUsuarioRepository repositorio) =>
-        new(repositorio, new EscolaRepositoryFake());
+        new(repositorio, new EscolaRepositoryFake(), new UnidadeDeTrabalhoFake());
 
-    private static DadosUsuarioDTO DtoUsuario(
+    /// <summary>Autenticação é caso de uso próprio desde a Spec 024 (F9).</summary>
+    private static AutenticacaoService Autenticacao(IUsuarioRepository repositorio) =>
+        new(repositorio, new UnidadeDeTrabalhoFake());
+
+    private static CriarUsuarioEntrada DtoUsuario(
         string email = "maria@exemplo.com",
         string senha = "12345678")
     {
-        return new DadosUsuarioDTO("Maria Silva", "12345678901", new DateOnly(2000, 1, 1), email)
-        {
-            Senha = senha
-        };
+        return new CriarUsuarioEntrada(
+            Nome: "Maria Silva",
+            Cpf: "12345678901",
+            DataNascimento: new DateOnly(2000, 1, 1),
+            Email: email,
+            Senha: senha,
+            Telefone: null,
+            Foto: null);
     }
 
     [Fact]
@@ -33,7 +41,10 @@ public class UsuarioServiceTests
         var repositorio = new UsuarioRepositoryFake();
         var servico = CriarServico(repositorio);
 
-        Assert.Equal(1, servico.CriarUsuario(DtoUsuario()));
+        var resultado = servico.CriarUsuario(DtoUsuario());
+
+        Assert.Equal(ResultadoStatus.Ok, resultado.Status);
+        Assert.Equal(1, resultado.Valor);
 
         var persistido = repositorio.GetByEmail("maria@exemplo.com");
 
@@ -46,13 +57,16 @@ public class UsuarioServiceTests
     }
 
     [Fact]
-    public void CriarUsuario_ComEmailDuplicado_RetornaNull()
+    public void CriarUsuario_ComEmailDuplicado_RetornaInvalidoComMensagem()
     {
         var repositorio = new UsuarioRepositoryFake();
         var servico = CriarServico(repositorio);
         servico.CriarUsuario(DtoUsuario());
 
-        Assert.Null(servico.CriarUsuario(DtoUsuario()));
+        var resultado = servico.CriarUsuario(DtoUsuario());
+
+        Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
+        Assert.Equal("E-mail já cadastrado.", resultado.Erro);
     }
 
     [Fact]
@@ -76,7 +90,7 @@ public class UsuarioServiceTests
         var servico = CriarServico(repositorio);
         servico.CriarUsuario(DtoUsuario());
 
-        var valido = servico.VerificarLogin(new LoginUsuarioDTO
+        var valido = Autenticacao(repositorio).VerificarLogin(new LoginUsuarioDTO
         {
             Email = "maria@exemplo.com",
             Senha = "12345678"
@@ -92,7 +106,7 @@ public class UsuarioServiceTests
         var servico = CriarServico(repositorio);
         servico.CriarUsuario(DtoUsuario());
 
-        var valido = servico.VerificarLogin(new LoginUsuarioDTO
+        var valido = Autenticacao(repositorio).VerificarLogin(new LoginUsuarioDTO
         {
             Email = "maria@exemplo.com",
             Senha = "87654321"
@@ -104,9 +118,9 @@ public class UsuarioServiceTests
     [Fact]
     public void VerificarLogin_ComEmailInexistente_RetornaFalse()
     {
-        var servico = CriarServico(new UsuarioRepositoryFake());
+        var repositorio = new UsuarioRepositoryFake();
 
-        var valido = servico.VerificarLogin(new LoginUsuarioDTO
+        var valido = Autenticacao(repositorio).VerificarLogin(new LoginUsuarioDTO
         {
             Email = "ninguem@exemplo.com",
             Senha = "12345678"
@@ -122,7 +136,7 @@ public class UsuarioServiceTests
         var servico = CriarServico(repositorio);
         servico.CriarUsuario(DtoUsuario());
 
-        var resultado = servico.Autenticar(
+        var resultado = Autenticacao(repositorio).Autenticar(
             new LoginUsuarioDTO { Email = "maria@exemplo.com", Senha = "12345678" },
             out var usuario);
 
@@ -142,7 +156,7 @@ public class UsuarioServiceTests
         usuario.Desativar();
         repositorio.Update(usuario);
 
-        var resultado = servico.Autenticar(
+        var resultado = Autenticacao(repositorio).Autenticar(
             new LoginUsuarioDTO { Email = "maria@exemplo.com", Senha = "12345678" },
             out _);
 
@@ -160,7 +174,7 @@ public class UsuarioServiceTests
         usuario.DefinirPapel(PapelUsuario.Nutricionista, null, null);
         repositorio.Update(usuario);
 
-        var resultado = servico.Autenticar(
+        var resultado = Autenticacao(repositorio).Autenticar(
             new LoginUsuarioDTO { Email = "maria@exemplo.com", Senha = "12345678" },
             out var autenticado);
 
@@ -232,8 +246,7 @@ public class UsuarioServiceTests
     {
         var repositorio = new UsuarioRepositoryFake();
         var servico = CriarServico(repositorio);
-        var dto = DtoUsuario();
-        dto.Senha = null;
+        var dto = DtoUsuario() with { Senha = null };
 
         Assert.Throws<ArgumentException>(() =>
         {
@@ -253,7 +266,7 @@ public class UsuarioServiceTests
         var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
         UsuarioFabrica.DefinirSenhaEmClaro(usuario, "senhaantiga");
 
-        var valido = servico.VerificarLogin(new LoginUsuarioDTO
+        var valido = Autenticacao(repositorio).VerificarLogin(new LoginUsuarioDTO
         {
             Email = "maria@exemplo.com",
             Senha = "senhaantiga"
@@ -274,7 +287,7 @@ public class UsuarioServiceTests
         var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
         UsuarioFabrica.DefinirSenhaEmClaro(usuario, "senhaantiga");
 
-        var valido = servico.VerificarLogin(new LoginUsuarioDTO
+        var valido = Autenticacao(repositorio).VerificarLogin(new LoginUsuarioDTO
         {
             Email = "maria@exemplo.com",
             Senha = "outrasenha"

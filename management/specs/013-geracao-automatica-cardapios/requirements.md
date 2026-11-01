@@ -48,16 +48,17 @@ testável**: mesma entrada e mesma semente produzem exatamente o mesmo cardápio
 - RF6: ao menos um item de cada `CategoriaObrigatoria` aparece no cardápio; ausência
   de candidato para uma categoria obrigatória também gera 422.
 - RF7: são candidatos apenas alimentos ativos. Se `ExcluirAlimentosIncompativeis`
-  for verdadeiro, ficam de fora alimentos com vínculo `Alergenico` com restrições
-  presentes nos alunos da unidade (Spec 014).
+  for verdadeiro, ficam de fora alimentos vinculados a restrições de categoria
+  `Alergia` presentes nos alunos da unidade (Spec 014).
 - RF8: `JanelaRepeticaoDias > 0` exclui alimentos usados em cardápios `Publicado`
   da mesma unidade cujo período termine nos últimos N dias.
 - RF9: a seleção usa apenas `Random(seed)`; nenhuma fonte de aleatoriedade global,
   nenhuma ordenação dependente de hash ou de cultura.
 - RF10: a resposta inclui `cardapioId`, `seed`, totais por refeição e `avisos`
   (ex.: categoria obrigatória atendida por único alimento).
-- RF11: geração é exclusiva de `Nutricionista`; parâmetros são legíveis por
-  `AdminEscola` da unidade, sem edição.
+- RF11: geração é exclusiva de `Nutricionista`; parâmetros são legíveis apenas por
+  `Nutricionista`. `AdminEscola` não acessa: os parâmetros são por unidade e o escopo
+  dele é por escola (Spec 012, RF8).
 - RF12: o frontend mostra os parâmetros atuais, permite editá-los e, após gerar,
   exibe o rascunho com opção de abrir no editor da Spec 012.
 

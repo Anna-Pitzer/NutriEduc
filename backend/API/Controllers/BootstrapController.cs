@@ -17,11 +17,16 @@ namespace Ntc.Controllers;
 public class BootstrapController : RespostaController
 {
     private readonly BootstrapService _bootstrap;
+    private readonly BootstrapTokenService _token;
     private readonly EscopoService _escopo;
 
-    public BootstrapController(BootstrapService bootstrap, EscopoService escopo)
+    public BootstrapController(
+        BootstrapService bootstrap,
+        BootstrapTokenService token,
+        EscopoService escopo)
     {
         _bootstrap = bootstrap;
+        _token = token;
         _escopo = escopo;
     }
 
@@ -72,7 +77,7 @@ public class BootstrapController : RespostaController
             return SessaoInvalida();
         }
 
-        var resultado = _bootstrap.GerarToken(escopo);
+        var resultado = _token.GerarToken(escopo);
 
         return resultado.Status switch
         {
@@ -98,6 +103,6 @@ public class BootstrapController : RespostaController
             return SessaoInvalida();
         }
 
-        return Ok(_bootstrap.ConsultarToken(escopo));
+        return Ok(_token.ConsultarToken(escopo));
     }
 }

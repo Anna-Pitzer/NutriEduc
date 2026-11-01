@@ -50,14 +50,18 @@ compatibilidade dos cardápios (Spec 014), que precisa comparar nomes estáveis.
   (unidade do aluno), `Responsavel` (aluno vinculado).
 - RF7: `GET /api/restricoes?categoria=&incluirInativas=` lista o catálogo;
   `incluirInativas=true` é restrito a `Nutricionista`.
-- RF8: o frontend exibe o catálogo editável para nutrição e, na tela do aluno,
-  multi-seleção a partir do catálogo ativo e a linha do tempo do histórico.
+- RF8: a tela do aluno exibe as opções de restrição e alergia em multi-seleção a partir do
+  catálogo ativo — a lista é fixa na interface e corresponde ao catálogo semeado pela
+  migration — e a linha do tempo do histórico. **Revisão de 2026-11-01:** não existe tela
+  de cadastro do catálogo; a administração continua possível apenas pela API (RF2, RF7).
 - RF9: merendeira e responsável veem restrições e histórico em modo somente leitura.
 
 ## Requisitos não funcionais
 
-- RNF1: a regra de formato (nome, limite, duplicidade) vive na entidade; a existência
-  no catálogo é regra de caso de uso, executada antes de chamar o domínio.
+- RNF1: a regra de formato (nome, limite, duplicidade) vive na entidade; a existência no
+  catálogo é regra do domínio, decidida por `CatalogoDeRestricoes` sobre as entradas ativas
+  carregadas pelo repositório — o serviço apenas orquestra a consulta e a persistência
+  (revisão de 2026-11-01; antes a regra morava no serviço).
 - RNF2: o histórico é gravado na mesma unidade de persistência do aluno — uma
   alteração bem-sucedida nunca fica sem evento.
 - RNF3: datas em UTC no banco e ISO 8601 na API.
@@ -108,3 +112,23 @@ compatibilidade dos cardápios (Spec 014), que precisa comparar nomes estáveis.
 Criar o catálogo com uma alergia e uma restrição, cadastrar um aluno com ambas,
 alterar, consultar o histórico com cada papel e confirmar a matriz de acesso. Executar os gates: `dotnet build backend/backend.csproj`,
 `dotnet test backend.Tests/backend.Tests.csproj` e `cd frontend && npm run build && npm run lint`.
+
+## Revisão 2026-11-01 — decisão do proprietário do produto
+
+Duas mudanças de escopo, registradas para manter a spec fiel ao que existe:
+
+1. **A interface não cadastra restrição nem alergia.** O catálogo continua sendo a fonte de
+   verdade do vínculo (RF1, RF3, RF4), mas as opções oferecidas ao aluno são fixas na tela e
+   correspondem ao catálogo semeado pela migration `SeedCatalogoRestricoes` — os mesmos
+   nomes que a interface exibia antes da Spec 010. RF2 e RF7 permanecem como capacidade da
+   API (sem tela). RF8 foi reescrito para refletir isso.
+2. **A regra de existência saiu do serviço e foi para o domínio.** `CatalogoDeRestricoes`
+   recebe as entradas ativas e resolve os nomes (desconhecido ou inativo lança
+   `ArgumentException`), devolvendo sempre o nome canônico. `AlunoService` deixou de
+   depender de `RestricaoService` e passou a depender só de portas de repositório. RNF1 foi
+   atualizado.
+
+Consequência assumida: incluir uma nova restrição exige migration nova ou chamada direta à
+API — é o que o proprietário pediu, e o oposto do que a versão original previa. O histórico
+por aluno ganhou spec própria (Spec 023), porque a trilha append-only passou a ser desejada
+para todos os dados do aluno, não só para restrições.

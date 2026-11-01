@@ -53,10 +53,12 @@ cardápio e entrega o histórico que merendeiras e nutrição precisam consultar
 - RF9: toda transição e toda edição de rascunho gravam um evento em
   `HistoricoCardapio`: `Criado`, `Editado`, `Duplicado`, `RevisaoCriada`,
   `Publicado`, `Cancelado`, `Substituido`, com autor, data UTC, versão e motivo
-  quando aplicável. Nenhum evento é atualizado ou apagado.
+  quando aplicável. Nenhum evento é atualizado ou apagado, exceto o cascade da
+  exclusão de rascunho prevista na Spec 012 (RF7): rascunho apagado leva seus
+  eventos. A garantia append-only vale para cardápios que chegaram a `Publicado`.
 - RF10: `GET /api/cardapios/{id}/historico` devolve a linha do tempo em ordem
-  decrescente, paginada, para `Nutricionista` (global), `AdminEscola` (escola) e
-  `Merendeira` (unidade).
+  decrescente, paginada, para `Nutricionista` (rede) e `Merendeira` (unidade do
+  cardápio). `AdminEscola` não acessa (Spec 012, RF8).
 - RF11: `GET /api/cardapios/alteracoes?desde=` devolve eventos de cardápios no
   escopo do usuário a partir de uma data ISO 8601, paginados, com nome do cardápio e
   da unidade; é a fonte da tela "alterações" da merendeira.
@@ -72,7 +74,9 @@ cardápio e entrega o histórico que merendeiras e nutrição precisam consultar
   serviço apenas carrega dados, chama o domínio e persiste.
 - RNF2: histórico e transição são gravados na mesma transação; falha no histórico
   desfaz a transição.
-- RNF3: `HistoricoCardapio` é append-only; nenhum endpoint de edição/exclusão.
+- RNF3: `HistoricoCardapio` é append-only; nenhum endpoint de edição/exclusão. A
+  única remoção é o cascade de `DELETE /api/cardapios/{id}` em `Rascunho` (Spec 012,
+  RF7): o histórico de rascunho apagado desaparece com ele.
 - RNF4: concorrência otimista em `Situacao` e `Versao`; conflito → 409.
 - RNF5: consultas paginadas (1–100) e indexadas por `(CardapioId, CriadoEmUtc)` e
   `(UnidadeId, CriadoEmUtc)`.

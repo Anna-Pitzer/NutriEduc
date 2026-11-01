@@ -1,13 +1,14 @@
 
-import { Trash, ChevronLeft, Pencil } from "lucide-react";
+import { Trash, ChevronLeft, Pencil, History } from "lucide-react";
 import Footer from "../../../components/Footer";
 import Header from "../../../components/Header"
-import { useEffect, useRef, useState } from "react";
+import { useEffect, Fragment, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ToastContainer, Zoom } from "react-toastify";
 import { confirmarExclusao } from "../../../components/Notificacoes";
 import { buscarAlunos, excluirAluno, type AlunoResposta } from "../../../services/AlunoApi";
 import { naoAutorizado } from "../../../services/erroApi";
+import { buscarHistoricoAluno, descreverEvento, type EventoAluno } from "../../../services/HistoricoAlunoApi";
 import { useAuth } from "../../../context/authContext";
 
 export function VisualizarAlunos() {
@@ -54,6 +55,33 @@ export function VisualizarAlunos() {
   const [alunos, setAlunos] = useState<AlunoProps[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState("")
+
+  // Histórico append-only por aluno (Spec 010, RF6/RF8), carregado sob demanda.
+  const [historico, setHistorico] = useState<Record<number, EventoAluno[]>>({})
+  const [historicoAberto, setHistoricoAberto] = useState<number | null>(null)
+
+  const alternarHistorico = async (alunoId: number) => {
+    if (historicoAberto === alunoId) {
+      setHistoricoAberto(null)
+      return
+    }
+
+    setHistoricoAberto(alunoId)
+
+    if (historico[alunoId]) return
+
+    try {
+      const pagina = await buscarHistoricoAluno(alunoId)
+      setHistorico((atual) => ({ ...atual, [alunoId]: pagina.itens }))
+    } catch (error) {
+      if (naoAutorizado(error)) {
+        void logout()
+        return
+      }
+
+      setErro("Não foi possível carregar o histórico do aluno.")
+    }
+  }
   useEffect(() => {
     let ativo = true;
 
@@ -188,7 +216,7 @@ export function VisualizarAlunos() {
 
       <Header />
 
-      <div className="self-start ml-4">
+      <div className="mx-auto w-full max-w-7xl">
         <button
             type="button"
             onClick={cancelar}
@@ -204,10 +232,10 @@ export function VisualizarAlunos() {
 
 
       <div
-        className="flex justify-center  items-center flex-col max-w-7xl bg-[#FAF9F5] mb-30 mx-30 rounded-3xl p-8  shadow-[0_5px_20px_rgba(1,1,1,0.1)]"
+        className="flex w-full max-w-7xl flex-col items-center justify-center bg-[#FAF9F5] mb-30 mx-auto rounded-3xl p-8 shadow-[0_5px_20px_rgba(1,1,1,0.1)]"
       >
         <div className="flex flex-col justify-start w-full">
-          <h1 className="font-bold text-2xl text-primaria">Alunos cadastrados</h1>
+          <h1 className="font-bold text-2xl text-gray-800">Alunos cadastrados</h1>
           <h2 className="text-lg">Consulte e filtre os alunos por escola, restrição alimentar ou turma!</h2>
 
         </div>
@@ -373,14 +401,16 @@ export function VisualizarAlunos() {
                 <th className="px-4 text-left font-light">Escola</th>
                 <th className="px-4 text-left font-light">Série</th>
                 <th className="px-4 text-left font-light">Restrições</th>
-                <th className="px-4 text-left font-light">Editar</th>
-                <th className="px-4 text-left font-light">Excluir</th>
+                <th className="px-4 text-center font-light">Histórico</th>
+                <th className="px-4 text-center font-light">Editar</th>
+                <th className="px-4 text-center font-light">Excluir</th>
               </tr>
             </thead>
 
             <tbody>
               {alunosFiltrados.map((aluno) => (
-                <tr key={aluno.id} className="border-t border-[#fce9d3] h-12">
+                <Fragment key={aluno.id}>
+                <tr className="border-t border-[#fce9d3] h-12">
                   <td className="p-4 max-w-50 truncate">
                     <div className="">
                       <span className="p-2 bg-roxo/40 text-roxo rounded-full mr-4">{pegarIniciais(aluno.nome)}</span>{aluno.nome}
@@ -402,6 +432,13 @@ export function VisualizarAlunos() {
                   </td>
                   <td className="p-4 text-center">
                     <button
+                      onClick={() => void alternarHistorico(aluno.id)}
+                      aria-label={`Histórico de ${aluno.nome}`}
+                      aria-expanded={historicoAberto === aluno.id}
+                      className="text-roxo p-2 hover:cursor-pointer hover:bg-purple-100 rounded-full"><History /></button>
+                  </td>
+                  <td className="p-4 text-center">
+                    <button
                       onClick={() => navegar(`/alunos/editar/${aluno.id}`)}
                       aria-label={`Editar ${aluno.nome}`}
                       className="text-roxo p-2 hover:cursor-pointer hover:bg-purple-100 rounded-full "><Pencil /></button>
@@ -412,6 +449,62 @@ export function VisualizarAlunos() {
                       className="text-vermelho p-2 hover:cursor-pointer hover:bg-red-100 rounded-full "><Trash /></button>
                   </td>
                 </tr>
+
+                {historicoAberto === aluno.id && (
+                  <tr className="bg-[#FAF9F5]">
+                    <td colSpan={7} className="p-4">
+                      <h3 className="font-bold text-roxo mb-2">Histórico de alterações</h3>
+
+                      {!historico[aluno.id] ? (
+                        <p className="text-gray-500">Carregando histórico...</p>
+                      ) : historico[aluno.id].length === 0 ? (
+                        <p className="text-gray-500">Nenhuma alteração registrada.</p>
+                      ) : (
+                        <ol className="flex flex-col gap-2">
+                          {historico[aluno.id].map((evento, indice) => {
+                            const cor =
+                              evento.tipo === "RestricaoRemovida"
+                                ? "bg-red-100 text-red-700"
+                                : evento.tipo === "RestricaoAdicionada"
+                                  ? "bg-green-100 text-green-800"
+                                  : evento.tipo === "Criado"
+                                    ? "bg-roxo/10 text-roxo"
+                                    : "bg-yellow-100 text-yellow-800";
+
+                            return (
+                              <li
+                                key={`${evento.tipo}-${evento.campo}-${evento.criadoEm}-${indice}`}
+                                className="flex flex-wrap items-center gap-2 text-sm"
+                              >
+                                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${cor}`}>
+                                  {descreverEvento(evento)}
+                                </span>
+
+                                {evento.tipo === "Alterado" && (
+                                  <span className="text-gray-700">
+                                    <span className="line-through text-gray-400">
+                                      {evento.valorAnterior || "vazio"}
+                                    </span>
+                                    {" → "}
+                                    <span className="font-semibold">
+                                      {evento.valorNovo || "vazio"}
+                                    </span>
+                                  </span>
+                                )}
+
+                                <span className="text-gray-500">por {evento.autor}</span>
+                                <span className="text-gray-400">
+                                  {new Date(evento.criadoEm).toLocaleString("pt-BR")}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

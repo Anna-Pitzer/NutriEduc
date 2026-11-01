@@ -13,10 +13,12 @@ namespace Ntc.Controllers;
 public class UsuarioController : RespostaController
 {
     private readonly UsuarioService _usuarioService;
+    private readonly AutenticacaoService _autenticacao;
 
-    public UsuarioController(UsuarioService usuarioService)
+    public UsuarioController(UsuarioService usuarioService, AutenticacaoService autenticacao)
     {
         _usuarioService = usuarioService;
+        _autenticacao = autenticacao;
     }
 
     /// <summary>
@@ -24,18 +26,13 @@ public class UsuarioController : RespostaController
     /// um administrador define o papel (Spec 009).
     /// </summary>
     [HttpPost("registrar")]
-    public IActionResult PostAdd([FromBody]DadosUsuarioDTO usuarioDTO)
+    public IActionResult PostAdd([FromBody]CriarUsuarioEntrada usuarioDTO)
     {
-        var id = _usuarioService.CriarUsuario(usuarioDTO);
-
-        if (id == null)
-        {
-            return BadRequest(new { erro = "E-mail já cadastrado." });
-        }
-
-        return Created(
-            $"/api/usuario/perfil/{id.Value}",
-            new { id = id.Value, nome = usuarioDTO.Nome, email = usuarioDTO.Email });
+        return Traduzir(
+            _usuarioService.CriarUsuario(usuarioDTO),
+            id => Created(
+                $"/api/usuario/perfil/{id}",
+                _usuarioService.ObterUsuarioPorId(id)!));
     }
 
     [Authorize]
@@ -66,7 +63,7 @@ public class UsuarioController : RespostaController
     public async Task<IActionResult> PostLogin(
         [FromBody] LoginUsuarioDTO dadosLoginDTO)
     {
-        var resultado = _usuarioService.Autenticar(dadosLoginDTO, out var usuario);
+        var resultado = _autenticacao.Autenticar(dadosLoginDTO, out var usuario);
 
         if (resultado != ResultadoLogin.Ok)
         {

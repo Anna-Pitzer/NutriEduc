@@ -56,37 +56,15 @@ function mapearAlunoParaFormulario(aluno: AlunoResposta): FormularioAluno {
 
 export function CadastroAlunos() {
 
+    // Opções fixas de restrição e alergia exibidas ao aluno. Revisão da Spec 010
+    // (2026-11-01): o catálogo é semeado pela migration e não é editável pela interface.
     const opcoes = [
-        {
-            nome: "Integral",
-            valor: "Integral",
-            icone: Apple
-        },
-        {
-            nome: "Intolerância à Lactose",
-            valor: "Intolerância à Lactose",
-            icone: Milk,
-        },
-        {
-            nome: "APVL",
-            valor: "APVL",
-            icone: Milk,
-        },
-        {
-            nome: "Diabétes",
-            valor: "Diabetes",
-            icone: Candy,
-        },
-        {
-            nome: "Intolerância Glúten",
-            valor: "Intolerância ao Glúten",
-            icone: Wheat,
-        },
-        {
-            nome: "Outros",
-            valor: "Outros",
-            icone: CircleHelp,
-        }
+        { nome: "Integral", valor: "Integral", icone: Apple },
+        { nome: "Intolerância à Lactose", valor: "Intolerância à Lactose", icone: Milk },
+        { nome: "APVL", valor: "APVL", icone: Milk },
+        { nome: "Diabétes", valor: "Diabetes", icone: Candy },
+        { nome: "Intolerância Glúten", valor: "Intolerância ao Glúten", icone: Wheat },
+        { nome: "Outros", valor: "Outros", icone: CircleHelp },
     ];
 
     //IDEAL PUXAR DO BACK DPS
@@ -110,15 +88,6 @@ export function CadastroAlunos() {
     ];
 
     //IDEAL PUXAR DO BACK DPS
-    const restricoesPermitidas = [
-        "Integral",
-        "Intolerância à Lactose",
-        "APVL",
-        "Diabetes",
-        "Intolerância ao Glúten",
-        "Outros",
-    ];
-
     const limparTexto = (valor: string, limite: number): string => {
         return valor.replace(/[<>]/g, "")
             .replace(/\s+/g, " ")
@@ -195,10 +164,6 @@ export function CadastroAlunos() {
     const alterarRestricao = (
         restricao: string
     ) => {
-        if (!restricoesPermitidas.includes(restricao)) {
-            return
-        }
-
         setForm((prev) => {
             const existe = prev.restricoes.includes(restricao);
 
@@ -263,13 +228,6 @@ export function CadastroAlunos() {
 
         if (!contatoTelefone || contatoTelefone.length < 10) {
             mostrarErro("Informe um telefone de contato de emergência válido.");
-            return false;
-        }
-
-        const restricoesInvalidas = form.restricoes.some((restricao) => !restricoesPermitidas.includes(restricao));
-
-        if (restricoesInvalidas) {
-            mostrarErro("Uma das restrições alimentares selecionadas é inválida");
             return false;
         }
 
@@ -356,7 +314,7 @@ export function CadastroAlunos() {
         return (
             <div className="relative min-h-screen bg-[#FAF9F5]">
                 <Header />
-                <p className="mx-10 my-10 text-gray-500">Carregando aluno...</p>
+                <p className="mx-auto my-10 w-full max-w-7xl text-gray-500">Carregando aluno...</p>
                 <Footer />
             </div>
         );
@@ -370,7 +328,7 @@ export function CadastroAlunos() {
             <button
                 type="button"
                 onClick={cancelar}
-                className="group flex items-center justify-center cursor-pointer mx-10"
+                className="group mx-auto flex w-full max-w-7xl cursor-pointer items-center justify-start"
             >
                 <ChevronLeft
                     size={50}
@@ -378,7 +336,7 @@ export function CadastroAlunos() {
                 />
             </button>
 
-            <div className="flex flex-col mx-30 mb-10 gap-10">
+            <div className="flex w-full max-w-7xl flex-col mx-auto mb-10 gap-10">
 
                 <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
 

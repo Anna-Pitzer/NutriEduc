@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using Ntc.Application;
 using Ntc.Domain;
@@ -19,26 +19,28 @@ using Ntc.Domain.Interface;
 /// </summary>
 public class BootstrapService
 {
-    public const int TamanhoMinimoDoToken = 32;
 
-    private const int BytesDoTokenTemporario = 32;
+
+
 
     private readonly IUsuarioRepository _usuarios;
     private readonly IEscolaRepository _escolas;
     private readonly IConsumoBootstrapRepository _consumos;
     private readonly ITokenDeCadastroRepository _tokens;
-    private readonly IConfiguration _configuracao;
+    private readonly ConfiguracaoDeBootstrap _configuracao;
     private readonly TimeProvider _relogio;
     private readonly ILogger<BootstrapService> _logger;
+    private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
 
     public BootstrapService(
         IUsuarioRepository usuarios,
         IEscolaRepository escolas,
         IConsumoBootstrapRepository consumos,
         ITokenDeCadastroRepository tokens,
-        IConfiguration configuracao,
+        ConfiguracaoDeBootstrap configuracao,
         TimeProvider relogio,
-        ILogger<BootstrapService> logger)
+        ILogger<BootstrapService> logger,
+        IUnidadeDeTrabalho unidadeDeTrabalho)
     {
         _usuarios = usuarios;
         _escolas = escolas;
@@ -47,6 +49,7 @@ public class BootstrapService
         _configuracao = configuracao;
         _relogio = relogio;
         _logger = logger;
+        _unidadeDeTrabalho = unidadeDeTrabalho;
     }
 
     /// <summary>
@@ -55,12 +58,12 @@ public class BootstrapService
     /// </summary>
     public (bool Disponivel, string Motivo) Estado()
     {
-        if (!PermitidoNoAmbiente())
+        if (!_configuracao.Permitido)
         {
             return (false, "desativado-ambiente");
         }
 
-        var disponivel = TokenDeAmbiente() is not null || _tokens.ExisteValido(Agora());
+        var disponivel = _configuracao.TokenDeAmbiente is not null || _tokens.ExisteValido(Agora());
 
         return (disponivel, disponivel ? "ok" : "sem-token");
     }
@@ -72,7 +75,7 @@ public class BootstrapService
     /// </summary>
     public Resultado<int> CriarAdmin(CriarAdminBootstrapDTO dto)
     {
-        if (!PermitidoNoAmbiente())
+        if (!_configuracao.Permitido)
         {
             _logger.LogWarning(
                 "Bootstrap recusado: criação desativada por configuração ({Email}).",
@@ -81,14 +84,16 @@ public class BootstrapService
         }
 
         var agora = Agora();
-        var esperado = TokenDeAmbiente();
+        var esperado = _configuracao.TokenDeAmbiente;
 
-        if (esperado is not null && TokenConfere(dto.Token, esperado))
+        if (esperado is not null && HashDeToken.SegredosConferem(dto.Token, esperado))
         {
             return CriarPeloTokenDeAmbiente(dto, agora);
         }
 
-        var temporario = _tokens.ObterPorHash(HashDoToken(dto.Token));
+        var temporario = string.IsNullOrWhiteSpace(dto.Token)
+            ? null
+            : _tokens.ObterPorHash(HashDeToken.Criar(dto.Token).ToString());
 
         if (temporario is null || !temporario.EstaValido(agora))
         {
@@ -106,73 +111,6 @@ public class BootstrapService
         }
 
         return CriarPeloTokenTemporario(dto, temporario, agora);
-    }
-
-    /// <summary>
-    /// Emite o token temporário do painel. Uma unidade só pode ter um token válido por
-    /// vez: emitir outro invalidaria o anterior sem o usuário saber (só o hash é
-    /// guardado), então a resposta é 409.
-    /// </summary>
-    public Resultado<TokenDeCadastroGerado> GerarToken(EscopoUsuario escopo)
-    {
-        if (!PermitidoNoAmbiente())
-        {
-            return Resultado<TokenDeCadastroGerado>.Proibido(
-                "Criação de administrador desativada.");
-        }
-
-        if (escopo.Papel != PapelUsuario.AdminSecretaria)
-        {
-            return Resultado<TokenDeCadastroGerado>.Proibido(
-                "Apenas a secretaria pode gerar o token de cadastro.");
-        }
-
-        if (escopo.UnidadeId is null)
-        {
-            return Resultado<TokenDeCadastroGerado>.Proibido(
-                "Sua conta não está vinculada a uma unidade.");
-        }
-
-        var agora = Agora();
-        var unidadeId = escopo.UnidadeId.Value;
-
-        if (_tokens.ObterValidoDaUnidade(unidadeId, agora) is not null)
-        {
-            return Resultado<TokenDeCadastroGerado>.Conflito(
-                "Já existe um token válido. Aguarde expirar.");
-        }
-
-        var valor = GerarValorDeToken();
-        var token = new TokenDeCadastro(
-            unidadeId,
-            HashDoToken(valor),
-            escopo.UsuarioId,
-            agora,
-            agora.AddMinutes(TokenDeCadastro.ValidadeEmMinutos));
-
-        _tokens.Add(token);
-
-        _logger.LogWarning(
-            "Token de cadastro gerado para a unidade {UnidadeId} por {UsuarioId} (expira em {ExpiraEm}).",
-            unidadeId,
-            escopo.UsuarioId,
-            token.ExpiraEm);
-
-        return Resultado<TokenDeCadastroGerado>.Ok(
-            new TokenDeCadastroGerado(valor, token.ExpiraEm));
-    }
-
-    /// <summary>Estado do token da unidade do solicitante. Nunca devolve o valor.</summary>
-    public TokenDeCadastroAtual ConsultarToken(EscopoUsuario escopo)
-    {
-        if (escopo.UnidadeId is null)
-        {
-            return new TokenDeCadastroAtual(false, null);
-        }
-
-        var token = _tokens.ObterValidoDaUnidade(escopo.UnidadeId.Value, Agora());
-
-        return new TokenDeCadastroAtual(token is not null, token?.ExpiraEm);
     }
 
     private Resultado<int> CriarPeloTokenDeAmbiente(CriarAdminBootstrapDTO dto, DateTime agora)
@@ -202,7 +140,8 @@ public class BootstrapService
 
         // Só o token de ambiente consome a unidade: o token temporário é outra via e não
         // pode queimar a possibilidade de a unidade usar o token de configuração.
-        _consumos.Registrar(new ConsumoBootstrap(unidade.Id, agora));
+        _unidadeDeTrabalho.ExecutarEmTransacao(
+            () => _consumos.Registrar(new ConsumoBootstrap(unidade.Id, agora)));
 
         _logger.LogWarning(
             "AdminSecretaria criado pelo token de ambiente da unidade {UnidadeId} (id {Id}).",
@@ -233,7 +172,7 @@ public class BootstrapService
         }
 
         token.MarcarUsado(agora);
-        _tokens.Update(token);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _tokens.Update(token));
 
         _logger.LogWarning(
             "AdminSecretaria criado pelo token temporário da unidade {UnidadeId} (id {Id}).",
@@ -262,7 +201,7 @@ public class BootstrapService
             unidadeId: unidadeId);
 
         admin.DefinirSenha(dto.Senha);
-        _usuarios.Add(admin);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarios.Add(admin));
 
         // Warning de propósito: criação de administrador precisa aparecer no log.
         _logger.LogWarning(
@@ -300,7 +239,8 @@ public class BootstrapService
 
         if (existente is null)
         {
-            var criada = _escolas.AddUnidade(new UnidadeEscolar(valor));
+            var criada = _unidadeDeTrabalho.ExecutarEmTransacao(
+                () => _escolas.AddUnidade(new UnidadeEscolar(valor)));
 
             _logger.LogWarning(
                 "Unidade {Nome} criada pelo bootstrap (id {Id}).",
@@ -319,81 +259,4 @@ public class BootstrapService
     }
 
     private DateTime Agora() => _relogio.GetUtcNow().UtcDateTime;
-
-    /// <summary>
-    /// Lê <c>Bootstrap:Permitir</c>. Ausente significa permitido (deploy que só configura
-    /// o token); valor inválido significa negado, com erro no log — falha fechada.
-    /// </summary>
-    private bool PermitidoNoAmbiente()
-    {
-        var valor = _configuracao["Bootstrap:Permitir"];
-
-        if (string.IsNullOrWhiteSpace(valor))
-        {
-            return true;
-        }
-
-        if (!bool.TryParse(valor.Trim(), out var permitido))
-        {
-            _logger.LogError(
-                "Bootstrap desabilitado: Bootstrap:Permitir={Valor} não é true nem false.",
-                valor);
-            return false;
-        }
-
-        return permitido;
-    }
-
-    private string? TokenDeAmbiente()
-    {
-        var token = _configuracao["Bootstrap:Token"]?.Trim();
-
-        if (string.IsNullOrEmpty(token))
-        {
-            return null;
-        }
-
-        if (token.Length < TamanhoMinimoDoToken)
-        {
-            _logger.LogError(
-                "Bootstrap desabilitado: o token configurado tem menos de {Minimo} caracteres.",
-                TamanhoMinimoDoToken);
-            return null;
-        }
-
-        return token;
-    }
-
-    private static bool TokenConfere(string? informado, string esperado)
-    {
-        if (string.IsNullOrWhiteSpace(informado))
-        {
-            return false;
-        }
-
-        var a = Encoding.UTF8.GetBytes(informado.Trim());
-        var b = Encoding.UTF8.GetBytes(esperado);
-
-        // FixedTimeEquals exige o mesmo tamanho; comparar o tamanho antes não vaza o
-        // conteúdo, apenas o comprimento.
-        return a.Length == b.Length && CryptographicOperations.FixedTimeEquals(a, b);
-    }
-
-    /// <summary>Token temporário em base64url, sem padding — seguro para copiar e colar.</summary>
-    private static string GerarValorDeToken()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(BytesDoTokenTemporario);
-
-        return Convert.ToBase64String(bytes)
-            .Replace('+', '-')
-            .Replace('/', '_')
-            .TrimEnd('=');
-    }
-
-    private static string HashDoToken(string? valor)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes((valor ?? string.Empty).Trim()));
-
-        return Convert.ToHexString(bytes);
-    }
 }

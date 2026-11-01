@@ -130,7 +130,7 @@ produto exigir ordem por dia, vira entidade em spec futura.
 
 | Método | Rota | Política |
 |---|---|---|
-| `GET` | `/api/unidades/{unidadeId}/parametros-geracao` | `Nutricionista`, `AdminEscola` (leitura) |
+| `GET` | `/api/unidades/{unidadeId}/parametros-geracao` | `Nutricionista` |
 | `PUT` | `/api/unidades/{unidadeId}/parametros-geracao` | `Nutricionista` |
 | `POST` | `/api/cardapios/gerar` | `Nutricionista` |
 

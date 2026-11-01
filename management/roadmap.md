@@ -28,9 +28,9 @@
 | 007 | contrato-erro-e-infra-di | audited | V8; ADR-005; L4 |
 | 008 | higiene-frontend | audited | V7; L6 |
 | 009 | papeis-e-estrutura-escolar | audited | V6; ADR-002; L4 |
-| 010 | restricoes-e-alergias | created | V1; V6; ADR-004; L2 |
-| 011 | catalogo-alimentos | created | V6; ADR-004; L9 |
-| 012 | dominio-cardapio | created | V6; ADR-004; L10 |
+| 010 | restricoes-e-alergias | implemented | V1; V6; ADR-004; L2 |
+| 011 | catalogo-alimentos | implemented | V6; ADR-004; L9 |
+| 012 | dominio-cardapio | implemented | V6; ADR-004; L10 |
 | 013 | geracao-automatica-cardapios | created | V6; ADR-004; L7 |
 | 014 | compatibilidade-cardapio-restricoes | created | V6; ADR-004; L5 |
 | 015 | publicacao-historico-cardapio | created | V6; ADR-004; L7 |
@@ -41,6 +41,10 @@
 | 020 | padronizacao-contrato-rotas | implemented | V9; V8; ADR-005; L6; L7 |
 | 021 | telas-secretaria-e-escola | audited | V10; V6; ADR-002 |
 | 022 | bootstrap-admin-por-token | audited | V11; V6; ADR-002 |
+| 023 | historico-alteracoes-aluno | implemented | V12; ADR-004; ADR-009 |
+| 024 | fronteiras-ddd | implemented | V13; ADR-004; ADR-009 |
+| 025 | painel-e-visao-por-papel | planned | V14; V6; ADR-002 |
+| 026 | substituicao-assistida-ia | planned | V15; ADR-011; ADR-004 |
 
 ---
 

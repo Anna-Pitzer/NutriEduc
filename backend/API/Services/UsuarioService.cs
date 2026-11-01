@@ -1,28 +1,22 @@
-using Ntc.Application;
+﻿using Ntc.Application;
 using Ntc.Domain;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
-
-/// <summary>Motivo da recusa de login (Spec 009, RF1/RF5).</summary>
-public enum ResultadoLogin
-{
-    Ok,
-    CredenciaisInvalidas,
-    SemPapel,
-    Inativo
-}
 
 public class UsuarioService
 {
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IEscolaRepository _escolaRepository;
+    private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
 
     public UsuarioService(
         IUsuarioRepository usuarioRepository,
-        IEscolaRepository escolaRepository)
+        IEscolaRepository escolaRepository,
+        IUnidadeDeTrabalho unidadeDeTrabalho)
     {
         _usuarioRepository = usuarioRepository;
         _escolaRepository = escolaRepository;
+        _unidadeDeTrabalho = unidadeDeTrabalho;
     }
 
     // ------------------------------------------------------------------ autocadastro
@@ -30,9 +24,10 @@ public class UsuarioService
     /// <summary>
     /// Autocadastro público: cria a conta <b>sem papel</b>. A conta existe, mas só
     /// autentica depois que um administrador define o papel (Spec 009). Devolve
-    /// <c>null</c> quando o e-mail já está cadastrado.
+    /// <see cref="Resultado{T}.Invalido"/> quando o e-mail já está cadastrado — a regra e
+    /// a mensagem são do serviço, não do controller.
     /// </summary>
-    public int? CriarUsuario(DadosUsuarioDTO dto)
+    public Resultado<int> CriarUsuario(CriarUsuarioEntrada dto)
     {
         Usuario usuario = new(
             dto.Nome ?? string.Empty,
@@ -47,78 +42,13 @@ public class UsuarioService
 
         if (_usuarioRepository.ExistsByEmail(usuario.Email!))
         {
-            return null;
+            return Resultado<int>.Invalido("E-mail já cadastrado.");
         }
 
-        _usuarioRepository.Add(usuario);
-        return usuario.Id;
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarioRepository.Add(usuario));
+        return Resultado<int>.Ok(usuario.Id);
     }
 
-    // ------------------------------------------------------------------------- login
-
-    /// <summary>
-    /// Confere apenas as credenciais. Não considera papel nem situação ativa: quem
-    /// decide se a sessão pode ser emitida é <see cref="Autenticar"/>.
-    /// </summary>
-    public bool VerificarLogin(LoginUsuarioDTO dto)
-    {
-        Usuario? usuario = _usuarioRepository.GetByEmail(dto.Email ?? string.Empty);
-
-        if (usuario == null)
-        {
-            return false;
-        }
-
-        if (usuario.SenhaConfere(dto.Senha))
-        {
-            return true;
-        }
-
-        // Registro gravado antes da Spec 002: autentica em claro uma única vez e
-        // persiste o hash, de modo que o próximo login use SenhaConfere.
-        if (usuario.SenhaLegada(dto.Senha))
-        {
-            usuario.DefinirSenha(dto.Senha!);
-            _usuarioRepository.Update(usuario);
-            return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Login completo: credenciais, situação ativa e papel definido. Só devolve
-    /// <see cref="ResultadoLogin.Ok"/> quando a sessão pode ser emitida.
-    /// </summary>
-    public ResultadoLogin Autenticar(LoginUsuarioDTO dto, out Usuario? usuario)
-    {
-        usuario = null;
-
-        if (!VerificarLogin(dto))
-        {
-            return ResultadoLogin.CredenciaisInvalidas;
-        }
-
-        var encontrado = _usuarioRepository.GetByEmail(dto.Email ?? string.Empty);
-
-        if (encontrado is null)
-        {
-            return ResultadoLogin.CredenciaisInvalidas;
-        }
-
-        if (!encontrado.Ativo)
-        {
-            return ResultadoLogin.Inativo;
-        }
-
-        if (encontrado.Papel is null)
-        {
-            return ResultadoLogin.SemPapel;
-        }
-
-        usuario = encontrado;
-        return ResultadoLogin.Ok;
-    }
 
     // ------------------------------------------------------------------------ perfil
 
@@ -163,7 +93,7 @@ public class UsuarioService
         {
             usuario.AtualizarFoto(dto.Foto);
         }
-        _usuarioRepository.Update(usuario);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarioRepository.Update(usuario));
 
         return ObterUsuarioPorId(id);
     }
@@ -194,6 +124,11 @@ public class UsuarioService
             return Resultado<int>.NaoEncontrado("Escola não encontrada.");
         }
 
+        if (dto.EscolaId is not null && _escolaRepository.GetEscola(dto.EscolaId.Value) is { Ativa: false })
+        {
+            return Resultado<int>.Invalido("Escola desativada não pode receber usuário.");
+        }
+
         if (dto.UnidadeId is not null)
         {
             var unidade = _escolaRepository.GetUnidade(dto.UnidadeId.Value);
@@ -201,6 +136,11 @@ public class UsuarioService
             if (unidade is null)
             {
                 return Resultado<int>.NaoEncontrado("Unidade não encontrada.");
+            }
+
+            if (!unidade.Ativa)
+            {
+                return Resultado<int>.Invalido("Unidade desativada não pode receber usuário.");
             }
 
             // Unidade é da rede: a checagem só existe quando a unidade ainda guarda a escola
@@ -225,7 +165,7 @@ public class UsuarioService
         usuario.AtualizarTelefone(dto.Telefone);
         usuario.AtualizarFoto(dto.Foto);
 
-        _usuarioRepository.Add(usuario);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarioRepository.Add(usuario));
 
         return Resultado<int>.Ok(usuario.Id);
     }
@@ -301,12 +241,42 @@ public class UsuarioService
 
         if (mudaPapel)
         {
+            if (ErroDeReferencias(dto.EscolaId, dto.UnidadeId) is { } erro)
+            {
+                return Resultado<UsuarioRespostaDTO>.Invalido(erro);
+            }
+
             alvo.DefinirPapel(dto.Papel, dto.EscolaId, dto.UnidadeId);
         }
 
-        _usuarioRepository.Update(alvo);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarioRepository.Update(alvo));
 
         return Resultado<UsuarioRespostaDTO>.Ok(ParaDTO(alvo)!);
+    }
+
+    /// <summary>
+    /// Referências institucionais verificadas antes de mutar o usuário (Spec 024, F4):
+    /// existência e situação são regra de aplicação; a entidade valida só o formato.
+    /// </summary>
+    private string? ErroDeReferencias(int? escolaId, int? unidadeId)
+    {
+        if (escolaId is not null)
+        {
+            var escola = _escolaRepository.GetEscola(escolaId.Value);
+
+            if (escola is null) return "Escola não encontrada.";
+            if (!escola.Ativa) return "Escola desativada não pode receber usuário.";
+        }
+
+        if (unidadeId is not null)
+        {
+            var unidade = _escolaRepository.GetUnidade(unidadeId.Value);
+
+            if (unidade is null) return "Unidade não encontrada.";
+            if (!unidade.Ativa) return "Unidade desativada não pode receber usuário.";
+        }
+
+        return null;
     }
 
     private static bool PodeDefinirPapel(
@@ -358,7 +328,7 @@ public class UsuarioService
             alvo.Desativar();
         }
 
-        _usuarioRepository.Update(alvo);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarioRepository.Update(alvo));
 
         return Resultado<UsuarioRespostaDTO>.Ok(ParaDTO(alvo)!);
     }
@@ -367,7 +337,7 @@ public class UsuarioService
     public List<UsuarioRespostaDTO> Listar(FiltroUsuarios filtro, EscopoUsuario escopo)
     {
         return _usuarioRepository
-            .Listar(filtro, escopo)
+            .Listar(FiltrosDeConsulta.ParaUsuario(filtro, escopo))
             .Select(usuario => ParaDTO(usuario)!)
             .ToList();
     }

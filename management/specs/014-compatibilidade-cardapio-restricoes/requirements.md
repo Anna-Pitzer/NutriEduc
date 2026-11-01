@@ -32,9 +32,11 @@ publicação (Spec 015) seria uma decisão visual, não uma regra de domínio te
 
 - RF1: a análise é derivada e não persistida: recebe cardápio, seus itens, os
   vínculos de cada alimento e a lista de alunos da unidade com suas restrições.
-- RF2: uma incompatibilidade é **bloqueante** quando o vínculo do alimento é
-  `Alergenico` e a restrição correspondente pertence a pelo menos um aluno da
-  unidade. É **alerta** quando o vínculo é `Restricao`.
+- RF2: uma incompatibilidade é **bloqueante** quando a restrição vinculada ao alimento
+  pertence à categoria `Alergia` (Spec 010) e essa restrição pertence a pelo menos um
+  aluno da unidade. É **alerta** quando a restrição é da categoria `Restricao`. A
+  severidade vem da restrição, nunca do vínculo: o vínculo da Spec 011 é apenas o par
+  `(alimento, restrição)`.
 - RF3: a comparação de restrições usa a normalização única de
   `RestricaoAlimentar.Normalizar`; nenhuma segunda normalização é criada (L9).
 - RF4: `GET /api/cardapios/{id}/compatibilidade` devolve:
@@ -47,8 +49,9 @@ publicação (Spec 015) seria uma decisão visual, não uma regra de domínio te
   `totalAlunosAnalisados = 0` e um aviso explícito de que não houve análise.
 - RF7: alimento sem vínculo é `permitido` para todas as restrições; alimento com
   vínculo cuja restrição não existe em nenhum aluno é `permitido` para o grupo.
-- RF8: a rota é acessível a `Nutricionista`, `Merendeira` e `AdminEscola` da unidade
-  do cardápio; `Responsavel` não acessa a visão agregada (vê apenas o próprio aluno).
+- RF8: a rota é acessível a `Nutricionista` (rede) e `Merendeira` (unidade do
+  cardápio); `AdminEscola` não acessa, pelo mesmo motivo da Spec 012 (RF8);
+  `Responsavel` não acessa a visão agregada (vê apenas o próprio aluno).
 - RF9: o frontend exibe contagem de bloqueantes e alertas no detalhe e na listagem,
   com destaque visual; "publicar" fica desabilitado quando há bloqueante (Spec 015).
 - RF10: o serviço é reutilizável pela geração automática (Spec 013) e pela
@@ -91,9 +94,10 @@ publicação (Spec 015) seria uma decisão visual, não uma regra de domínio te
 
 ## Critérios de aceitação
 
-- [ ] Alimento com vínculo `Alergenico` para restrição de aluno da unidade produz
+- [ ] Alimento vinculado a restrição de categoria `Alergia` de aluno da unidade produz
       bloqueante.
-- [ ] Alimento com vínculo `Restricao` produz alerta, não bloqueante.
+- [ ] Alimento vinculado a restrição de categoria `Restricao` produz alerta, não
+      bloqueante.
 - [ ] Alimento sem vínculo aparece em `alimentosPermitidos`.
 - [ ] Dois alunos com a mesma restrição aparecem no mesmo achado.
 - [ ] Refeições diferentes geram achados distintos para o mesmo alimento.

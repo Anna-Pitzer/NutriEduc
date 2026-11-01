@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq;
 
 namespace Ntc.Domain.Entity;
@@ -25,11 +26,13 @@ namespace Ntc.Domain.Entity;
 public class Aluno
 {
     private const int MaxRestricoes = 20;
+    private const string CampoRestricoes = "Restrições";
     private const int MaxObservacao = 500;
     private const int NomeMin = 2;
     private const int NomeMax = 100;
 
     private readonly List<string> _restricoes = new();
+    private readonly List<HistoricoAluno> _historico = new();
 
     public int Id { get; private set; }
 
@@ -49,6 +52,13 @@ public class Aluno
     public string Observacao { get; private set; } = string.Empty;
 
     public IReadOnlyList<string> Restricoes => _restricoes.AsReadOnly();
+
+    /// <summary>
+    /// Trilha append-only de alterações do aluno (Spec 023, ADR-016): criação, campos
+    /// alterados e restrições, sempre com autor e data, sem edição nem exclusão. A escrita
+    /// só acontece por <see cref="RegistrarCriacao"/> e <see cref="RegistrarHistorico"/>.
+    /// </summary>
+    public IReadOnlyList<HistoricoAluno> Historico => _historico.AsReadOnly();
 
     public bool Anafilaxia { get; private set; }
 
@@ -93,9 +103,16 @@ public class Aluno
 
     /// <summary>
     /// Aplica as mesmas invariantes do construtor. Valida tudo — inclusive a coleção de
-    /// restrições — antes de tocar em qualquer propriedade.
+    /// restrições e a unidade — antes de tocar em qualquer propriedade.
+    ///
+    /// Devolve os três diffs calculados antes de aplicar (Spec 023, RF3): campos alterados
+    /// com valor anterior e novo, restrições adicionadas e restrições removidas. Campo ou
+    /// conjunto inalterado devolve lista vazia e não gera evento.
     /// </summary>
-    public void AtualizarDados(
+    public (
+        IReadOnlyList<AlteracaoDeDado> Alteracoes,
+        IReadOnlyList<string> Adicionadas,
+        IReadOnlyList<string> Removidas) AtualizarDados(
         string nome,
         DateOnly nascimento,
         Turma turma,
@@ -103,7 +120,8 @@ public class Aluno
         string? observacao,
         IEnumerable<string>? restricoes,
         bool anafilaxia,
-        Responsavel responsavel)
+        Responsavel responsavel,
+        int? unidadeId)
     {
         ArgumentNullException.ThrowIfNull(turma);
         ArgumentNullException.ThrowIfNull(responsavel);
@@ -112,11 +130,79 @@ public class Aluno
 
         var restricoesValidadas = NormalizarRestricoes(restricoes);
 
+        ValidarUnidade(unidadeId);
+
+        var adicionadas = restricoesValidadas
+            .Where(nova => !ContemRestricao(_restricoes, nova))
+            .ToList();
+
+        var removidas = _restricoes
+            .Where(atual => !ContemRestricao(restricoesValidadas, atual))
+            .ToList();
+
+        var alteracoes = new List<AlteracaoDeDado>();
+
+        Comparar(alteracoes, "Nome", Nome, dados.Nome);
+        Comparar(alteracoes, "Nascimento", TextoData(Nascimento), TextoData(dados.Nascimento));
+        Comparar(alteracoes, "Escola", Turma.Escola, turma.Escola);
+        Comparar(alteracoes, "Série", Turma.Serie, turma.Serie);
+        Comparar(alteracoes, "Telefone", Telefone, dados.Telefone);
+        Comparar(alteracoes, "Observação", Observacao, dados.Observacao);
+        Comparar(alteracoes, "Responsável", Responsavel.Nome, responsavel.Nome);
+        Comparar(alteracoes, "Telefone do responsável", Responsavel.Telefone, responsavel.Telefone);
+        Comparar(alteracoes, "Anafilaxia", TextoBooleano(Anafilaxia), TextoBooleano(anafilaxia));
+        Comparar(alteracoes, "Unidade", TextoUnidade(UnidadeId), TextoUnidade(unidadeId));
+
         AplicarDados(dados, turma, anafilaxia, responsavel);
+        UnidadeId = unidadeId;
 
         _restricoes.Clear();
-        foreach (var restricao in restricoesValidadas)
-            _restricoes.Add(restricao);
+        _restricoes.AddRange(restricoesValidadas);
+
+        return (alteracoes, adicionadas, removidas);
+    }
+
+    /// <summary>Evento único de criação do cadastro (Spec 023, RF2).</summary>
+    public void RegistrarCriacao(string? autorNome)
+    {
+        _historico.Add(new HistoricoAluno(
+            Id, TipoEventoAluno.Criado, null, null, Nome, autorNome, DateTime.UtcNow));
+    }
+
+    /// <summary>
+    /// Registra um evento por campo alterado e um por restrição adicionada ou removida
+    /// (Spec 023, RF3 e RF4). Chamado pelo serviço antes de persistir: como
+    /// <see cref="Historico"/> é a navegação do agregado, aluno e eventos são gravados na
+    /// mesma unidade de persistência (RNF2).
+    /// </summary>
+    public void RegistrarHistorico(
+        IEnumerable<AlteracaoDeDado> alteracoes,
+        IEnumerable<string> adicionadas,
+        IEnumerable<string> removidas,
+        string? autorNome)
+    {
+        var agora = DateTime.UtcNow;
+
+        foreach (var alteracao in alteracoes ?? Enumerable.Empty<AlteracaoDeDado>())
+        {
+            _historico.Add(new HistoricoAluno(
+                Id, TipoEventoAluno.Alterado, alteracao.Campo,
+                alteracao.ValorAnterior, alteracao.ValorNovo, autorNome, agora));
+        }
+
+        foreach (var nome in adicionadas ?? Enumerable.Empty<string>())
+        {
+            _historico.Add(new HistoricoAluno(
+                Id, TipoEventoAluno.RestricaoAdicionada, CampoRestricoes,
+                string.Empty, nome, autorNome, agora));
+        }
+
+        foreach (var nome in removidas ?? Enumerable.Empty<string>())
+        {
+            _historico.Add(new HistoricoAluno(
+                Id, TipoEventoAluno.RestricaoRemovida, CampoRestricoes,
+                nome, string.Empty, autorNome, agora));
+        }
     }
 
     public void AdicionarRestricao(string restricao)
@@ -153,11 +239,7 @@ public class Aluno
     /// </summary>
     public void DefinirUnidade(int? unidadeId)
     {
-        if (unidadeId is <= 0)
-        {
-            throw new ArgumentException("Unidade inválida.");
-        }
-
+        ValidarUnidade(unidadeId);
         UnidadeId = unidadeId;
     }
 
@@ -195,6 +277,39 @@ public class Aluno
     {
         return ValidacaoDeCampo.Telefone(valor, "Telefone");
     }
+
+    /// <summary>
+    /// Regra única de unidade: identificadores não positivos são inválidos. Vale tanto na
+    /// criação (<see cref="DefinirUnidade"/>) quanto na atualização.
+    /// </summary>
+    private static void ValidarUnidade(int? unidadeId)
+    {
+        if (unidadeId is <= 0)
+            throw new ArgumentException("Unidade inválida.");
+    }
+
+    /// <summary>
+    /// Compara o valor atual com o validado e registra a alteração quando diferem. A
+    /// comparação é textual e ordinal sobre a representação canônica do campo, para que
+    /// campos inalterados nunca gerem evento (Spec 023, RF3).
+    /// </summary>
+    private static void Comparar(
+        ICollection<AlteracaoDeDado> alteracoes,
+        string campo,
+        string valorAnterior,
+        string valorNovo)
+    {
+        if (!string.Equals(valorAnterior, valorNovo, StringComparison.Ordinal))
+            alteracoes.Add(new AlteracaoDeDado(campo, valorAnterior, valorNovo));
+    }
+
+    private static string TextoData(DateOnly data) =>
+        data.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static string TextoBooleano(bool valor) => valor ? "Sim" : "Não";
+
+    private static string TextoUnidade(int? unidadeId) =>
+        unidadeId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
 
     private static DateOnly ValidarNascimento(DateOnly valor)
     {

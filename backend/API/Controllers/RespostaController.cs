@@ -18,6 +18,7 @@ public abstract class RespostaController : ControllerBase
         return resultado.Status switch
         {
             ResultadoStatus.Ok => sucesso(resultado.Valor!),
+            ResultadoStatus.Invalido => BadRequest(new { erro = resultado.Erro }),
             ResultadoStatus.Proibido => Forbid(),
             ResultadoStatus.NaoEncontrado => NotFound(new { erro = resultado.Erro }),
             _ => Conflict(new { erro = resultado.Erro })

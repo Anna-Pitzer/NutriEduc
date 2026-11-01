@@ -33,6 +33,21 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
 
+    /// <summary>
+    /// Semeia o catálogo usado pelos testes de aluno (Spec 010). Sem catálogo, toda gravação
+    /// de aluno com restrição seria recusada com 400 — que é justamente o comportamento
+    /// correto em produção para um catálogo vazio.
+    /// </summary>
+    private static readonly (string Nome, CategoriaRestricao Categoria)[] CatalogoInicial =
+    {
+        ("Lactose", CategoriaRestricao.Alergia),
+        ("Amendoim", CategoriaRestricao.Alergia),
+        ("Gluten", CategoriaRestricao.Restricao),
+        ("Diabetes", CategoriaRestricao.Restricao)
+    };
+
+    private bool _catalogoSemeado;
+
     public ApiFactory()
     {
         _connection.Open();
@@ -66,18 +81,48 @@ public class ApiFactory : WebApplicationFactory<Program>
         });
     }
 
+    /// <summary>Cria o catálogo inicial uma única vez por fábrica (idempotente).</summary>
+    public void GarantirCatalogo()
+    {
+        if (_catalogoSemeado)
+        {
+            return;
+        }
+
+        using var scope = Services.CreateScope();
+        var repositorio = scope.ServiceProvider.GetRequiredService<IRestricaoRepository>();
+        var unidadeDeTrabalho = scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
+
+        foreach (var (nome, categoria) in CatalogoInicial)
+        {
+            if (!repositorio.ExisteNomeNormalizado(
+                    RestricaoAlimentar.Normalizar(nome), categoria, ignorarId: null))
+            {
+                unidadeDeTrabalho.ExecutarEmTransacao(
+                    () => repositorio.Add(new RestricaoAlimentar(nome, categoria)));
+            }
+        }
+
+        _catalogoSemeado = true;
+    }
+
     /// <summary>
     /// Cria uma escola (para escopo de usuários) e uma unidade da rede para os testes do
     /// bootstrap v2. O nome da unidade pode ser fixado para exercitar a busca pelo nome exato.
     /// </summary>
     public (int EscolaId, int UnidadeId) CriarEscolaComUnidade(string? nomeDaUnidade = null)
     {
+        GarantirCatalogo();
+
         using var scope = Services.CreateScope();
         var escolas = scope.ServiceProvider.GetRequiredService<IEscolaRepository>();
+        var unidadeDeTrabalho = scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
 
-        var escola = escolas.Add(new Escola($"Escola de teste {Guid.NewGuid():N}"));
-        var unidade = escolas.AddUnidade(new UnidadeEscolar(
-            nomeDaUnidade ?? $"Unidade {Guid.NewGuid():N}"));
+        var escola = unidadeDeTrabalho.ExecutarEmTransacao(
+            () => escolas.Add(new Escola($"Escola de teste {Guid.NewGuid():N}")));
+        var unidade = unidadeDeTrabalho.ExecutarEmTransacao(
+            () => escolas.AddUnidade(new UnidadeEscolar(
+                nomeDaUnidade ?? $"Unidade {Guid.NewGuid():N}")));
 
         return (escola.Id, unidade.Id);
     }
@@ -102,7 +147,8 @@ public class ApiFactory : WebApplicationFactory<Program>
             ?? throw new InvalidOperationException($"Usuário {email} não existe.");
 
         usuario.DefinirPapel(papel, escolaId, unidadeId);
-        usuarios.Update(usuario);
+        scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>()
+            .ExecutarEmTransacao(() => usuarios.Update(usuario));
     }
 
     /// <summary>
@@ -124,7 +170,8 @@ public class ApiFactory : WebApplicationFactory<Program>
                 ?? throw new InvalidOperationException($"Usuário {email} não foi criado.");
 
             usuario.DefinirPapel(papel, escolaId, unidadeId);
-            usuarios.Update(usuario);
+            scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>()
+                .ExecutarEmTransacao(() => usuarios.Update(usuario));
         }
 
         var login = await client.PostAsJsonAsync("/api/usuario/login", new
@@ -143,6 +190,8 @@ public class ApiFactory : WebApplicationFactory<Program>
     /// </summary>
     public async Task<(HttpClient Client, string Email)> RegistrarAsync()
     {
+        GarantirCatalogo();
+
         var client = CreateClient(new WebApplicationFactoryClientOptions
         {
             HandleCookies = true

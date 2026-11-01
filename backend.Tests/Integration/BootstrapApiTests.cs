@@ -165,9 +165,10 @@ public class BootstrapApiTests : IClassFixture<ApiFactory>
         using (var scope = _factory.Services.CreateScope())
         {
             var escolas = scope.ServiceProvider.GetRequiredService<IEscolaRepository>();
+            var unidadeDeTrabalho = scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
             var unidade = escolas.GetUnidade(unidadeId)!;
             unidade.Desativar();
-            escolas.UpdateUnidade(unidade);
+            unidadeDeTrabalho.ExecutarEmTransacao(() => escolas.UpdateUnidade(unidade));
         }
 
         var client = _factory.CreateClient();

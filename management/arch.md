@@ -47,10 +47,10 @@ Persistência
 
 | Camada | Pode | Não pode |
 | --- | --- | --- |
-| Controller | Traduzir HTTP ↔ DTO, decidir status code | Conter regra de negócio, acessar `DbContext` |
-| Service | Orquestrar caso de uso, consultar repositório | Validar invariante de entidade (isso é do domínio) |
-| Domain | Validar e proteger invariantes, expor comportamento | Conhecer HTTP, EF Core, DTO |
-| Infrastructure | Persistir, mapear schema | Conter regra de negócio |
+| Controller | Traduzir HTTP ↔ contrato, decidir status code | Conter regra de negócio ou mensagem de regra, acessar `DbContext` |
+| Service | Orquestrar caso de uso, consultar portos, abrir transação por `IUnidadeDeTrabalho` | Validar invariante de entidade, chamar outro serviço, decidir transação em repositório |
+| Domain | Validar e proteger invariantes, expor políticas puras (`PoliticaDeExclusao`) e filtros de negócio (`FiltroAluno`) | Conhecer HTTP, EF Core, DTO, sessão, papel ou claims |
+| Infrastructure | Persistir, mapear schema, implementar a unidade de trabalho | Conter regra de negócio, confirmar escrita por conta própria |
 | Frontend service | Chamar API, tipar contrato | Conter regra de negócio que o backend precisa garantir |
 
 ## 3. Fluxo de autenticação
@@ -82,6 +82,13 @@ Violação desse fluxo é a causa raiz de estado inválido persistido.
 
 - `IUsuarioRepository`, `IAlunoRepository` são consumidos por serviços via DI.
   Nenhum repositório instancia `ConnectionContext` por conta própria.
+- Desde a Spec 024, os portos recebem filtros de negócio (`FiltroAluno`, `FiltroUsuarios`)
+  e nunca escopo de sessão; a tradução papel → filtro vive em `Application`.
+- Contratos de entrada e de saída são tipos distintos por operação (`AlunoEntrada`,
+  `AlunoResposta`, `CriarUsuarioEntrada`, `UsuarioRespostaDTO`); nenhum DTO de entrada é
+  devolvido por rota.
+- Escrita passa por `IUnidadeDeTrabalho`: o caso de uso abre a transação e confirma; nenhum
+  repositório chama `SaveChanges`.
 - Services são `Scoped`, alinhados ao ciclo de vida do `ConnectionContext`.
 - DTOs de entrada e de saída são distintos. Campo de senha nunca aparece em DTO de
   saída.
@@ -191,3 +198,93 @@ O contrato único de erro (§6) e a injeção de dependência por contrato (§5)
 dono explícito: um middleware de exceção registrado em `Program.cs`, que traduz
 `ArgumentException` em 400 e elimina os `try/catch` repetidos nos controllers, e a
 correção do `UsuarioRepository`, que hoje instancia o próprio `DbContext` (PEND-004).
+
+## Spec 023 — historico-alteracoes-aluno
+
+**Canonical creation path:** `backend/Domain/Entities/HistoricoAluno.cs`,
+`backend/Domain/Interface/IHistoricoAlunoRepository.cs`,
+`backend/API/Services/HistoricoAlunoService.cs`, `backend/API/Controllers/AlunoController.cs`,
+`frontend/src/pages/nutricao/alunos/VisualizarAlunos.tsx`.
+
+**Problema estrutural:** a trilha append-only nasceu presa a um único atributo
+(`HistoricoRestricaoAluno`, Spec 010). Registrar qualquer outra mudança exigiria uma
+tabela nova por atributo — o mesmo erro que a Spec 010 corrigiu no catálogo.
+
+**Decisão:** uma entidade `HistoricoAluno` genérica, filha do agregado `Aluno`, com
+`Tipo` (`Criado`, `Alterado`, `RestricaoAdicionada`, `RestricaoRemovida`), `Campo`
+(opcional), `ValorAnterior`/`ValorNovo` (snapshots textuais), `AutorNome` e
+`CriadoEmUtc`. O diff é calculado no domínio (`Aluno.AtualizarDados` devolve a lista de
+alterações) e persistido na mesma `SaveChanges` do aluno, preservando ADR-009 e RNF2.
+
+**Compatibilidade:** a tabela `HistoricosRestricoesAlunos` é migrada para a nova trilha e
+removida; a rota `GET /api/aluno/{id}/restricoes/historico` continua respondendo, agora
+filtrando os eventos de restrição da trilha única — nenhum consumidor quebra.
+
+## Spec 025 — painel-e-visao-por-papel
+
+**Canonical creation path:** `backend/API/Controllers/PainelController.cs`,
+`backend/API/Services/PainelService.cs`, `frontend/src/pages/secretaria/HomeSecretaria.tsx`,
+`frontend/src/pages/merendeiras/HomeMerendeiras.tsx`, `frontend/src/pages/pais/HomePais.tsx`,
+`frontend/src/services/PainelApi.ts`.
+
+**Problema estrutural:** a autorização já existe por papel (Spec 009) e as guardas de rota
+também, mas três áreas são placeholders. A secretaria não tem indicadores; a merendeira não
+vê o cardápio do dia da própria unidade; a família não vê nada do filho. As features que
+alimentam essas telas (012–019) definem **acesso por papel de cada recurso**, não a
+consolidação em uma área de entrada.
+
+**Decisão:** uma leitura agregada só (`PainelService`) alimenta três telas — painel da
+secretaria, cardápio do dia da merendeira e visão da família. Nenhuma delas cria recurso
+próprio: todas compõem dados de cardápio publicado (012/015), restrições (010/023) e
+ocorrências/solicitações (016/017). O relatório da família é **escopado ao filho** e vive
+aqui, não na 019, que permanece o catálogo de relatórios de gestão.
+
+**Regra derivada:** tela de área lê por composição; nunca duplica regra de recurso nem
+consulta fora do escopo — aluno fora do vínculo responde 403 sem revelar existência.
+
+## Spec 026 — substituicao-assistida-ia
+
+**Canonical creation path:** `backend/Domain/Entities/SugestaoDeSubstituicao.cs`,
+`backend/Domain/Interface/ISugestorDeSubstituicao.cs`,
+`backend/API/Services/SubstituicaoService.cs`, `backend/Infrastructure/IA/SugestorPorIa.cs`,
+`frontend/src/pages/nutricao/cardapios/MontarCardapio.tsx`.
+
+**Problema estrutural:** a compatibilidade é função pura e determinística (ADR-011) e a
+geração (013) também. Apoio à decisão não existe: trocar um item bloqueado é trabalho
+manual. Introduzir IA sem fronteira colocaria não-determinismo no caminho de uma regra de
+segurança alimentar.
+
+**Decisão:** a IA nunca decide o que é permitido. A porta `ISugestorDeSubstituicao` recebe
+candidatos **já validados** pelo motor determinístico (mesma categoria, valores próximos,
+sem vínculo bloqueante) e devolve ranking com justificativa; a escolha é revalidada por
+`AnaliseCompatibilidade` antes de tocar no cardápio e só entra após aprovação humana. Duas
+implementações: `SugestorPorIa` (provedor externo, opcional, com timeout e teto de uso) e
+`SugestorDeterministico` (fallback sempre disponível). Prompt carrega apenas nomes de
+alimentos e restrições agregadas — nunca dado de aluno. Toda sugestão aceita ou recusada é
+registrada no padrão append-only da Spec 023.
+
+**Regra derivada:** resultado de IA é proposta, não estado; nenhuma escrita de cardápio
+depende de resposta de provedor externo.
+
+## Spec 024 — fronteiras-ddd
+
+**Canonical creation path:** `backend/Application/`, `backend/Domain/Entities/`,
+`backend/Domain/Interface/`, `backend/API/Services/`, `backend/Infrastructure/Repositories/`.
+
+**Problema estrutural:** as camadas existem, mas a fronteira entre elas é permeável em sete
+pontos: DTO de entrada é reutilizado como saída (`DadosAlunoDTO`), regra de negócio mora em
+serviço de aplicação (hash de token em `BootstrapService`, unicidade de e-mail virando
+`null`, existência de unidade não validada), `EscopoUsuario` (autorização) é vocabulário do
+domínio, não existe unidade de trabalho (19 `SaveChanges` em repositórios), `ExclusaoService`
+decide política e escopo ao mesmo tempo, `Usuario.Senha` é pública, e `UsuarioService` /
+`BootstrapService` passam de 370 linhas acumulando casos de uso.
+
+**Decisão:** cada correção move a regra para a camada dona: contratos separados por operação
+em `Application`; invariantes e objetos de valor em `Domain` (`HashDeToken`, referências
+validadas na entidade); filtros de negócio no lugar de escopos de sessão dentro dos portos
+de repositório; `IUnidadeDeTrabalho` com transação explícita por caso de uso; política de
+exclusão como serviço de domínio, com a autorização decidida na aplicação; e divisão dos
+serviços grandes por intenção, preservando os contratos HTTP existentes.
+
+**Regra derivada:** nenhum tipo de `Domain` pode conhecer sessão, HTTP, EF Core ou DTO; nenhum
+repositório decide transação sozinho; nenhum controller conhece mensagem de regra de negócio.

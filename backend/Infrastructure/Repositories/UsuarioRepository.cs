@@ -16,7 +16,6 @@ public class UsuarioRepository : IUsuarioRepository
 
     public void Add(Usuario usuario) {
         _context.Usuarios.Add(usuario);
-        _context.SaveChanges();  
     }
 
     public Usuario? GetById(int id)
@@ -38,21 +37,16 @@ public class UsuarioRepository : IUsuarioRepository
     public void Update(Usuario usuario)
     {
         _context.Usuarios.Update(usuario);
-        _context.SaveChanges();
     }
 
     /// <summary>
-    /// Escopo primeiro, filtros depois — o escopo nunca é relaxado por um filtro da
-    /// requisição (RF7).
+    /// O recorte do solicitante já vem dentro de <paramref name="filtro"/> (Spec 024, F5);
+    /// o filtro da requisição nunca o relaxa, porque os dois são o mesmo objeto.
     /// </summary>
-    public List<Usuario> Listar(FiltroUsuarios filtro, EscopoUsuario escopo)
+    public List<Usuario> Listar(FiltroUsuarios filtro)
     {
         var consulta = _context.Usuarios.AsQueryable();
 
-        if (!escopo.Global)
-        {
-            consulta = consulta.Where(usuario => usuario.EscolaId == escopo.EscolaId);
-        }
 
         if (filtro.Papel is not null)
         {
@@ -89,7 +83,6 @@ public class UsuarioRepository : IUsuarioRepository
     public void Delete(Usuario usuario)
     {
         _context.Usuarios.Remove(usuario);
-        _context.SaveChanges();
     }
 
     public bool ExistePorEscola(int escolaId) =>

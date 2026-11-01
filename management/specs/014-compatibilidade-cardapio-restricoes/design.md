@@ -26,7 +26,7 @@ Entradas explícitas — o domínio não conhece repositório:
 public sealed record ItemAnalisado(
     int RefeicaoOrdem, string RefeicaoNome, int AlimentoId, string AlimentoNome);
 
-public sealed record VinculoAnalisado(int RestricaoId, string RestricaoNome, MotivoVinculo Motivo);
+public sealed record VinculoAnalisado(int RestricaoId, string RestricaoNome, CategoriaRestricao Categoria);
 
 public sealed record AlunoAnalisado(int Id, string Nome, IReadOnlyList<string> Restricoes);
 
@@ -71,7 +71,7 @@ public static class AnaliseCompatibilidade
                 achados.Add(new AchadoCompatibilidade(
                     item.RefeicaoOrdem, item.RefeicaoNome, item.AlimentoId, item.AlimentoNome,
                     vinculo.RestricaoNome,
-                    vinculo.Motivo == MotivoVinculo.Alergenico
+                    vinculo.Categoria == CategoriaRestricao.Alergia
                         ? SeveridadeCompatibilidade.Bloqueante
                         : SeveridadeCompatibilidade.Alerta,
                     afetados.OrderBy(a => a.Nome).ToList()));
@@ -108,14 +108,14 @@ bloquear a publicação. Nenhuma das duas reimplementa o cruzamento (L5).
 2. Carrega os alimentos dos itens com seus vínculos (uma consulta, `Include`).
 3. Carrega os alunos da unidade com `Restricoes` (uma consulta).
 4. Monta os records e chama `AnaliseCompatibilidade.Analisar`.
-5. Aplica o escopo: `Merendeira` e `AdminEscola` só acessam cardápio da própria
-   unidade; fora → 403 (Spec 009).
+5. Aplica o escopo: `Merendeira` só acessa cardápio da própria unidade; fora → 403
+   (Spec 009). `AdminEscola` não acessa (Spec 012, RF8).
 
 ## Contrato de API
 
 | Método | Rota | Política |
 |---|---|---|
-| `GET` | `/api/cardapios/{id}/compatibilidade` | `Nutricionista`, `Merendeira`, `AdminEscola` (escopo da unidade) |
+| `GET` | `/api/cardapios/{id}/compatibilidade` | `Nutricionista`, `Merendeira` (escopo da unidade) |
 
 ```json
 { "compativel": false, "totalAlunosAnalisados": 42,

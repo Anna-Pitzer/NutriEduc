@@ -1,11 +1,18 @@
-// Área das Merendeiras — home em construção.
-//
-// Escopo planejado (implementacoes.md): visualizar alunos cadastrados pela nutrição,
-// consultar restrições e alergias, verificar cardápios por dia/refeição, receber
-// atualizações, registrar ocorrências e solicitar mudanças.
-//
-// A navegação entre as áreas entra junto com a navbar unificada, em etapa posterior.
+import { useAuth } from "../../context/authContext";
+import { CardapiosPublicados } from "../publico/CardapiosPublicados";
 
+/**
+ * Área das Merendeiras (Spec 012, RF13): cardápios publicados da própria unidade, em
+ * modo leitura. As demais funções planejadas (ocorrências, solicitações) pertencem às
+ * specs 016 e 017.
+ */
 export function HomeMerendeiras() {
-  return null;
+  const { userLogin } = useAuth();
+
+  return (
+    <CardapiosPublicados
+      unidadeFixa={userLogin?.unidadeId ?? null}
+      titulo="Cardápios da unidade"
+    />
+  );
 }

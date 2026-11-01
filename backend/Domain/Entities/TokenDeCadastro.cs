@@ -33,7 +33,7 @@ public class TokenDeCadastro
 
     public TokenDeCadastro(
         int unidadeId,
-        string hash,
+        HashDeToken hash,
         int criadoPorUsuarioId,
         DateTime criadoEm,
         DateTime expiraEm)
@@ -43,7 +43,7 @@ public class TokenDeCadastro
             throw new ArgumentException("Token de cadastro exige unidade válida.");
         }
 
-        if (string.IsNullOrWhiteSpace(hash))
+        if (string.IsNullOrWhiteSpace(hash.ToString()))
         {
             throw new ArgumentException("Token de cadastro exige hash.");
         }
@@ -59,7 +59,7 @@ public class TokenDeCadastro
         }
 
         UnidadeId = unidadeId;
-        Hash = hash;
+        Hash = hash.ToString();
         CriadoPorUsuarioId = criadoPorUsuarioId;
         CriadoEm = criadoEm;
         ExpiraEm = expiraEm;

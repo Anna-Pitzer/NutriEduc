@@ -14,8 +14,11 @@ import { Suporte } from "../pages/comum/Suporte"
 import { HomeNutricao } from "../pages/nutricao/HomeNutricao"
 import { CadastroAlunos } from "../pages/nutricao/alunos/CadastrarAlunos"
 import { VisualizarAlunos } from "../pages/nutricao/alunos/VisualizarAlunos"
-import { Cardapio } from "../pages/nutricao/cardapios/Cardapio"
-import { MontarCardapio } from "../pages/nutricao/cardapios/MontarCardapio"
+import { ListarCardapios } from "../pages/nutricao/cardapios/ListarCardapios"
+import { FormularioCardapio } from "../pages/nutricao/cardapios/FormularioCardapio"
+import { DetalheCardapio } from "../pages/nutricao/cardapios/DetalheCardapio"
+import { ListarAlimentos } from "../pages/nutricao/alimentos/ListarAlimentos"
+import { FormularioAlimento } from "../pages/nutricao/alimentos/FormularioAlimento"
 
 // Merendeiras
 import { HomeMerendeiras } from "../pages/merendeiras/HomeMerendeiras"
@@ -47,8 +50,29 @@ export function Rotas() {
           <Route path="/aluno/registrar" element={<CadastroAlunos />} />
           <Route path="/aluno/vizualizar" element={<VisualizarAlunos />} />
           <Route path="/alunos/editar/:id" element={<CadastroAlunos />} />
-          <Route path="/cardapio" element={<Cardapio />} />
-          <Route path="/cardapio/montar/:refeicao" element={<MontarCardapio />} />
+        </Route>
+
+        {/* Cardápios — nutrição escreve, merenda lê a própria unidade (Spec 012, RF8) */}
+        <Route
+          element={
+            <ProtegidaPorPapel papeis={["Nutricionista", "AdminSecretaria", "Merendeira"]} />
+          }
+        >
+          <Route path="/cardapios" element={<ListarCardapios />} />
+          <Route path="/cardapios/:id" element={<DetalheCardapio />} />
+        </Route>
+
+        {/* Escrita de cardápio — exclusiva da nutrição (Spec 012, RF8) */}
+        <Route element={<ProtegidaPorPapel papeis={["Nutricionista"]} />}>
+          <Route path="/cardapios/novo" element={<FormularioCardapio />} />
+          <Route path="/cardapios/:id/editar" element={<FormularioCardapio />} />
+        </Route>
+
+        {/* Catálogo de alimentos — nutrição escreve, merenda lê (Spec 011, RF9) */}
+        <Route element={<ProtegidaPorPapel papeis={["Nutricionista", "Merendeira"]} />}>
+          <Route path="/alimentos" element={<ListarAlimentos />} />
+          <Route path="/alimentos/novo" element={<FormularioAlimento />} />
+          <Route path="/alimentos/editar/:id" element={<FormularioAlimento />} />
         </Route>
 
         {/* Demais áreas — guarda por papel; conteúdo entra em etapa posterior */}

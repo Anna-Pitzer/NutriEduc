@@ -37,13 +37,11 @@ public class TokenDeCadastroRepository : ITokenDeCadastroRepository
     public void Add(TokenDeCadastro token)
     {
         _contexto.TokensDeCadastro.Add(token);
-        _contexto.SaveChanges();
     }
 
     public void Update(TokenDeCadastro token)
     {
         _contexto.TokensDeCadastro.Update(token);
-        _contexto.SaveChanges();
     }
 
     public bool ExistePorUnidade(int unidadeId) =>

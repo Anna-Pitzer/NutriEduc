@@ -176,10 +176,63 @@ Registros gravados antes dessa mudança ainda têm a senha em claro: no primeiro
 | `GET` | `/api/aluno/perfil/{id}` | Consulta um aluno pelo ID | Sim |
 | `PUT` | `/api/aluno/{id}` | Atualiza um aluno existente | Sim |
 | `DELETE` | `/api/aluno/{id}` | Exclui um aluno | Sim |
+| `GET` | `/api/aluno/{id}/historico` | Trilha de alterações do aluno (criação, campos e restrições), paginada e em ordem decrescente | Sim; `Nutricionista`, `AdminEscola`, `Merendeira` da unidade e `Responsavel` vinculado |
+| `GET` | `/api/aluno/{id}/restricoes/historico` | Histórico de restrições do aluno, paginado e em ordem decrescente (derivado da trilha; rota mantida por compatibilidade) | Sim; `Nutricionista`, `AdminEscola`, `Merendeira` da unidade e `Responsavel` vinculado |
 
 O campo de nascimento do DTO é `DateOnly`; envie uma data no formato `yyyy-MM-dd`. `anafilaxia` deve ser um booleano JSON (`true` ou `false`). As restrições alimentares são armazenadas como uma coleção JSON na tabela `Alunos`.
 
 Cada aluno pode ser vinculado a uma unidade (`UnidadeId`). Sem unidade, o aluno só é visível para `Nutricionista` e `AdminSecretaria`; `Escola` continua sendo apenas rótulo de exibição.
+
+### Restrições e alergias
+
+O catálogo vive na tabela `RestricoesAlimentares`, com `Categoria` (`Alergia` ou `Restricao`) e `Ativa`. O vínculo do aluno continua na coluna JSON `Restricoes` da tabela `Alunos` (contrato inalterado), agora preenchida apenas com nomes do catálogo ativo — a unicidade do catálogo compara o nome sem caixa e sem acento.
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/restricoes` | Lista o catálogo; aceita `categoria` (`Alergia`/`Restricao`) e `incluirInativas` | Sim |
+| `POST` | `/api/restricoes` | Cria um item do catálogo | Sim; só `Nutricionista` |
+| `PUT` | `/api/restricoes/{id}` | Edita nome e categoria | Sim; só `Nutricionista` |
+| `POST` | `/api/restricoes/{id}/desativar` | Desativa sem apagar vínculos existentes | Sim; só `Nutricionista` |
+| `POST` | `/api/restricoes/{id}/reativar` | Reativa um item desativado | Sim; só `Nutricionista` |
+
+`incluirInativas=true` responde `403` para quem não é `Nutricionista`. Toda gravação de aluno valida os nomes contra o catálogo ativo e responde `400` com `{ "erro": "Restrição desconhecida: <nome>." }` quando o nome não existe ou está inativo. Cada alteração efetiva do conjunto grava um evento append-only (`Adicionada` ou `Removida`) com o nome do autor e a data em UTC; na criação, um evento por restrição informada.
+
+### Catálogo de alimentos
+
+O catálogo vive em `CategoriasAlimento`, `Alimentos` e `AlimentosRestricoes`. O alimento guarda a composição por 100 g em colunas `decimal(10,2)` e uma categoria; o vínculo com uma restrição é apenas o par `(AlimentoId, RestricaoId)` — não existe motivo no vínculo, porque a severidade é sempre a `Categoria` da restrição (`Alergia` bloqueia, `Restricao` alerta). O nome é único no catálogo sem diferenciar caixa nem acento.
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/alimentos` | Lista paginada; aceita `busca`, `categoriaId`, `pagina`, `tamanho`, `incluirInativos` e `ordenar` (`nome`, `nome-desc`, `categoria` ou `recentes`) | Sim; `Nutricionista` ou `Merendeira` |
+| `GET` | `/api/alimentos/{id}` | Detalhe com composição, categoria e vínculos resolvidos | Sim; `Nutricionista` ou `Merendeira` |
+| `POST` | `/api/alimentos` | Cria alimento com os seis valores nutricionais e os vínculos | Sim; só `Nutricionista` |
+| `PUT` | `/api/alimentos/{id}` | Edita nome, categoria, composição e vínculos | Sim; só `Nutricionista` |
+| `POST` | `/api/alimentos/{id}/desativar` | Desativa (soft delete); continua legível por id | Sim; só `Nutricionista` |
+| `POST` | `/api/alimentos/{id}/reativar` | Reativa um alimento desativado | Sim; só `Nutricionista` |
+| `GET` | `/api/categorias-alimento` | Lista categorias; `incluirInativas` é exclusivo da nutrição | Sim; `Nutricionista` ou `Merendeira` |
+| `POST` | `/api/categorias-alimento` | Cria categoria | Sim; só `Nutricionista` |
+| `PUT` | `/api/categorias-alimento/{id}` | Renomeia categoria | Sim; só `Nutricionista` |
+| `POST` | `/api/categorias-alimento/{id}/desativar` | Desativa a categoria; ela não recebe alimento novo | Sim; só `Nutricionista` |
+| `POST` | `/api/categorias-alimento/{id}/reativar` | Reativa a categoria | Sim; só `Nutricionista` |
+
+A busca usa o nome normalizado: tenta prefixo primeiro e, somente quando não há resultado, repete por "contém" — por isso `leite` encontra `Leite de coco`. `Merendeira`, `AdminEscola` e `AdminSecretaria` recebem `403` na leitura do catálogo; `incluirInativos=true` fora da nutrição também responde `403`. Ordenação fora de `nome`, `nome-desc`, `categoria` e `recentes` responde `400` (o padrão é `nome`). Nome duplicado responde `409`; valor nutricional negativo ou com três casas decimais responde `400` sem persistir; categoria desativada não aceita alimento novo (`400`); o mesmo vínculo repetido responde `400`. Desativar o alimento não o esconde da leitura por id, e desativar a categoria não esconde os alimentos dela da listagem.
+
+### Cardápio
+
+O cardápio vive em `Cardapios`, `Refeicoes` e `ItensRefeicao`. O período é um tipo complexo (`Periodo_Inicio` e `Periodo_Fim`), a ordem da refeição é única no cardápio e o item usa a chave `(RefeicaoId, AlimentoId)` — o mesmo alimento não repete na refeição, mas pode em outra. Os valores nutricionais são **derivados**: `valores do alimento × gramas / 100`, arredondados a duas casas por item e somados; nada disso é persistido.
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/cardapios` | Lista paginada; aceita `unidadeId`, `data`, `situacao`, `pagina` e `tamanho` | Sim; `Nutricionista` ou `Merendeira` da própria unidade |
+| `GET` | `/api/cardapios/publicados` | Publicados cujo período inclui a data (padrão: hoje); exige `unidadeId`; aceita `data`, `refeicao`, `pagina` e `tamanho` | Não |
+| `GET` | `/api/cardapios/{id}` | Detalhe com refeições ordenadas, valores por item e totais | Sim; `Nutricionista` ou `Merendeira` da unidade |
+| `POST` | `/api/cardapios` | Cria rascunho com período (até 366 dias), refeições e itens | Sim; só `Nutricionista` |
+| `PUT` | `/api/cardapios/{id}` | Substitui nome, período e refeições de um rascunho de forma atômica | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios/{id}/duplicar` | Copia a composição para um novo período como rascunho | Sim; só `Nutricionista` |
+| `DELETE` | `/api/cardapios/{id}` | Exclui um rascunho com refeições e itens | Sim; só `Nutricionista` |
+
+A rota pública responde `400` sem `unidadeId` e nunca devolve rascunho. Editar ou excluir cardápio que não está em `Rascunho` responde `409` — publicar, cancelar e revisar pertencem à Spec 015. Alimento inexistente responde `400`; alimento desativado só é aceito se já estava no cardápio, o que preserva o histórico de um item que saiu do catálogo. O filtro `refeicao` compara o nome sem diferenciar caixa, mas acento continua significativo. Excluir uma unidade com cardápio responde `409`.
+
 
 ### Papéis e escopo
 

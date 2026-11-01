@@ -18,4 +18,12 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
   </ItemGroup>
 
+  <!--
+    Spec 024 (F8): o hash da senha é interno à entidade. Os testes de domínio precisam
+    inspecioná-lo para garantir que a senha em claro nunca é persistida.
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="backend.Tests" />
+  </ItemGroup>
+
 </Project>

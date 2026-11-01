@@ -16,7 +16,6 @@ public class EscolaRepository : IEscolaRepository
     public Escola Add(Escola escola)
     {
         _context.Escolas.Add(escola);
-        _context.SaveChanges();
         return escola;
     }
 
@@ -46,13 +45,11 @@ public class EscolaRepository : IEscolaRepository
     public void Update(Escola escola)
     {
         _context.Escolas.Update(escola);
-        _context.SaveChanges();
     }
 
     public UnidadeEscolar AddUnidade(UnidadeEscolar unidade)
     {
         _context.Unidades.Add(unidade);
-        _context.SaveChanges();
         return unidade;
     }
 
@@ -94,19 +91,16 @@ public class EscolaRepository : IEscolaRepository
     public void UpdateUnidade(UnidadeEscolar unidade)
     {
         _context.Unidades.Update(unidade);
-        _context.SaveChanges();
     }
 
     public void Delete(Escola escola)
     {
         _context.Escolas.Remove(escola);
-        _context.SaveChanges();
     }
 
     public void DeleteUnidade(UnidadeEscolar unidade)
     {
         _context.Unidades.Remove(unidade);
-        _context.SaveChanges();
     }
 
     public bool ExisteUnidadeDaEscola(int escolaId) =>

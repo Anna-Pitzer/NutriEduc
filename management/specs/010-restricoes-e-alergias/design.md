@@ -197,3 +197,49 @@ Resposta do histórico:
 - **Aluno legado com restrição fora do catálogo**: leitura preservada; a próxima
   gravação exige catálogo, o que pode surpreender. O erro nomeia a restrição para
   permitir correção no catálogo.
+
+## Revisão 2026-11-01
+
+### Regra de vínculo no domínio
+
+A validação de existência saiu de `RestricaoService` e virou objeto de domínio, para o
+serviço não conhecer regra de negócio (ADR-004) e para não existir serviço chamando serviço:
+
+```csharp
+// Domain/Entities/CatalogoDeRestricoes.cs
+public sealed class CatalogoDeRestricoes
+{
+    public CatalogoDeRestricoes(IEnumerable<RestricaoAlimentar>? entradas); // só as ativas
+    public static IReadOnlyList<string> NomesInformados(IEnumerable<string>? nomes);
+    public static IReadOnlyList<string> NomesNormalizados(IEnumerable<string> nomes);
+    public IReadOnlyList<string> ResolverNomes(IEnumerable<string> nomes); // canônico ou ArgumentException
+}
+```
+
+`AlunoService` passou a depender de `IAlunoRepository`, `IRestricaoRepository` e
+`IUsuarioRepository` — três portas, nenhum serviço. O fluxo é: normaliza os nomes
+informados, faz **uma** consulta ao catálogo, entrega as entradas ativas ao
+`CatalogoDeRestricoes` e usa o resultado canônico no construtor/atualização do `Aluno`.
+
+### Interface sem cadastro de catálogo
+
+- A tela `pages/nutricao/restricoes/`, a entrada do menu e a rota `/nutricao/restricoes`
+  foram removidas.
+- `services/RestricaoApi.ts` ficou apenas com `buscarHistoricoRestricoes` e os tipos do
+  evento; as funções de CRUD saíram junto com a tela, para não manter código sem consumidor.
+- A tela do aluno voltou a exibir a grade de opções fixas (Integral, Intolerância à
+  Lactose, APVL, Diabétes, Intolerância ao Glúten, Outros), alimentada por constante local
+  que espelha o catálogo semeado.
+
+### Semente do catálogo
+
+Migration `SeedCatalogoRestricoes` com `INSERT OR IGNORE` apoiado no índice único
+`(NomeNormalizado, Categoria)`: idempotente, e um item editado pela API não é sobrescrito.
+Categorias: `APVL` como `Alergia`; os demais como `Restricao`.
+
+### Decisões de modelagem mantidas
+
+- `Aluno.Restricoes` continua `IReadOnlyList<string>` com coluna JSON (RNF5, ADR-006).
+- O histórico de restrições continua na mesma `SaveChanges` do aluno (RNF2).
+- `HistoricoRestricaoAluno` fica como está nesta spec; a generalização para todos os dados
+  do aluno é escopo da Spec 023, que migra os eventos existentes.

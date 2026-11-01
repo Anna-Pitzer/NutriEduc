@@ -8,6 +8,7 @@ namespace Ntc.Application;
 public enum ResultadoStatus
 {
     Ok,
+    Invalido,
     Proibido,
     NaoEncontrado,
     Conflito
@@ -16,6 +17,10 @@ public enum ResultadoStatus
 public sealed record Resultado<T>(ResultadoStatus Status, T? Valor, string? Erro)
 {
     public static Resultado<T> Ok(T valor) => new(ResultadoStatus.Ok, valor, null);
+
+    /// <summary>Entrada recusada por regra de negócio: responde 400 com a mensagem do serviço.</summary>
+    public static Resultado<T> Invalido(string erro) =>
+        new(ResultadoStatus.Invalido, default, erro);
 
     public static Resultado<T> Proibido() =>
         new(ResultadoStatus.Proibido, default, "Acesso negado.");

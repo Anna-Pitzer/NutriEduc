@@ -265,7 +265,8 @@ public class AlunoTests
             "  Atualizado  ",
             new[] { "Diabetes" },
             true,
-            new Responsavel("Carlos Souza", "11977776666"));
+            new Responsavel("Carlos Souza", "11977776666"),
+            null);
 
         Assert.Equal("João Souza", aluno.Nome);
         Assert.Equal("Escola Nova", aluno.Turma.Escola);
@@ -292,7 +293,8 @@ public class AlunoTests
             null,
             new[] { "Diabetes" },
             true,
-            new Responsavel("Carlos Souza", null)));
+            new Responsavel("Carlos Souza", null),
+            null));
 
         Assert.Equal("Maria Silva", aluno.Nome);
         Assert.Equal("Escola Municipal", aluno.Turma.Escola);
@@ -316,7 +318,8 @@ public class AlunoTests
             null,
             excedidas,
             true,
-            new Responsavel("Carlos Souza", null)));
+            new Responsavel("Carlos Souza", null),
+            null));
 
         Assert.Equal("Maria Silva", aluno.Nome);
         Assert.Equal("Escola Municipal", aluno.Turma.Escola);

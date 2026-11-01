@@ -131,8 +131,8 @@ falhar, nada é alterado.
 | `POST` | `/api/cardapios/{id}/publicar` | `Nutricionista` |
 | `POST` | `/api/cardapios/{id}/cancelar` | `Nutricionista` (publicado) / dono do rascunho |
 | `POST` | `/api/cardapios/{id}/revisao` | `Nutricionista` |
-| `GET` | `/api/cardapios/{id}/historico?pagina=&tamanho=` | `Nutricionista`, `AdminEscola`, `Merendeira` (escopo) |
-| `GET` | `/api/cardapios/alteracoes?desde=&pagina=&tamanho=` | `Nutricionista`, `AdminEscola`, `Merendeira` (escopo) |
+| `GET` | `/api/cardapios/{id}/historico?pagina=&tamanho=` | `Nutricionista`, `Merendeira` (escopo) |
+| `GET` | `/api/cardapios/alteracoes?desde=&pagina=&tamanho=` | `Nutricionista`, `Merendeira` (escopo) |
 
 422 de publicação:
 

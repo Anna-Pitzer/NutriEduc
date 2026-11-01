@@ -48,4 +48,22 @@ internal static class ValidacaoDeCampo
 
         return digitos;
     }
+
+    /// <summary>
+    /// Medida nutricional por 100 g (Spec 011, RNF2): não aceita valor negativo nem mais
+    /// de duas casas decimais, e nunca arredonda em silêncio. Uma única regra para as
+    /// seis medidas — repetir o <c>if</c> em cada uma seria a mesma regra escrita seis
+    /// vezes.
+    /// </summary>
+    public static decimal Medida(decimal valor, string campo)
+    {
+        if (valor < 0)
+            throw new ArgumentException($"O campo {campo} não pode ser negativo.");
+
+        if (decimal.Round(valor, 2) != valor)
+            throw new ArgumentException(
+                $"O campo {campo} aceita no máximo duas casas decimais.");
+
+        return valor;
+    }
 }

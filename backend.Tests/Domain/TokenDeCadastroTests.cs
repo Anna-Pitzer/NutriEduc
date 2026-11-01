@@ -18,7 +18,7 @@ public class TokenDeCadastroTests
 
         return new TokenDeCadastro(
             unidadeId: 1,
-            hash: "hash-de-teste",
+            hash: HashDeToken.Criar("hash-de-teste"),
             criadoPorUsuarioId: 2,
             criadoEm: inicio,
             expiraEm: inicio.AddMinutes(TokenDeCadastro.ValidadeEmMinutos));
@@ -74,7 +74,7 @@ public class TokenDeCadastroTests
     {
         Assert.Throws<ArgumentException>(() => new TokenDeCadastro(
             unidadeId: 1,
-            hash: "hash",
+            hash: HashDeToken.Criar("hash"),
             criadoPorUsuarioId: 2,
             criadoEm: Agora,
             expiraEm: Agora.AddMinutes(-1)));
@@ -85,7 +85,7 @@ public class TokenDeCadastroTests
     {
         Assert.Throws<ArgumentException>(() => new TokenDeCadastro(
             unidadeId: 1,
-            hash: " ",
+            hash: default(HashDeToken),
             criadoPorUsuarioId: 2,
             criadoEm: Agora,
             expiraEm: Agora.AddMinutes(30)));

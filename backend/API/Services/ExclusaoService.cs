@@ -1,13 +1,13 @@
-using Ntc.Application;
+﻿using Ntc.Application;
 using Ntc.Domain;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
+using Ntc.Domain.Services;
 
 /// <summary>
-/// Exclusão definitiva de cadastros (decisão de 2026-10-31, complementando o ADR-008):
-/// só é permitida quando nada referencia o registro; caso contrário responde `409`
-/// dizendo o que impede. A checagem vive aqui para os serviços de cadastro manterem uma
-/// única responsabilidade.
+/// Exclusão definitiva de cadastros (ADR-014). Este serviço faz apenas a orquestração:
+/// carrega o registro, decide <b>quem pode excluir</b> (escopo do solicitante), consulta a
+/// política de domínio sobre <b>o que impede a exclusão</b> e executa (Spec 024, F7).
 /// </summary>
 public sealed class ExclusaoService
 {
@@ -17,6 +17,8 @@ public sealed class ExclusaoService
     private readonly IVinculoRepository _vinculos;
     private readonly ITokenDeCadastroRepository _tokens;
     private readonly IConsumoBootstrapRepository _consumos;
+    private readonly ICardapioRepository _cardapios;
+    private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
 
     public ExclusaoService(
         IEscolaRepository escolas,
@@ -24,7 +26,9 @@ public sealed class ExclusaoService
         IAlunoRepository alunos,
         IVinculoRepository vinculos,
         ITokenDeCadastroRepository tokens,
-        IConsumoBootstrapRepository consumos)
+        IConsumoBootstrapRepository consumos,
+        ICardapioRepository cardapios,
+        IUnidadeDeTrabalho unidadeDeTrabalho)
     {
         _escolas = escolas;
         _usuarios = usuarios;
@@ -32,6 +36,8 @@ public sealed class ExclusaoService
         _vinculos = vinculos;
         _tokens = tokens;
         _consumos = consumos;
+        _cardapios = cardapios;
+        _unidadeDeTrabalho = unidadeDeTrabalho;
     }
 
     public Resultado<bool> ExcluirEscola(int id)
@@ -43,20 +49,17 @@ public sealed class ExclusaoService
             return Resultado<bool>.NaoEncontrado("Escola não encontrada.");
         }
 
-        if (_usuarios.ExistePorEscola(id))
+        var impedimento = PoliticaDeExclusao.ParaEscola(
+            temUsuarios: _usuarios.ExistePorEscola(id),
+            // Unidade deixou de pertencer a escola (ADR-013); só as legadas ainda a citam.
+            temUnidadesLegadas: _escolas.ExisteUnidadeDaEscola(id));
+
+        if (impedimento is not null)
         {
-            return Resultado<bool>.Conflito(
-                "Há usuários vinculados a esta escola. Exclua ou mova essas contas antes.");
+            return Resultado<bool>.Conflito(impedimento);
         }
 
-        // Unidade deixou de pertencer a escola (ADR-013); só unidades legadas ainda a citam.
-        if (_escolas.ExisteUnidadeDaEscola(id))
-        {
-            return Resultado<bool>.Conflito(
-                "Há unidades com esta escola como origem. Exclua essas unidades antes.");
-        }
-
-        _escolas.Delete(escola);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _escolas.Delete(escola));
 
         return Resultado<bool>.Ok(true);
     }
@@ -70,25 +73,18 @@ public sealed class ExclusaoService
             return Resultado<bool>.NaoEncontrado("Unidade não encontrada.");
         }
 
-        if (_usuarios.ExistePorUnidade(id))
+        var impedimento = PoliticaDeExclusao.ParaUnidade(
+            temUsuarios: _usuarios.ExistePorUnidade(id),
+            temAlunos: _alunos.ExistePorUnidade(id),
+            temTokenOuConsumo: _tokens.ExistePorUnidade(id) || _consumos.UnidadeJaConsumiu(id),
+            temCardapios: _cardapios.ExisteCardapioDaUnidade(id));
+
+        if (impedimento is not null)
         {
-            return Resultado<bool>.Conflito(
-                "Há usuários vinculados a esta unidade. Mova ou exclua essas contas antes.");
+            return Resultado<bool>.Conflito(impedimento);
         }
 
-        if (_alunos.ExistePorUnidade(id))
-        {
-            return Resultado<bool>.Conflito(
-                "Há alunos vinculados a esta unidade. Mova ou exclua esses alunos antes.");
-        }
-
-        if (_tokens.ExistePorUnidade(id) || _consumos.UnidadeJaConsumiu(id))
-        {
-            return Resultado<bool>.Conflito(
-                "Esta unidade já participou do cadastro por token e não pode ser excluída.");
-        }
-
-        _escolas.DeleteUnidade(unidade);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _escolas.DeleteUnidade(unidade));
 
         return Resultado<bool>.Ok(true);
     }
@@ -110,31 +106,20 @@ public sealed class ExclusaoService
             return Resultado<bool>.Proibido();
         }
 
-        if (usuario.Id == escopo.UsuarioId)
+        var impedimento = PoliticaDeExclusao.ParaUsuario(
+            alvoId: usuario.Id,
+            alvoEhAdminSecretaria: usuario.Papel == PapelUsuario.AdminSecretaria,
+            solicitanteId: escopo.UsuarioId,
+            totalAdminSecretaria: _usuarios.ContarPorPapel(PapelUsuario.AdminSecretaria),
+            temVinculos: _vinculos.ExistePorResponsavel(id),
+            temTokens: _tokens.ExistePorCriador(id));
+
+        if (impedimento is not null)
         {
-            return Resultado<bool>.Conflito("Não é possível excluir a própria conta.");
+            return Resultado<bool>.Conflito(impedimento);
         }
 
-        if (usuario.Papel == PapelUsuario.AdminSecretaria &&
-            _usuarios.ContarPorPapel(PapelUsuario.AdminSecretaria) <= 1)
-        {
-            return Resultado<bool>.Conflito(
-                "Não é possível excluir o último administrador da secretaria.");
-        }
-
-        if (_vinculos.ExistePorResponsavel(id))
-        {
-            return Resultado<bool>.Conflito(
-                "Este responsável ainda está vinculado a alunos. Remova os vínculos antes.");
-        }
-
-        if (_tokens.ExistePorCriador(id))
-        {
-            return Resultado<bool>.Conflito(
-                "Este usuário já emitiu token de cadastro e não pode ser excluído.");
-        }
-
-        _usuarios.Delete(usuario);
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarios.Delete(usuario));
 
         return Resultado<bool>.Ok(true);
     }
