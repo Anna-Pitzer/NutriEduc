@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { KeyRound, Lock, Mail, User } from "lucide-react"
 import { useAuth } from "../../context/authContext"
+import { homePorPapel } from "../../routes/homePorPapel"
 
 import background from '../../assets/background1.png'
 import { Navigate } from "react-router-dom"
@@ -28,7 +29,7 @@ export function LoginPage() {
   const [birthDate, setBirthDate] = useState<string>("")
   const [cadastrando, setCadastrando] = useState(false)
 
-  const { isAuthenticated, loading, login, register } = useAuth()
+  const { isAuthenticated, loading, login, register, userLogin } = useAuth()
 
   useEffect(() => {
     console.log("isAuthenticated:", isAuthenticated)
@@ -136,7 +137,7 @@ export function LoginPage() {
     return <p role="status">Carregando...</p>
   }
   if (isAuthenticated) {
-    return <Navigate to={"/"} replace />
+    return <Navigate to={userLogin?.papel ? homePorPapel[userLogin.papel] : "/"} replace />
   }
 
   return (

@@ -1,17 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth, type PapelUsuario } from "../context/authContext";
-
-/**
- * Área inicial de cada papel. Usado quando a rota pedida não pertence ao papel: em vez
- * de uma tela de erro, o usuário vai para o próprio painel.
- */
-const homePorPapel: Record<PapelUsuario, string> = {
-  Nutricionista: "/",
-  AdminSecretaria: "/",
-  AdminEscola: "/escolas",
-  Merendeira: "/merendeiras",
-  Responsavel: "/pais",
-};
+import { homePorPapel } from "./homePorPapel";
 
 /**
  * Guarda de rota por papel. É conveniência de navegação, nunca controle de acesso: o
