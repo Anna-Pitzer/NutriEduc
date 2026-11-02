@@ -1,0 +1,101 @@
+---
+name: restricoes-aluno-protegidas
+status: created
+references: V1, ADR-006, L2
+---
+
+# Design — Restrições alimentares protegidas
+
+## Domínio — `backend/Domain/Entities/Aluno.cs`
+
+```csharp
+private const int MaxRestricoes = 20;
+private readonly List<string> _restricoes = new();
+
+public IReadOnlyList<string> Restricoes => _restricoes.AsReadOnly();
+
+public void AdicionarRestricao(string restricao)
+{
+    var valor = (restricao ?? string.Empty).Trim();
+    if (valor.Length == 0)
+        throw new ArgumentException("A restrição não pode ser vazia.");
+    if (_restricoes.Any(r => string.Equals(r, valor, StringComparison.OrdinalIgnoreCase)))
+        throw new ArgumentException("Restrição já cadastrada para este aluno.");
+    if (_restricoes.Count >= MaxRestricoes)
+        throw new ArgumentException($"O aluno já possui {MaxRestricoes} restrições cadastradas.");
+
+    _restricoes.Add(valor);
+}
+
+public bool RemoverRestricao(string restricao)
+{
+    var indice = _restricoes.FindIndex(r =>
+        string.Equals(r, restricao?.Trim(), StringComparison.OrdinalIgnoreCase));
+    if (indice < 0) return false;
+
+    _restricoes.RemoveAt(indice);
+    return true;
+}
+```
+
+O construtor (e `AtualizarDados`) normaliza a coleção em um buffer privado
+(`NormalizarRestricoes`), que compartilha com `AdicionarRestricao` as regras de trim e
+de duplicidade case-insensitive. Itens vazios e duplicatas são ignorados; exceder 20
+lança antes de qualquer atribuição, preservando a atomicidade do objeto.
+
+> **Correção nesta revisão:** a versão anterior expunha `=> _restricoes;`. O critério
+> "`aluno.Restricoes.Add(\"x\")` não compila" era atendido, mas
+> `((List<string>)aluno.Restricoes).Add(\"x\")` continuava funcionando — o encapsulamento
+> era apenas de fachada. `AsReadOnly()` devolve um wrapper que não expõe o `List<T>`,
+> então o cast falha em tempo de execução.
+
+## Persistência
+
+O EF Core não mapeia `IReadOnlyList<string>` diretamente. Duas opções:
+
+| Opção | Decisão |
+| --- | --- |
+| Propriedade de navegação com backing field privado | **Escolhida** — configuração explícita em `OnModelCreating`, coluna `Restricoes` preservada |
+| Entidade `Restricao` normalizada | Adiada para a Spec 010 |
+
+Configuração em `backend/Infrastructure/DataBase/ConnectionContext.cs`:
+
+```csharp
+modelBuilder.Entity<Aluno>()
+    .PrimitiveCollection(a => a.Restricoes)
+    .HasField("_restricoes")
+    .UsePropertyAccessMode(PropertyAccessMode.Field);
+```
+
+> **Correção nesta revisão:** a versão anterior usava
+> `.Property<List<string>>("Restricoes")`, que criaria uma *shadow property* com o mesmo
+> nome da propriedade CLR e falharia na validação de modelo. O EF Core 10 expõe
+> `PrimitiveCollection(...)` para coleções primitivas, e é ele que aceita
+> `HasField` + `UsePropertyAccessMode` para uma propriedade somente leitura.
+> Assinaturas conferidas em `Microsoft.EntityFrameworkCore.dll` 10.0.11.
+
+Para o EF Core, a coleção mapeada é o campo `_restricoes` (`List<string>`), acessado por
+campo. A API lê o mesmo JSON de hoje, sem mudança de contrato.
+
+## Conversão DTO
+
+`AlunoService` passa `dto.Restricoes` ao construtor sem cópia; o construtor aceita
+`IEnumerable<string>?` e trata `null` (o DTO já nasce com lista vazia). `DadosAlunoDTO`
+continua com `List<string>` na saída, alimentado por `aluno.Restricoes.ToList()`.
+
+## Testes obrigatórios (Spec 005)
+
+| Caso | Esperado |
+| --- | --- |
+| Adicionar válida | coleção com 1 item |
+| Duplicata case-insensitive | `ArgumentException` |
+| Item vazio / espaços | `ArgumentException` |
+| 21ª restrição | `ArgumentException` |
+| Remover existente / inexistente | `true` / `false` |
+| Construtor com lista contendo vazio | ignora o item, não lança |
+
+## Riscos
+
+- Mapeamento com backing field é sensível a renomear o campo: documentar em comentário
+  no `ConnectionContext`.
+- Consultas por restrição continuam impossíveis em SQL até a Spec 010.

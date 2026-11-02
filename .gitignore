@@ -9,6 +9,11 @@ desktop.ini
 **/obj/
 .env
 
+# Estado de runtime do DsCode (contém settings.json com chaves e bancos locais)
+.dscode/
+templates/
+dscode.exe
+
 # Logs
 logs
 *.log
@@ -33,3 +38,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Artefatos locais de ferramenta e edição (não versionar)
+node.exe
+dscode.mjs
+dscode.cmd
+/package-lock.json
+*.bak.*

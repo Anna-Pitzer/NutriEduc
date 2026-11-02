@@ -1,19 +1,9 @@
-const ApiURL = "";
-
 export async function buscarPerfil(usuarioId: number){
     const resposta = await fetch(`/api/usuario/perfil/${usuarioId}`,{
         credentials: "include",
     });
 
     if (!resposta.ok) throw new Error("Erro ao buscar perfil");
-
-    return resposta.json();
-}
-
-export async function buscarEstatisticas(usuarioId: number) {
-    const resposta = await fetch(`${ApiURL}/usuarios/${usuarioId}/estatisticas`);
-
-    if (!resposta.ok) throw new Error("Erro ao buscar estatísticas");
 
     return resposta.json();
 }

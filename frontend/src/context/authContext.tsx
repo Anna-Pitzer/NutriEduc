@@ -1,15 +1,26 @@
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { extrairErro } from "../services/erroApi";
 
 type UserLogin = {
   email: string;
   password: string;
 };
 
-type UserSession = {
+export type PapelUsuario =
+  | "Nutricionista"
+  | "Merendeira"
+  | "Responsavel"
+  | "AdminSecretaria"
+  | "AdminEscola";
+
+export type UserSession = {
   id: number;
   email: string;
   nome: string;
+  papel: PapelUsuario | null;
+  escolaId: number | null;
+  unidadeId: number | null;
 };
 
 type UserRegister = {
@@ -84,13 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (!resposta.ok) {
-      if (resposta.status === 404 || resposta.status === 401) {
-        throw new Error("Email ou senha incorretos.");
-      }
-
-      throw new Error(
-        "Não foi possível entrar. Verifique o terminal do backend."
-      );
+      throw new Error(await extrairErro(resposta, "Não foi possível entrar."));
     }
 
     const usuario: UserSession = await resposta.json();
@@ -113,14 +118,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (!resposta.ok) {
-      const mensagem = await resposta.text();
-      throw new Error(mensagem || "Não foi possível cadastrar.");
+      throw new Error(await extrairErro(resposta, "Não foi possível cadastrar."));
     }
 
     setUserRegister(user);
   };
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     const resposta = await fetch("/api/usuario/logout", {
       method: "POST",
       credentials: "include",
@@ -131,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setUserLogin(null);
-  }
+  }, []);
   
   const atualizarUsuario = (usuario: UserSession) => {
     setUserLogin(usuario);

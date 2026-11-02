@@ -1,127 +1,215 @@
+import { extrairErro, ErroRequisicao } from "./erroApi";
+
 const ApiURL = "";
 
-export type Refeicao = "cafe" | "almoco" | "lanche" | "jantar";
-export type Serie = "Creche" | "Integral" | "geral"
+export type SituacaoCardapio = "Rascunho" | "Publicado" | "Cancelado";
 
-export interface AlimentoCardapio {
+/** Período de vigência (Spec 012, RF1). Datas no formato ISO `yyyy-mm-dd`. */
+export interface PeriodoCardapio {
+    inicio: string;
+    fim: string;
+}
+
+/** Composição nutricional devolvida pelo backend; o cliente nunca recalcula (RNF3). */
+export interface ValoresItem {
+    caloriasKcal: number;
+    proteinasG: number;
+    carboidratosG: number;
+    gordurasG: number;
+    fibrasG: number;
+    sodioMg: number;
+}
+
+export interface ItemCardapio {
+    alimentoId: number;
+    alimento: string;
+    gramas: number;
+    valores: ValoresItem;
+}
+
+export interface RefeicaoCardapio {
+    nome: string;
+    ordem: number;
+    itens: ItemCardapio[];
+    total: ValoresItem;
+}
+
+/** Cardápio completo, com refeições, itens e totais (RF11). */
+export interface Cardapio {
     id: number;
     nome: string;
-    calorias: number;
-    carboidratos: number;
-    proteinas: number;
-    gorduras: number;
-    fibras: number;
-    sodio: number;
+    unidadeId: number;
+    situacao: SituacaoCardapio;
+    periodo: PeriodoCardapio;
+    cardapioDuplicadoDeId: number | null;
+    refeicoes: RefeicaoCardapio[];
+    total: ValoresItem;
 }
 
-export interface Alimento extends AlimentoCardapio {
-    categoria: string;
+/** Linha da listagem: sem itens, só metadados (RF13). */
+export interface CardapioResumo {
+    id: number;
+    nome: string;
+    unidadeId: number;
+    situacao: SituacaoCardapio;
+    periodo: PeriodoCardapio;
+    totalRefeicoes: number;
 }
 
-export interface CardapioCadastro {
-    refeicao: Refeicao;
-    alimentos: AlimentoCardapio[];
+export interface PaginaCardapios<T> {
+    pagina: number;
+    tamanho: number;
+    total: number;
+    itens: T[];
 }
 
-export async function buscarAlimentos(): Promise<Alimento[]> {
-    const resposta = await fetch(`${ApiURL}/api/alimentos`);
-
-    if (!resposta.ok) throw new Error("Erro ao buscar alimentos");
-
-    return resposta.json();
+export interface FiltroCardapios {
+    unidadeId?: number;
+    data?: string;
+    situacao?: SituacaoCardapio;
+    pagina?: number;
+    tamanho?: number;
 }
 
-export async function buscarCardapio(
-    refeicao: Refeicao
-): Promise<AlimentoCardapio[]> {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/${refeicao}`);
-
-    if (!resposta.ok) throw new Error("Erro ao buscar cardápio");
-
-    return resposta.json();
+export interface FiltroPublicados {
+    unidadeId: number;
+    data?: string;
+    refeicao?: string;
+    pagina?: number;
+    tamanho?: number;
 }
 
-export async function salvarCardapio(dados: CardapioCadastro) {
-    const resposta = await fetch(`${ApiURL}/api/cardapios`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(dados)
+export interface ItemEntrada {
+    alimentoId: number;
+    gramas: number;
+}
+
+export interface RefeicaoEntrada {
+    nome: string;
+    ordem: number;
+    itens: ItemEntrada[];
+}
+
+export interface CardapioEntrada {
+    nome: string;
+    unidadeId: number;
+    periodo: PeriodoCardapio;
+    refeicoes: RefeicaoEntrada[];
+}
+
+export interface DuplicarEntrada {
+    nome?: string;
+    periodo: PeriodoCardapio;
+}
+
+async function falhar(resposta: Response, padrao: string): Promise<never> {
+    throw new ErroRequisicao(await extrairErro(resposta, padrao), resposta.status);
+}
+
+function comoParametros(filtros: object): string {
+    const parametros = new URLSearchParams();
+
+    for (const [chave, valor] of Object.entries(filtros) as [
+        string,
+        string | number | undefined,
+    ][]) {
+        if (valor !== undefined && valor !== "") {
+            parametros.set(chave, String(valor));
+        }
+    }
+
+    const consulta = parametros.toString();
+
+    return consulta ? `?${consulta}` : "";
+}
+
+/** Listagem interna, escopada por papel (RF8). */
+export async function listarCardapios(
+    filtros: FiltroCardapios = {},
+): Promise<PaginaCardapios<CardapioResumo>> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios${comoParametros(filtros)}`, {
+        credentials: "include",
     });
 
-    if (!resposta.ok) throw new Error("Erro ao salvar cardápio");
-
-    if (resposta.status === 204) return;
+    if (!resposta.ok) return falhar(resposta, "Erro ao carregar os cardápios");
 
     return resposta.json();
 }
 
-export async function excluirCardapio(refeicao: Refeicao) {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/${refeicao}`,
-        {
-            method: "DELETE"
-        }
+/** Rota anônima de pais e merendeiras (RF9). */
+export async function listarCardapiosPublicados(
+    filtros: FiltroPublicados,
+): Promise<PaginaCardapios<Cardapio>> {
+    const resposta = await fetch(
+        `${ApiURL}/api/cardapios/publicados${comoParametros(filtros)}`,
+        { credentials: "include" },
     );
 
-    if (!resposta.ok) throw new Error("Erro ao excluir cardápio");
-
-    if (resposta.status === 204) return;
+    if (!resposta.ok) return falhar(resposta, "Erro ao carregar os cardápios publicados");
 
     return resposta.json();
 }
 
-export interface CardapioHistorico {
-    id: number;
-    refeicoes: {
-        cafe: AlimentoCardapio[];
-        almoco: AlimentoCardapio[];
-        lanche: AlimentoCardapio[];
-        jantar: AlimentoCardapio[];
-    };
-    tipo: Serie;
-    data: string;
-    dataCriacao: string;
+export async function obterCardapio(id: number): Promise<Cardapio> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}`, {
+        credentials: "include",
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao carregar o cardápio");
+
+    return resposta.json();
 }
 
-export async function salvarCardapioCompleto(dados: {
-    refeicoes: CardapioHistorico["refeicoes"];
-    tipo: Serie;
-    data: string;
-}) {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/historico`, {
+export async function criarCardapio(entrada: CardapioEntrada): Promise<Cardapio> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios`, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(dados)
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(entrada),
     });
 
-    if(!resposta.ok) throw new Error("Erro ao salvar cardápio");
+    if (!resposta.ok) return falhar(resposta, "Erro ao criar o cardápio");
 
     return resposta.json();
 }
 
-export async function buscarHistoricoCardapios(): Promise<CardapioHistorico[]> {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/historico`);
-    
-    if (!resposta.ok) throw new Error("Erro ao buscar histórico de cardápios");
-
-    return resposta.json();
-}
-
-export async function buscarCardapioHistorico(id: number): Promise<CardapioHistorico[]> {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/historico/${id}`);
-    
-    if (!resposta.ok) throw new Error("Erro ao buscar cardápio");
-
-    return resposta.json();
-}
-
-export async function excluirCardapioHistorico(id: number): Promise<void> {
-    const resposta = await fetch(`${ApiURL}/api/cardapios/historico/${id}`, {
-        method: "DELETE"
+export async function atualizarCardapio(
+    id: number,
+    entrada: CardapioEntrada,
+): Promise<Cardapio> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(entrada),
     });
 
-    if (!resposta.ok) throw new Error("Erro ao excluir cardápio");
+    if (!resposta.ok) return falhar(resposta, "Erro ao salvar o cardápio");
+
+    return resposta.json();
+}
+
+export async function excluirCardapio(id: number): Promise<void> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao excluir o cardápio");
+}
+
+export async function duplicarCardapio(
+    id: number,
+    entrada: DuplicarEntrada,
+): Promise<Cardapio> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}/duplicar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(entrada),
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao duplicar o cardápio");
+
+    return resposta.json();
 }

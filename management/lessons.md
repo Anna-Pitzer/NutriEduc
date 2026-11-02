@@ -1,0 +1,194 @@
+# Lições — NutriEduc
+
+Lições de implementação derivadas do estado atual do repositório e das avaliações
+registradas. Cada lição tem um identificador estável (`Lx`) para ser referenciado
+por specs e por revisões.
+
+---
+
+## L1: Validação no serviço cria entidade anêmica
+
+**Observado:** `AlunoService.CriarAluno` repassa o DTO direto para o construtor.
+Nenhuma validação existe; `Aluno` não tem um único método de domínio.
+
+**Lição:** se o serviço valida, a entidade é apenas um saco de dados e qualquer novo
+caminho de escrita (importação, seed, endpoint novo) nasce inválido.
+
+**Regra:** invariante mora na entidade, no construtor e no método de atualização.
+
+---
+
+## L2: `private set` não protege coleção
+
+**Observado:** `List<string> Restricoes { get; private set; }` é mutável de fora
+(`aluno.Restricoes.Add(...)`), então a invariante pode ser quebrada sem tocar
+nenhum método da entidade.
+
+**Lição:** encapsulamento de coleção exige tipo readonly exposto, não setter privado.
+
+**Regra:** `IReadOnlyList<T>` + método de domínio que aplica as invariantes.
+
+---
+
+## L3: Validação de senha sem guard clause quebra em produção
+
+**Observado:** `SenhaValida()` acessa `Senha.Length` antes de checar nulo;
+`AtualizarSenha` valida comprimento antes de checar vazio. Usuário criado por um
+construtor sem senha derruba a chamada.
+
+**Lição:** validação de campo anulável começa pelo guard clause, sempre. Ordem de
+checagem é parte da regra.
+
+**Regra:** `string.IsNullOrEmpty` primeiro; depois comprimento e formato.
+
+---
+
+## L4: Repositório que instancia o `DbContext` ignora o ciclo de vida
+
+**Observado:** `UsuarioRepository` faz `new ConnectionContext()` no campo, enquanto
+`AlunoRepository` recebe o contexto por construtor e é registrado como `Scoped`.
+
+**Lição:** duas instâncias de contexto sobre o mesmo arquivo SQLite geram escrita
+concorrente e estado divergente entre requisições, além de nunca serem descartadas.
+
+**Regra:** repositório recebe a dependência; ninguém constrói infraestrutura por
+conta própria.
+
+---
+
+## L5: Frontend não é fonte de verdade de integridade
+
+**Observado:** o frontend valida nome, e-mail e telefone; o backend aceita qualquer
+coisa em `Aluno`. O endpoint também é público.
+
+**Lição:** validação no cliente melhora a experiência e não impede dado inválido.
+
+**Regra:** toda regra que o sistema precisa garantir pertence ao backend.
+
+---
+
+## L6: Contrato de API documentado envelhece sem gate
+
+**Observado:** `README.md` lista endpoints corretos, mas o frontend chama seis rotas
+que não existem e uma rota com prefixo errado (`/usuarios/{id}/estatisticas`).
+
+**Lição:** documentação sem verificação cruzada com o código diverge silenciosamente;
+o sintoma aparece como 404 no console, não como erro de build.
+
+**Regra:** alteração de contrato atualiza a tabela de endpoints na mesma mudança;
+toda chamada do frontend precisa de endpoint correspondente ou de remoção.
+
+---
+
+## L7: Comportamento só existe se for testado
+
+**Observado:** `Usuario` tem comportamento correto e validador bem escrito, mas
+nenhum teste. A avaliação atribuiu 0,0 à dimensão de testes.
+
+**Lição:** regra correta e não testada é hipótese. O custo de testar é baixo quando a
+regra já está isolada na entidade.
+
+**Regra:** toda regra de domínio nasce com teste unitário no mesmo commit.
+
+---
+
+## L8: CRUD incompleto é dívida que invisível na interface
+
+**Observado:** as telas existem e funcionam; a ausência do `Update` de aluno só é
+perceptível quando alguém tenta editar um cadastro.
+
+**Lição:** CRUD deve ser validado como um conjunto, por entidade, e não por tela.
+
+**Regra:** critério de aceitação de CRUD nomeia explicitamente `C`, `R`, `U` e `D`
+na mesma entidade.
+
+---
+
+## L9: Regra reimplementada ao lado do utilitário que já a resolve
+
+**Observado:** `Validacao.tsx` e `Sanitizacao.tsx` **são** importados por
+`frontend/src/pages/login.tsx` (linhas 11 e 17). O problema é outro:
+`frontend/src/pages/Perfil.tsx` declara as próprias `sanitizarNome` (linha 58),
+`sanitizarEmail` (linha 66) e `sanitizarTelefone` (linha 70) sem reutilizar
+`Sanitizacao.tsx`, e as demais telas com formulário repetem o padrão.
+
+**Lição:** o risco não é utilitário sem consumidor — é utilitário com consumidor
+insuficiente. Regra escrita duas vezes diverge na primeira correção que tocar apenas
+uma das cópias.
+
+**Regra:** antes de declarar um utilitário morto, verificar os imports. A versão
+anterior desta lição afirmava que os dois componentes não eram importados por
+ninguém; era falso e teria levado à remoção de código em uso.
+
+---
+
+## L10: Objeto de valor no EF Core exige tipo complexo, não entidade possuída
+
+**Observado:** ao trocar `Escola`, `Serie`, `NomeResponsavel` e `TelefoneResponsavel`
+por `Turma` e `Responsavel` dentro de `Aluno`, o mapeamento inicial com
+`OwnsOne` compilou sem erro, mas o modelo construído passou a exigir uma coluna
+`AlunoId` — que não existe no banco. O teste que constrói o modelo do EF Core sem
+abrir conexão foi o que revelou o problema; um `dotnet build` verde não revelaria.
+
+**Lição:** entidade possuída tem identidade e chave próprias (aqui, uma shadow
+property `AlunoId`), mesmo quando mora na tabela do dono. Para um objeto sem
+identidade — em que igualdade é definida pelos dados — o mapeamento correto é tipo
+complexo (`ComplexProperty`), que não cria chave nem coluna nova.
+
+**Regra:** objeto de valor usa `ComplexProperty`. Entidade possuída só quando o
+objeto precisa de identidade própria. E todo mapeamento novo passa por um teste que
+constrói o modelo e confere os nomes das colunas — o banco não pode ser a primeira
+verificação.
+
+**Observação de verificação:** propriedades de tipo complexo não aparecem em
+`IEntityType.GetProperties()`; use `GetComplexProperties()` para inspecioná-las.
+
+---
+
+## L11: Spec planejada exige caminho canônico na visão e seção na arquitetura
+
+**Observado:** a primeira tentativa de commitar as 19 specs no índice canônico falhou
+sem gravar linha alguma: a ferramenta de plano valida que cada spec planejada tenha
+`Canonical creation path` em um bloco de visão e uma seção própria em `arch.md`. A
+Spec 007 não tinha bloco de visão (as demais estavam cobertas por V1–V7 e V6) e a
+seção `## Spec 007` havia sido renomeada. Corrigidos V8 e o título da seção, a mesma
+chamada commitou 19 linhas. A numeração 001–019 foi aceita pelo pipeline.
+
+**Lição:** o índice canônico tem pré-condições de qualidade por spec, e a mensagem de
+erro nomeia exatamente qual spec e qual artefato falta. O bloqueio anterior atribuído
+à faixa de numeração estava errado.
+
+**Regra:** antes de commitar specs no roadmap, garantir para cada uma: bloco de visão
+com `Canonical creation path` e seção correspondente em `arch.md`. Tratar o erro da
+ferramenta como diagnóstico por spec, não como bloqueio global.
+
+---
+
+## L12: Cobertura de funcionalidade declarada em duas specs ao mesmo tempo
+
+**Observado:** ao dividir `implementacoes.md` em specs, os itens "solicitar inclusão de
+alergia" e "solicitar alteração de restrição" foram listados como cobertura da Spec
+010 (catálogo) e da Spec 017 (solicitações). A soma dava 129 para um total de 128.
+
+**Lição:** cobertura precisa ser uma partição, não uma interseção. "Base para" e
+"entregue por" são relações diferentes e precisam de rótulos diferentes no documento.
+
+**Regra:** a seção de cobertura de uma spec só lista funcionalidades que ela entrega
+ponta a ponta. Dependência de outra spec entra como "Base para", com o número da spec
+que entrega. A soma das coberturas deve fechar exatamente com a fonte.
+
+---
+
+## L13: A ordem de execução não é a ordem dos números
+
+**Observado:** a numeração coloca 013 (geração) antes de 014 (compatibilidade), mas a
+geração consome `AnaliseCompatibilidade`; e 015 (publicação) também. Executar na ordem
+numérica obrigaria a duplicar a regra ou a criar stub descartável.
+
+**Lição:** número de spec é identidade, não cronograma. A ordem real é o grafo de
+consumo de contratos entre módulos.
+
+**Regra:** todo plano de execução declara o grafo de dependências e a ordem derivada
+dele; quando a ordem divergir da numeração, isso fica escrito no `arch.md` (regra de
+dependência entre módulos) e no `design.md` das specs envolvidas.
+

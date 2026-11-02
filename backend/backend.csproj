@@ -5,6 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Token de bootstrap fica fora do repositório (user-secrets). Ver README §Bootstrap. -->
+    <UserSecretsId>nutrieduc-bootstrap-dev</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +16,14 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
+  </ItemGroup>
+
+  <!--
+    Spec 024 (F8): o hash da senha é interno à entidade. Os testes de domínio precisam
+    inspecioná-lo para garantir que a senha em claro nunca é persistida.
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="backend.Tests" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,299 @@
+using Backend.Tests.Fakes;
+using Backend.Tests.Support;
+using Ntc.Application;
+using Ntc.Domain.Entity;
+using Ntc.Domain.Interface;
+using Xunit;
+
+namespace Backend.Tests.Services;
+
+public class UsuarioServiceTests
+{
+    /// <summary>
+    /// Monta o serviço com o repositório de escolas fake. A verificação de existência de
+    /// escola só acontece na criação administrativa (Spec 009); o fake mantém estes
+    /// testes focados nas regras de usuário.
+    /// </summary>
+    private static UsuarioService CriarServico(IUsuarioRepository repositorio) =>
+        new(repositorio, new EscolaRepositoryFake(), new UnidadeDeTrabalhoFake());
+
+    /// <summary>Autenticação é caso de uso próprio desde a Spec 024 (F9).</summary>
+    private static AutenticacaoService Autenticacao(IUsuarioRepository repositorio) =>
+        new(repositorio, new UnidadeDeTrabalhoFake());
+
+    private static CriarUsuarioEntrada DtoUsuario(
+        string email = "maria@exemplo.com",
+        string senha = "12345678")
+    {
+        return new CriarUsuarioEntrada(
+            Nome: "Maria Silva",
+            Cpf: "12345678901",
+            DataNascimento: new DateOnly(2000, 1, 1),
+            Email: email,
+            Senha: senha,
+            Telefone: null,
+            Foto: null);
+    }
+
+    [Fact]
+    public void CriarUsuario_ComDadosValidos_Persiste()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+
+        var resultado = servico.CriarUsuario(DtoUsuario());
+
+        Assert.Equal(ResultadoStatus.Ok, resultado.Status);
+        Assert.Equal(1, resultado.Valor);
+
+        var persistido = repositorio.GetByEmail("maria@exemplo.com");
+
+        Assert.NotNull(persistido);
+        Assert.Equal(1, persistido!.Id);
+        Assert.Equal("Maria Silva", persistido.Nome);
+        Assert.StartsWith("pbkdf2-sha256$", persistido.Senha);
+        Assert.True(persistido.SenhaConfere("12345678"));
+        Assert.Null(persistido.Papel);
+    }
+
+    [Fact]
+    public void CriarUsuario_ComEmailDuplicado_RetornaInvalidoComMensagem()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+
+        var resultado = servico.CriarUsuario(DtoUsuario());
+
+        Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
+        Assert.Equal("E-mail já cadastrado.", resultado.Erro);
+    }
+
+    [Fact]
+    public void CriarUsuario_ComSenhaCurta_LancaENaoPersiste()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+
+        Assert.Throws<ArgumentException>(() =>
+        {
+            servico.CriarUsuario(DtoUsuario(senha: "1234567"));
+        });
+
+        Assert.Null(repositorio.GetByEmail("maria@exemplo.com"));
+    }
+
+    [Fact]
+    public void VerificarLogin_ComCredenciaisCorretas_RetornaTrue()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+
+        var valido = Autenticacao(repositorio).VerificarLogin(new LoginUsuarioDTO
+        {
+            Email = "maria@exemplo.com",
+            Senha = "12345678"
+        });
+
+        Assert.True(valido);
+    }
+
+    [Fact]
+    public void VerificarLogin_ComSenhaErrada_RetornaFalse()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+
+        var valido = Autenticacao(repositorio).VerificarLogin(new LoginUsuarioDTO
+        {
+            Email = "maria@exemplo.com",
+            Senha = "87654321"
+        });
+
+        Assert.False(valido);
+    }
+
+    [Fact]
+    public void VerificarLogin_ComEmailInexistente_RetornaFalse()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+
+        var valido = Autenticacao(repositorio).VerificarLogin(new LoginUsuarioDTO
+        {
+            Email = "ninguem@exemplo.com",
+            Senha = "12345678"
+        });
+
+        Assert.False(valido);
+    }
+
+    [Fact]
+    public void Autenticar_ComUsuarioSemPapel_RetornaSemPapel()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+
+        var resultado = Autenticacao(repositorio).Autenticar(
+            new LoginUsuarioDTO { Email = "maria@exemplo.com", Senha = "12345678" },
+            out var usuario);
+
+        Assert.Equal(ResultadoLogin.SemPapel, resultado);
+        Assert.Null(usuario);
+    }
+
+    [Fact]
+    public void Autenticar_ComUsuarioDesativado_RetornaInativo()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+
+        var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
+        usuario.DefinirPapel(PapelUsuario.Nutricionista, null, null);
+        usuario.Desativar();
+        repositorio.Update(usuario);
+
+        var resultado = Autenticacao(repositorio).Autenticar(
+            new LoginUsuarioDTO { Email = "maria@exemplo.com", Senha = "12345678" },
+            out _);
+
+        Assert.Equal(ResultadoLogin.Inativo, resultado);
+    }
+
+    [Fact]
+    public void Autenticar_ComPapelDefinido_RetornaOk()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+
+        var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
+        usuario.DefinirPapel(PapelUsuario.Nutricionista, null, null);
+        repositorio.Update(usuario);
+
+        var resultado = Autenticacao(repositorio).Autenticar(
+            new LoginUsuarioDTO { Email = "maria@exemplo.com", Senha = "12345678" },
+            out var autenticado);
+
+        Assert.Equal(ResultadoLogin.Ok, resultado);
+        Assert.NotNull(autenticado);
+    }
+
+    [Fact]
+    public void AtualizarPerfil_Existente_AtualizaDados()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+        var id = repositorio.GetByEmail("maria@exemplo.com")!.Id;
+
+        var atualizado = servico.AtualizarPerfil(id, new AtualizarPerfilDTO
+        {
+            Nome = "João Souza",
+            Email = "joao@exemplo.com",
+            Telefone = "(11) 99999-9999"
+        });
+
+        Assert.NotNull(atualizado);
+        Assert.Equal("João Souza", atualizado!.Nome);
+        Assert.Equal("joao@exemplo.com", atualizado.Email);
+        Assert.Equal("11999999999", atualizado.Telefone);
+    }
+
+    [Fact]
+    public void AtualizarPerfil_Inexistente_DevolveNull()
+    {
+        var servico = CriarServico(new UsuarioRepositoryFake());
+
+        var atualizado = servico.AtualizarPerfil(99, new AtualizarPerfilDTO
+        {
+            Nome = "João Souza",
+            Email = "joao@exemplo.com"
+        });
+
+        Assert.Null(atualizado);
+    }
+
+    [Fact]
+    public void AtualizarPerfil_ComEmailDeOutroUsuario_Lanca()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+        servico.CriarUsuario(DtoUsuario(email: "outro@exemplo.com"));
+        var id = repositorio.GetByEmail("maria@exemplo.com")!.Id;
+
+        Assert.Throws<ArgumentException>(() =>
+        {
+            servico.AtualizarPerfil(id, new AtualizarPerfilDTO
+            {
+                Nome = "Maria Silva",
+                Email = "outro@exemplo.com"
+            });
+        });
+
+        var inalterado = repositorio.GetById(id);
+
+        Assert.NotNull(inalterado);
+        Assert.Equal("maria@exemplo.com", inalterado!.Email);
+    }
+
+    [Fact]
+    public void CriarUsuario_SemSenha_LancaENaoPersiste()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        var dto = DtoUsuario() with { Senha = null };
+
+        Assert.Throws<ArgumentException>(() =>
+        {
+            servico.CriarUsuario(dto);
+        });
+
+        Assert.Null(repositorio.GetByEmail("maria@exemplo.com"));
+    }
+
+    [Fact]
+    public void VerificarLogin_ComSenhaLegada_AutenticaEMigra()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+
+        var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
+        UsuarioFabrica.DefinirSenhaEmClaro(usuario, "senhaantiga");
+
+        var valido = Autenticacao(repositorio).VerificarLogin(new LoginUsuarioDTO
+        {
+            Email = "maria@exemplo.com",
+            Senha = "senhaantiga"
+        });
+
+        Assert.True(valido);
+        Assert.StartsWith("pbkdf2-sha256$", usuario.Senha);
+        Assert.True(usuario.SenhaConfere("senhaantiga"));
+    }
+
+    [Fact]
+    public void VerificarLogin_ComSenhaLegadaIncorreta_NaoMigra()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+
+        var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
+        UsuarioFabrica.DefinirSenhaEmClaro(usuario, "senhaantiga");
+
+        var valido = Autenticacao(repositorio).VerificarLogin(new LoginUsuarioDTO
+        {
+            Email = "maria@exemplo.com",
+            Senha = "outrasenha"
+        });
+
+        Assert.False(valido);
+        Assert.Equal("senhaantiga", usuario.Senha);
+    }
+}
