@@ -85,6 +85,16 @@ public class AlimentoRepositoryFake : IAlimentoRepository
         return _alimentos.Where(alimento => solicitados.Contains(alimento.Id)).ToList();
     }
 
+    public List<Alimento> ObterComVinculosPorIds(IEnumerable<int> ids)
+    {
+        var solicitados = ids.ToHashSet();
+
+        return _alimentos.Where(alimento => solicitados.Contains(alimento.Id)).ToList();
+    }
+
+    public List<Alimento> ListarAtivosComVinculos() =>
+        _alimentos.Where(alimento => alimento.Ativo).OrderBy(alimento => alimento.Id).ToList();
+
     public bool ExisteNomeNormalizado(string nomeNormalizado, int? ignorarId) =>
         _alimentos.Any(alimento =>
             alimento.NomeNormalizado == nomeNormalizado &&

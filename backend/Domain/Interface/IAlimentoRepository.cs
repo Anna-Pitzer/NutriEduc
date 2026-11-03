@@ -29,6 +29,18 @@ public interface IAlimentoRepository
     /// </summary>
     List<Alimento> ObterPorIds(IEnumerable<int> ids);
 
+    /// <summary>
+    /// Leitura em lote com vínculos e restrições resolvidos, usada pela análise de
+    /// compatibilidade (Spec 014): uma consulta para todos os alimentos de um cardápio.
+    /// </summary>
+    List<Alimento> ObterComVinculosPorIds(IEnumerable<int> ids);
+
+    /// <summary>
+    /// Todos os alimentos ativos com vínculos e restrições resolvidos, ordenados por id —
+    /// a base determinística da geração automática (Spec 013).
+    /// </summary>
+    List<Alimento> ListarAtivosComVinculos();
+
     /// <summary>Detecta a violação do índice único antes de gravar, para devolver 409.</summary>
     bool ExisteNomeNormalizado(string nomeNormalizado, int? ignorarId);
 

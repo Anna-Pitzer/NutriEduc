@@ -8,5 +8,6 @@ public enum SituacaoCardapio
 {
     Rascunho,
     Publicado,
-    Cancelado
+    Cancelado,
+    Substituido
 }

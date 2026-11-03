@@ -29,6 +29,8 @@ public class CardapioRepository : ICardapioRepository
 
         var itens = consulta
             .Include(cardapio => cardapio.Refeicoes)
+                .ThenInclude(refeicao => refeicao.Itens)
+                    .ThenInclude(item => item.Alimento)
             .OrderByDescending(cardapio => cardapio.CriadoEmUtc)
             .ThenByDescending(cardapio => cardapio.Id)
             .Skip((pagina - 1) * tamanho)
@@ -68,6 +70,91 @@ public class CardapioRepository : ICardapioRepository
 
     public bool ExisteCardapioDaUnidade(int unidadeId) =>
         _context.Cardapios.Any(cardapio => cardapio.UnidadeId == unidadeId);
+
+    public IReadOnlyCollection<int> ObterAlimentosUsadosDesde(int unidadeId, DateOnly dataLimite) =>
+        _context.Cardapios
+            .Where(cardapio =>
+                cardapio.UnidadeId == unidadeId &&
+                cardapio.Situacao == SituacaoCardapio.Publicado &&
+                cardapio.Periodo.Fim >= dataLimite)
+            .SelectMany(cardapio => cardapio.Refeicoes)
+            .SelectMany(refeicao => refeicao.Itens)
+            .Select(item => item.AlimentoId)
+            .Distinct()
+            .ToList();
+
+    public int? ExistePublicadoNoPeriodo(int unidadeId, PeriodoVigencia periodo, int? ignorarId) =>
+        _context.Cardapios
+            .Where(cardapio =>
+                cardapio.UnidadeId == unidadeId &&
+                cardapio.Situacao == SituacaoCardapio.Publicado &&
+                (ignorarId == null || cardapio.Id != ignorarId) &&
+                cardapio.Periodo.Inicio <= periodo.Fim &&
+                cardapio.Periodo.Fim >= periodo.Inicio)
+            .Select(cardapio => (int?)cardapio.Id)
+            .FirstOrDefault();
+
+    public (List<HistoricoCardapio> Itens, int Total) ListarHistorico(
+        int cardapioId,
+        int pagina,
+        int tamanho)
+    {
+        var consulta = _context.HistoricosCardapios
+            .Where(historico => historico.CardapioId == cardapioId);
+
+        var total = consulta.Count();
+
+        var itens = consulta
+            .OrderByDescending(historico => historico.CriadoEmUtc)
+            .ThenByDescending(historico => historico.Id)
+            .Skip((pagina - 1) * tamanho)
+            .Take(tamanho)
+            .ToList();
+
+        return (itens, total);
+    }
+
+    public (List<AlteracaoCardapioItem> Itens, int Total) ListarAlteracoes(
+        int? unidadeId,
+        DateTime desde,
+        int pagina,
+        int tamanho)
+    {
+        var consulta = _context.HistoricosCardapios
+            .Where(historico => historico.CriadoEmUtc >= desde);
+
+        if (unidadeId is { } unidadeDoUsuario)
+        {
+            consulta = consulta.Where(historico =>
+                _context.Cardapios.Any(cardapio =>
+                    cardapio.Id == historico.CardapioId && cardapio.UnidadeId == unidadeDoUsuario));
+        }
+
+        var projetado =
+            from historico in consulta
+            join cardapio in _context.Cardapios on historico.CardapioId equals cardapio.Id
+            join unidade in _context.Unidades on cardapio.UnidadeId equals unidade.Id
+            orderby historico.CriadoEmUtc descending, historico.Id descending
+            select new AlteracaoCardapioItem(
+                historico.Id,
+                historico.CardapioId,
+                cardapio.Nome,
+                unidade.Nome,
+                historico.Evento,
+                historico.Versao,
+                historico.AutorNome,
+                historico.Motivo,
+                historico.CriadoEmUtc);
+
+        var total = projetado.Count();
+
+        var itens = projetado
+            .Skip((pagina - 1) * tamanho)
+            .Take(tamanho)
+            .ToList();
+
+        return (itens, total);
+    }
 
     public Cardapio Add(Cardapio cardapio)
     {

@@ -1,6 +1,6 @@
 ---
 name: publicacao-historico-cardapio
-status: created
+status: implemented
 references: V6, ADR-004, L7
 ---
 

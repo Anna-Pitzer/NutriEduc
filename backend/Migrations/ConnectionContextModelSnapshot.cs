@@ -173,13 +173,25 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("PublicadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PublicadoPor")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RevisaoDeId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Situacao")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("UnidadeId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Versao")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Periodo", "Ntc.Domain.Entity.Cardapio.Periodo#PeriodoVigencia", b1 =>
@@ -194,6 +206,8 @@ namespace backend.Migrations
                         });
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RevisaoDeId");
 
                     b.HasIndex("Situacao");
 
@@ -304,6 +318,38 @@ namespace backend.Migrations
                     b.ToTable("HistoricosAlunos");
                 });
 
+            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoCardapio", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AutorNome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CardapioId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Evento")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Motivo")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Versao")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CardapioId", "CriadoEmUtc");
+
+                    b.ToTable("HistoricosCardapios");
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.ItemRefeicao", b =>
                 {
                     b.Property<int>("RefeicaoId")
@@ -320,6 +366,46 @@ namespace backend.Migrations
                     b.HasIndex("AlimentoId");
 
                     b.ToTable("ItensRefeicao");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.ParametroGeracao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("CaloriasMaximasRefeicao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CaloriasMinimasRefeicao")
+                        .HasColumnType("TEXT");
+
+                    b.PrimitiveCollection<string>("CategoriasObrigatorias")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("ExcluirAlimentosIncompativeis")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("JanelaRepeticaoDias")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("OpcoesPorRefeicao")
+                        .HasColumnType("INTEGER");
+
+                    b.PrimitiveCollection<string>("RefeicoesPadrao")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UnidadeId")
+                        .IsUnique();
+
+                    b.ToTable("ParametrosGeracao");
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.Refeicao", b =>
@@ -545,6 +631,11 @@ namespace backend.Migrations
 
             modelBuilder.Entity("Ntc.Domain.Entity.Cardapio", b =>
                 {
+                    b.HasOne("Ntc.Domain.Entity.Cardapio", null)
+                        .WithMany()
+                        .HasForeignKey("RevisaoDeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
                         .WithMany()
                         .HasForeignKey("UnidadeId")
@@ -570,6 +661,15 @@ namespace backend.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoCardapio", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Cardapio", null)
+                        .WithMany("Historico")
+                        .HasForeignKey("CardapioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.ItemRefeicao", b =>
                 {
                     b.HasOne("Ntc.Domain.Entity.Alimento", "Alimento")
@@ -585,6 +685,15 @@ namespace backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Alimento");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.ParametroGeracao", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.Refeicao", b =>
@@ -659,6 +768,8 @@ namespace backend.Migrations
 
             modelBuilder.Entity("Ntc.Domain.Entity.Cardapio", b =>
                 {
+                    b.Navigation("Historico");
+
                     b.Navigation("Refeicoes");
                 });
 

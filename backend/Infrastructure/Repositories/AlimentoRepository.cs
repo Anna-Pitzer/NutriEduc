@@ -105,6 +105,27 @@ public class AlimentoRepository : IAlimentoRepository
                 .ToList();
     }
 
+    public List<Alimento> ObterComVinculosPorIds(IEnumerable<int> ids)
+    {
+        var solicitados = ids.Distinct().ToList();
+
+        return solicitados.Count == 0
+            ? new List<Alimento>()
+            : _context.Alimentos
+                .Include(alimento => alimento.Vinculos)
+                    .ThenInclude(vinculo => vinculo.Restricao)
+                .Where(alimento => solicitados.Contains(alimento.Id))
+                .ToList();
+    }
+
+    public List<Alimento> ListarAtivosComVinculos() =>
+        _context.Alimentos
+            .Include(alimento => alimento.Vinculos)
+                .ThenInclude(vinculo => vinculo.Restricao)
+            .Where(alimento => alimento.Ativo)
+            .OrderBy(alimento => alimento.Id)
+            .ToList();
+
     public bool ExisteNomeNormalizado(string nomeNormalizado, int? ignorarId) =>
         _context.Alimentos.Any(alimento =>
             alimento.NomeNormalizado == nomeNormalizado &&

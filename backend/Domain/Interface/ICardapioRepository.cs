@@ -33,6 +33,22 @@ public interface ICardapioRepository
     /// <summary>Usado pela política de exclusão de unidade (Spec 012, RNF/restrições).</summary>
     bool ExisteCardapioDaUnidade(int unidadeId);
 
+    /// <summary>Ids de alimentos usados em cardápios publicados recentes da unidade (Spec 013, RF8).</summary>
+    IReadOnlyCollection<int> ObterAlimentosUsadosDesde(int unidadeId, DateOnly dataLimite);
+
+    /// <summary>Id do cardápio publicado da unidade com período sobreposto, ou nulo (Spec 015, RF4).</summary>
+    int? ExistePublicadoNoPeriodo(int unidadeId, PeriodoVigencia periodo, int? ignorarId);
+
+    /// <summary>Linha do tempo de eventos de um cardápio, decrescente e paginada (Spec 015, RF10).</summary>
+    (List<HistoricoCardapio> Itens, int Total) ListarHistorico(int cardapioId, int pagina, int tamanho);
+
+    /// <summary>Feed de alterações no escopo a partir de uma data, paginado (Spec 015, RF11).</summary>
+    (List<AlteracaoCardapioItem> Itens, int Total) ListarAlteracoes(
+        int? unidadeId,
+        DateTime desde,
+        int pagina,
+        int tamanho);
+
     Cardapio Add(Cardapio cardapio);
 
     void Update(Cardapio cardapio);

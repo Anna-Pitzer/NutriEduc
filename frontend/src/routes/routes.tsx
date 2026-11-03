@@ -17,11 +17,13 @@ import { VisualizarAlunos } from "../pages/nutricao/alunos/VisualizarAlunos"
 import { ListarCardapios } from "../pages/nutricao/cardapios/ListarCardapios"
 import { FormularioCardapio } from "../pages/nutricao/cardapios/FormularioCardapio"
 import { DetalheCardapio } from "../pages/nutricao/cardapios/DetalheCardapio"
+import { ParametrosGeracao } from "../pages/nutricao/cardapios/ParametrosGeracao"
 import { ListarAlimentos } from "../pages/nutricao/alimentos/ListarAlimentos"
 import { FormularioAlimento } from "../pages/nutricao/alimentos/FormularioAlimento"
 
 // Merendeiras
 import { HomeMerendeiras } from "../pages/merendeiras/HomeMerendeiras"
+import { AlteracoesCardapios } from "../pages/merendeiras/AlteracoesCardapios"
 
 // Pais / Responsáveis
 import { HomePais } from "../pages/pais/HomePais"
@@ -62,10 +64,16 @@ export function Rotas() {
           <Route path="/cardapios/:id" element={<DetalheCardapio />} />
         </Route>
 
+        {/* Feed de alterações — nutrição vê a rede, merenda vê a própria unidade (Spec 015, RF11) */}
+        <Route element={<ProtegidaPorPapel papeis={["Nutricionista", "Merendeira"]} />}>
+          <Route path="/cardapios/alteracoes" element={<AlteracoesCardapios />} />
+        </Route>
+
         {/* Escrita de cardápio — exclusiva da nutrição (Spec 012, RF8) */}
         <Route element={<ProtegidaPorPapel papeis={["Nutricionista"]} />}>
           <Route path="/cardapios/novo" element={<FormularioCardapio />} />
           <Route path="/cardapios/:id/editar" element={<FormularioCardapio />} />
+          <Route path="/cardapios/parametros-geracao" element={<ParametrosGeracao />} />
         </Route>
 
         {/* Catálogo de alimentos — nutrição escreve, merenda lê (Spec 011, RF9) */}

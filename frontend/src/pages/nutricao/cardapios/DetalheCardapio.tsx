@@ -5,10 +5,17 @@ import Button from "../../../components/Button";
 import Footer from "../../../components/Footer";
 import Header from "../../../components/Header";
 import {
+    cancelarCardapio,
+    criarRevisaoCardapio,
     duplicarCardapio,
     excluirCardapio,
     obterCardapio,
+    obterCompatibilidade,
+    obterHistoricoCardapio,
+    publicarCardapio,
     type Cardapio,
+    type Compatibilidade,
+    type EventoHistoricoCardapio,
     type SituacaoCardapio,
 } from "../../../services/CardapioApi";
 
@@ -16,6 +23,7 @@ const corSituacao: Record<SituacaoCardapio, string> = {
     Rascunho: "bg-bege text-roxo",
     Publicado: "bg-green-100 text-green-800",
     Cancelado: "bg-red-100 text-red-700",
+    Substituido: "bg-gray-100 text-gray-600",
 };
 
 function dataCurta(iso: string): string {
@@ -40,6 +48,9 @@ export function DetalheCardapio() {
     const [novoFim, setNovoFim] = useState("");
     const [duplicando, setDuplicando] = useState(false);
     const [mensagem, setMensagem] = useState<string | null>(null);
+    const [compatibilidade, setCompatibilidade] = useState<Compatibilidade | null>(null);
+    const [historico, setHistorico] = useState<EventoHistoricoCardapio[]>([]);
+    const [motivo, setMotivo] = useState("");
 
     useEffect(() => {
         async function carregar() {
@@ -54,6 +65,78 @@ export function DetalheCardapio() {
 
         carregar();
     }, [id]);
+
+    useEffect(() => {
+        async function carregarCompatibilidade() {
+            try {
+                setCompatibilidade(await obterCompatibilidade(Number(id)));
+            } catch {
+                // A análise é complementar: falha ao carregar não derruba o detalhe.
+                setCompatibilidade(null);
+            }
+        }
+
+        carregarCompatibilidade();
+    }, [id]);
+
+    useEffect(() => {
+        async function carregarHistorico() {
+            try {
+                const pagina = await obterHistoricoCardapio(Number(id));
+                setHistorico(pagina.itens);
+            } catch {
+                setHistorico([]);
+            }
+        }
+
+        carregarHistorico();
+    }, [id]);
+
+    async function publicar() {
+        if (!cardapio) return;
+        setErro(null);
+
+        try {
+            const publicado = await publicarCardapio(cardapio.id);
+            setCardapio(publicado);
+            setMensagem("Cardápio publicado.");
+            const pagina = await obterHistoricoCardapio(cardapio.id);
+            setHistorico(pagina.itens);
+        } catch (falha) {
+            setErro(falha instanceof Error ? falha.message : "Erro ao publicar o cardápio");
+        }
+    }
+
+    async function cancelar() {
+        if (!cardapio) return;
+        const texto = window.prompt("Motivo do cancelamento:");
+
+        if (texto === null) return;
+
+        setErro(null);
+
+        try {
+            const cancelado = await cancelarCardapio(cardapio.id, texto);
+            setCardapio(cancelado);
+            setMensagem("Cardápio cancelado.");
+            const pagina = await obterHistoricoCardapio(cardapio.id);
+            setHistorico(pagina.itens);
+        } catch (falha) {
+            setErro(falha instanceof Error ? falha.message : "Erro ao cancelar o cardápio");
+        }
+    }
+
+    async function revisar() {
+        if (!cardapio) return;
+        setErro(null);
+
+        try {
+            const revisao = await criarRevisaoCardapio(cardapio.id);
+            navigate(`/cardapios/${revisao.id}`);
+        } catch (falha) {
+            setErro(falha instanceof Error ? falha.message : "Erro ao criar a revisão");
+        }
+    }
 
     async function duplicar() {
         if (!cardapio) return;
@@ -148,6 +231,36 @@ export function DetalheCardapio() {
                                         className="text-vermelho p-2 hover:cursor-pointer hover:bg-red-100 rounded-full"
                                     >
                                         <Trash />
+                                    </button>
+                                )}
+
+                                {rascunho && (
+                                    <button
+                                        type="button"
+                                        onClick={publicar}
+                                        className="rounded-2xl bg-primaria px-3 py-1 text-sm font-medium text-white hover:bg-[#b31f55]"
+                                    >
+                                        Publicar
+                                    </button>
+                                )}
+
+                                {cardapio.situacao === "Publicado" && (
+                                    <button
+                                        type="button"
+                                        onClick={revisar}
+                                        className="rounded-2xl bg-roxo px-3 py-1 text-sm font-medium text-white hover:bg-purple-700"
+                                    >
+                                        Criar revisão
+                                    </button>
+                                )}
+
+                                {(rascunho || cardapio.situacao === "Publicado") && (
+                                    <button
+                                        type="button"
+                                        onClick={cancelar}
+                                        className="rounded-2xl bg-vermelho px-3 py-1 text-sm font-medium text-white hover:bg-red-700"
+                                    >
+                                        Cancelar
                                     </button>
                                 )}
                             </div>
@@ -259,6 +372,103 @@ export function DetalheCardapio() {
                         </>
                     )}
                 </div>
+
+                {cardapio && compatibilidade && (
+                    <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                        <h2 className="font-bold text-2xl">Compatibilidade</h2>
+
+                        <div className="my-5 w-full border border-gray-200 rounded-3xl" />
+
+                        <p className="text-sm text-gray-600">
+                            {compatibilidade.totalAlunosAnalisados === 0
+                                ? "Nenhum aluno na unidade para analisar."
+                                : `${compatibilidade.totalAlunosAnalisados} aluno(s) analisado(s).`}
+                        </p>
+
+                        {compatibilidade.avisos.map((aviso) => (
+                            <p key={aviso} className="mt-2 text-sm text-amber-700">
+                                {aviso}
+                            </p>
+                        ))}
+
+                        {compatibilidade.bloqueantes.length > 0 && (
+                            <div className="mt-4">
+                                <h3 className="font-semibold text-red-700">
+                                    {compatibilidade.bloqueantes.length} bloqueante(s)
+                                </h3>
+                                <ul className="mt-2 list-disc pl-6 text-sm text-gray-700">
+                                    {compatibilidade.bloqueantes.map((achado) => (
+                                        <li key={`${achado.alimentoId}-${achado.restricao}`}>
+                                            {achado.refeicao} · {achado.alimento} — {achado.restricao}
+                                            {achado.alunos.length > 0 &&
+                                                ` (${achado.alunos.map((aluno) => aluno.nome).join(", ")})`}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {compatibilidade.alertas.length > 0 && (
+                            <div className="mt-4">
+                                <h3 className="font-semibold text-amber-700">
+                                    {compatibilidade.alertas.length} alerta(s)
+                                </h3>
+                                <ul className="mt-2 list-disc pl-6 text-sm text-gray-700">
+                                    {compatibilidade.alertas.map((achado) => (
+                                        <li key={`${achado.alimentoId}-${achado.restricao}`}>
+                                            {achado.refeicao} · {achado.alimento} — {achado.restricao}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <div>
+                                <h3 className="font-semibold text-green-700">Permitidos</h3>
+                                <p className="mt-1 text-sm text-gray-700">
+                                    {compatibilidade.alimentosPermitidos.join(", ") || "—"}
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-red-700">Não permitidos</h3>
+                                <p className="mt-1 text-sm text-gray-700">
+                                    {compatibilidade.alimentosNaoPermitidos.join(", ") || "—"}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {cardapio && historico.length > 0 && (
+                    <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                        <h2 className="font-bold text-2xl">Histórico</h2>
+
+                        <div className="my-5 w-full border border-gray-200 rounded-3xl" />
+
+                        <ul className="flex flex-col gap-2">
+                            {historico.map((evento) => (
+                                <li
+                                    key={`${evento.evento}-${evento.criadoEm}`}
+                                    className="flex items-center justify-between rounded-2xl border border-[#fce9d3] p-3"
+                                >
+                                    <div>
+                                        <p className="font-semibold text-gray-800">
+                                            {evento.evento} · v{evento.versao}
+                                        </p>
+                                        <p className="text-sm text-gray-500">por {evento.autor}</p>
+                                        {evento.motivo && (
+                                            <p className="text-sm text-gray-600">Motivo: {evento.motivo}</p>
+                                        )}
+                                    </div>
+                                    <span className="text-sm text-gray-400">
+                                        {new Date(evento.criadoEm).toLocaleString("pt-BR")}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
                 {cardapio && (
                     <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">

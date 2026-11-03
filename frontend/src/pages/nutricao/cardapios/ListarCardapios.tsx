@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Eye, Pencil, Plus, Trash } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Pencil, Plus, Sparkles, Trash } from "lucide-react";
 import { ToastContainer, Zoom, toast } from "react-toastify";
 import Footer from "../../../components/Footer";
 import Header from "../../../components/Header";
@@ -147,14 +147,24 @@ export function ListarCardapios() {
                     </div>
 
                     {ehNutricionista && (
-                        <button
-                            type="button"
-                            onClick={() => navigate("/cardapios/novo")}
-                            className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-primaria px-5 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#b31f55] hover:shadow-md active:scale-[0.98]"
-                        >
-                            <Plus size={18} />
-                            Novo cardápio
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => navigate("/cardapios/parametros-geracao")}
+                                className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-roxo px-5 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-purple-700 hover:shadow-md active:scale-[0.98]"
+                            >
+                                <Sparkles size={18} />
+                                Gerar automático
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/cardapios/novo")}
+                                className="flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-primaria px-5 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#b31f55] hover:shadow-md active:scale-[0.98]"
+                            >
+                                <Plus size={18} />
+                                Novo cardápio
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -271,11 +281,23 @@ export function ListarCardapios() {
                                     </td>
                                     <td className="p-4">{cardapio.totalRefeicoes}</td>
                                     <td className="p-4">
-                                        <span
-                                            className={`rounded-full px-3 py-1 text-sm ${corSituacao[cardapio.situacao]}`}
-                                        >
-                                            {cardapio.situacao}
-                                        </span>
+                                        <div className="flex flex-col items-start gap-1">
+                                            <span
+                                                className={`rounded-full px-3 py-1 text-sm ${corSituacao[cardapio.situacao]}`}
+                                            >
+                                                {cardapio.situacao}
+                                            </span>
+                                            {cardapio.totalBloqueantes > 0 && (
+                                                <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                                                    incompatível
+                                                </span>
+                                            )}
+                                            {cardapio.totalAlertas > 0 && (
+                                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                                                    {cardapio.totalAlertas} alerta(s)
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="p-4 text-center">
                                         <button

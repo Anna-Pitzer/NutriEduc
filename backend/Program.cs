@@ -52,6 +52,10 @@ builder.Services.AddScoped<AlimentoService>();
 
 builder.Services.AddScoped<ICardapioRepository, CardapioRepository>();
 builder.Services.AddScoped<CardapioService>();
+builder.Services.AddScoped<CompatibilidadeService>();
+builder.Services.AddScoped<PublicacaoCardapioService>();
+builder.Services.AddScoped<IParametroGeracaoRepository, ParametroGeracaoRepository>();
+builder.Services.AddScoped<GeracaoCardapioService>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

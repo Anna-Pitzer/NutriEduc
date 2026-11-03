@@ -18,6 +18,7 @@ public class CardapioServiceTests
         CardapioService Servico,
         CardapioRepositoryFake Cardapios,
         AlimentoRepositoryFake Alimentos,
+        AlunoRepositoryFake Alunos,
         int UnidadeA,
         int UnidadeB);
 
@@ -62,7 +63,9 @@ public class CardapioServiceTests
     {
         var cardapios = new CardapioRepositoryFake();
         var alimentos = new AlimentoRepositoryFake();
+        var alunos = new AlunoRepositoryFake();
         var escolas = new EscolaRepositoryFake();
+        var usuarios = new UsuarioRepositoryFake();
         var unidadeDeTrabalho = new UnidadeDeTrabalhoFake();
 
         // O repositório real carrega o alimento de cada item (Include); o fake faz igual.
@@ -73,9 +76,9 @@ public class CardapioServiceTests
         var unidadeA = escolas.AddUnidade(new UnidadeEscolar("Unidade A")).Id;
         var unidadeB = escolas.AddUnidade(new UnidadeEscolar("Unidade B")).Id;
 
-        var servico = new CardapioService(cardapios, alimentos, escolas, unidadeDeTrabalho);
+        var servico = new CardapioService(cardapios, alimentos, alunos, escolas, usuarios, unidadeDeTrabalho);
 
-        return new Cenario(servico, cardapios, alimentos, unidadeA, unidadeB);
+        return new Cenario(servico, cardapios, alimentos, alunos, unidadeA, unidadeB);
     }
 
     private static Alimento CriarAlimento(AlimentoRepositoryFake alimentos, string nome) =>
@@ -85,6 +88,32 @@ public class CardapioServiceTests
             ValoresNutricionais.Criar(130, 2.7m, 28.2m, 0.3m, 0.4m, 1),
             null));
 
+    /// <summary>
+    /// Alimento com vínculo a uma restrição. O fake não resolve o `Include` do vínculo
+    /// (a navegação <c>Restricao</c>), então ela é definida manualmente para a análise
+    /// enxergar nome e categoria — o mesmo que o repositório real carrega.
+    /// </summary>
+    private static Alimento CriarAlimentoComRestricao(
+        AlimentoRepositoryFake alimentos,
+        string nome,
+        string restricao,
+        CategoriaRestricao categoria)
+    {
+        var catalogo = new RestricaoAlimentar(restricao, categoria);
+        var alimento = alimentos.Add(new Alimento(
+            nome,
+            1,
+            ValoresNutricionais.Criar(130, 2.7m, 28.2m, 0.3m, 0.4m, 1),
+            new[] { 1 }));
+
+        foreach (var vinculo in alimento.Vinculos)
+        {
+            PropriedadesPrivadas.Definir(vinculo, nameof(AlimentoRestricao.Restricao), catalogo);
+        }
+
+        return alimento;
+    }
+
     [Fact]
     public void Criar_ComUnidadeInexistente_DevolveInvalido()
     {
@@ -93,7 +122,7 @@ public class CardapioServiceTests
 
         var resultado = cenario.Servico.Criar(Entrada(
             unidadeId: 999,
-            itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)));
+            itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao);
 
         Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
         Assert.Contains("Unidade", resultado.Erro!);
@@ -106,7 +135,7 @@ public class CardapioServiceTests
 
         var resultado = cenario.Servico.Criar(Entrada(
             cenario.UnidadeA,
-            itensDaRefeicao: ("Almoço", 1, 999, 100m)));
+            itensDaRefeicao: ("Almoço", 1, 999, 100m)), Nutricao);
 
         Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
         Assert.Contains("não encontrado", resultado.Erro!);
@@ -122,7 +151,7 @@ public class CardapioServiceTests
 
         var resultado = cenario.Servico.Criar(Entrada(
             cenario.UnidadeA,
-            itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)));
+            itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao);
 
         Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
         Assert.Contains("desativado", resultado.Erro!);
@@ -136,7 +165,7 @@ public class CardapioServiceTests
 
         var resultado = cenario.Servico.Criar(Entrada(
             cenario.UnidadeA,
-            itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)));
+            itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao);
 
         Assert.Equal(ResultadoStatus.Ok, resultado.Status);
         Assert.Equal(SituacaoCardapio.Rascunho, resultado.Valor!.Situacao);
@@ -173,8 +202,8 @@ public class CardapioServiceTests
         var cenario = Montar();
         var arroz = CriarAlimento(cenario.Alimentos, "Arroz");
 
-        cenario.Servico.Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)));
-        cenario.Servico.Criar(Entrada(cenario.UnidadeB, itensDaRefeicao: ("Jantar", 1, arroz.Id, 100m)));
+        cenario.Servico.Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao);
+        cenario.Servico.Criar(Entrada(cenario.UnidadeB, itensDaRefeicao: ("Jantar", 1, arroz.Id, 100m)), Nutricao);
 
         var resultado = cenario.Servico.Listar(
             null, null, null, null, null, Merendeira(cenario.UnidadeA));
@@ -182,6 +211,38 @@ public class CardapioServiceTests
         Assert.Equal(ResultadoStatus.Ok, resultado.Status);
         Assert.Equal(1, resultado.Valor!.Total);
         Assert.Equal(cenario.UnidadeA, resultado.Valor.Itens[0].UnidadeId);
+    }
+
+    [Fact]
+    public void Listar_ContaBloqueantesEAlertasDoCardapio()
+    {
+        var cenario = Montar();
+        var iogurte = CriarAlimentoComRestricao(
+            cenario.Alimentos, "Iogurte", "Lactose", CategoriaRestricao.Alergia);
+
+        var aluno = new Aluno(
+            "Ana",
+            new DateOnly(2015, 5, 20),
+            new Turma("Escola Municipal", "5 ano"),
+            null,
+            null,
+            new[] { "Lactose" },
+            false,
+            new Responsavel("Ana Silva", "11988888888"));
+        aluno.DefinirUnidade(cenario.UnidadeA);
+        cenario.Alunos.Add(aluno);
+
+        cenario.Servico.Criar(
+            Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, iogurte.Id, 100m)),
+            Nutricao);
+
+        var resultado = cenario.Servico.Listar(null, null, null, null, null, Nutricao);
+
+        Assert.Equal(ResultadoStatus.Ok, resultado.Status);
+
+        var resumo = Assert.Single(resultado.Valor!.Itens);
+        Assert.Equal(1, resumo.TotalBloqueantes);
+        Assert.Equal(0, resumo.TotalAlertas);
     }
 
     [Fact]
@@ -201,7 +262,7 @@ public class CardapioServiceTests
         var cenario = Montar();
         var arroz = CriarAlimento(cenario.Alimentos, "Arroz");
         var criado = cenario.Servico
-            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)))
+            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao)
             .Valor!;
 
         var resultado = cenario.Servico.Obter(criado.Id, Merendeira(cenario.UnidadeB));
@@ -215,7 +276,7 @@ public class CardapioServiceTests
         var cenario = Montar();
         var arroz = CriarAlimento(cenario.Alimentos, "Arroz");
         var criado = cenario.Servico
-            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)))
+            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao)
             .Valor!;
 
         var resultado = cenario.Servico.Obter(criado.Id, Merendeira(cenario.UnidadeA));
@@ -230,7 +291,7 @@ public class CardapioServiceTests
         var cenario = Montar();
         var arroz = CriarAlimento(cenario.Alimentos, "Arroz");
         var criado = cenario.Servico
-            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)))
+            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao)
             .Valor!;
 
         arroz.Desativar();
@@ -238,7 +299,7 @@ public class CardapioServiceTests
 
         var resultado = cenario.Servico.Atualizar(
             criado.Id,
-            Entrada(cenario.UnidadeA, nome: "Semana 13", itensDaRefeicao: ("Almoço", 1, arroz.Id, 120m)));
+            Entrada(cenario.UnidadeA, nome: "Semana 13", itensDaRefeicao: ("Almoço", 1, arroz.Id, 120m)), Nutricao);
 
         Assert.Equal(ResultadoStatus.Ok, resultado.Status);
         Assert.Equal("Semana 13", resultado.Valor!.Nome);
@@ -252,7 +313,7 @@ public class CardapioServiceTests
         var arroz = CriarAlimento(cenario.Alimentos, "Arroz");
         var feijao = CriarAlimento(cenario.Alimentos, "Feijão");
         var criado = cenario.Servico
-            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)))
+            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao)
             .Valor!;
 
         feijao.Desativar();
@@ -260,7 +321,7 @@ public class CardapioServiceTests
 
         var resultado = cenario.Servico.Atualizar(
             criado.Id,
-            Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, feijao.Id, 100m)));
+            Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, feijao.Id, 100m)), Nutricao);
 
         Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
         Assert.Contains("desativado", resultado.Erro!);
@@ -272,7 +333,7 @@ public class CardapioServiceTests
         var cenario = Montar();
         var arroz = CriarAlimento(cenario.Alimentos, "Arroz");
         var criado = cenario.Servico
-            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)))
+            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao)
             .Valor!;
 
         var armazenado = cenario.Cardapios.ObterComRefeicoes(criado.Id)!;
@@ -291,7 +352,7 @@ public class CardapioServiceTests
         var cenario = Montar();
         var arroz = CriarAlimento(cenario.Alimentos, "Arroz");
         var criado = cenario.Servico
-            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)))
+            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao)
             .Valor!;
 
         var resultado = cenario.Servico.Excluir(criado.Id);
@@ -306,7 +367,7 @@ public class CardapioServiceTests
         var cenario = Montar();
         var arroz = CriarAlimento(cenario.Alimentos, "Arroz");
         var origem = cenario.Servico
-            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)))
+            .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao)
             .Valor!;
 
         var resultado = cenario.Servico.Duplicar(origem.Id, new DuplicarCardapioDTO
@@ -317,7 +378,7 @@ public class CardapioServiceTests
                 Inicio = new DateOnly(2026, 11, 9),
                 Fim = new DateOnly(2026, 11, 13)
             }
-        });
+        }, Nutricao);
 
         Assert.Equal(ResultadoStatus.Ok, resultado.Status);
 
@@ -344,7 +405,7 @@ public class CardapioServiceTests
                 Inicio = new DateOnly(2026, 11, 9),
                 Fim = new DateOnly(2026, 11, 13)
             }
-        });
+        }, Nutricao);
 
         Assert.Equal(ResultadoStatus.NaoEncontrado, resultado.Status);
     }

@@ -226,10 +226,33 @@ O cardápio vive em `Cardapios`, `Refeicoes` e `ItensRefeicao`. O período é um
 | `GET` | `/api/cardapios` | Lista paginada; aceita `unidadeId`, `data`, `situacao`, `pagina` e `tamanho` | Sim; `Nutricionista` ou `Merendeira` da própria unidade |
 | `GET` | `/api/cardapios/publicados` | Publicados cujo período inclui a data (padrão: hoje); exige `unidadeId`; aceita `data`, `refeicao`, `pagina` e `tamanho` | Não |
 | `GET` | `/api/cardapios/{id}` | Detalhe com refeições ordenadas, valores por item e totais | Sim; `Nutricionista` ou `Merendeira` da unidade |
+| `GET` | `/api/cardapios/{id}/compatibilidade` | Análise de compatibilidade com as restrições dos alunos (bloqueantes e alertas) | Sim; `Nutricionista` ou `Merendeira` da unidade |
 | `POST` | `/api/cardapios` | Cria rascunho com período (até 366 dias), refeições e itens | Sim; só `Nutricionista` |
 | `PUT` | `/api/cardapios/{id}` | Substitui nome, período e refeições de um rascunho de forma atômica | Sim; só `Nutricionista` |
 | `POST` | `/api/cardapios/{id}/duplicar` | Copia a composição para um novo período como rascunho | Sim; só `Nutricionista` |
 | `DELETE` | `/api/cardapios/{id}` | Exclui um rascunho com refeições e itens | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios/{id}/publicar` | Publica um rascunho; bloqueia por incompatibilidade (`422`) ou sobreposição (`409`) | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios/{id}/cancelar` | Cancela com `motivo` obrigatório (2–500) | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios/{id}/revisao` | Cria uma revisão (`Versao + 1`) de um cardápio publicado | Sim; só `Nutricionista` |
+| `GET` | `/api/cardapios/{id}/historico` | Linha do tempo de eventos do cardápio, decrescente e paginada | Sim; `Nutricionista` ou `Merendeira` da unidade |
+| `GET` | `/api/cardapios/alteracoes` | Feed de alterações no escopo a partir de `desde`, paginado | Sim; `Nutricionista` ou `Merendeira` da própria unidade |
+
+### Geração automática de cardápios
+
+Os parâmetros vivem em `ParametrosGeracao` (único por unidade) e a seleção é função pura
+`GeradorCardapioAutomatico.Gerar`, determinística pela semente. Cada item gerado corresponde
+a 100 g; o total calórico da refeição é a soma das calorias por 100 g dos itens selecionados.
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/unidades/{unidadeId}/parametros-geracao` | Parâmetros de geração da unidade | Sim; só `Nutricionista` |
+| `PUT` | `/api/unidades/{unidadeId}/parametros-geracao` | Cria ou altera os parâmetros de geração | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios/gerar` | Gera um cardápio `Rascunho` a partir dos parâmetros e da semente | Sim; só `Nutricionista` |
+
+A geração responde `400` sem parâmetros configurados e `422` (`{ erro, detalhes }`) quando a
+geração é impossível (sem alimento ativo, categoria obrigatória sem candidato, candidatos
+insuficientes ou faixa calórica inatingível) — nenhum cardápio parcial é salvo. `AdminEscola`
+recebe `403` por não ter escopo por unidade.
 
 A rota pública responde `400` sem `unidadeId` e nunca devolve rascunho. Editar ou excluir cardápio que não está em `Rascunho` responde `409` — publicar, cancelar e revisar pertencem à Spec 015. Alimento inexistente responde `400`; alimento desativado só é aceito se já estava no cardápio, o que preserva o histórico de um item que saiu do catálogo. O filtro `refeicao` compara o nome sem diferenciar caixa, mas acento continua significativo. Excluir uma unidade com cardápio responde `409`.
 

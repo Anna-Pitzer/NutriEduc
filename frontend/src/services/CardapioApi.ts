@@ -2,7 +2,7 @@ import { extrairErro, ErroRequisicao } from "./erroApi";
 
 const ApiURL = "";
 
-export type SituacaoCardapio = "Rascunho" | "Publicado" | "Cancelado";
+export type SituacaoCardapio = "Rascunho" | "Publicado" | "Cancelado" | "Substituido";
 
 /** Período de vigência (Spec 012, RF1). Datas no formato ISO `yyyy-mm-dd`. */
 export interface PeriodoCardapio {
@@ -46,7 +46,7 @@ export interface Cardapio {
     total: ValoresItem;
 }
 
-/** Linha da listagem: sem itens, só metadados (RF13). */
+/** Linha da listagem: sem itens, só metadados (RF13), com a contagem de incompatibilidade (Spec 014, RF9). */
 export interface CardapioResumo {
     id: number;
     nome: string;
@@ -54,6 +54,8 @@ export interface CardapioResumo {
     situacao: SituacaoCardapio;
     periodo: PeriodoCardapio;
     totalRefeicoes: number;
+    totalBloqueantes: number;
+    totalAlertas: number;
 }
 
 export interface PaginaCardapios<T> {
@@ -100,6 +102,33 @@ export interface CardapioEntrada {
 export interface DuplicarEntrada {
     nome?: string;
     periodo: PeriodoCardapio;
+}
+
+export type SeveridadeCompatibilidade = "Alerta" | "Bloqueante";
+
+export interface AlunoAfetadoCompatibilidade {
+    id: number;
+    nome: string;
+}
+
+export interface AchadoCompatibilidade {
+    refeicao: string;
+    alimentoId: number;
+    alimento: string;
+    restricao: string;
+    severidade: SeveridadeCompatibilidade;
+    alunos: AlunoAfetadoCompatibilidade[];
+}
+
+/** Resposta da análise de compatibilidade (Spec 014, RF4). */
+export interface Compatibilidade {
+    compativel: boolean;
+    totalAlunosAnalisados: number;
+    bloqueantes: AchadoCompatibilidade[];
+    alertas: AchadoCompatibilidade[];
+    alimentosPermitidos: string[];
+    alimentosNaoPermitidos: string[];
+    avisos: string[];
 }
 
 async function falhar(resposta: Response, padrao: string): Promise<never> {
@@ -210,6 +239,113 @@ export async function duplicarCardapio(
     });
 
     if (!resposta.ok) return falhar(resposta, "Erro ao duplicar o cardápio");
+
+    return resposta.json();
+}
+
+/** Análise de compatibilidade do cardápio com as restrições dos alunos (Spec 014). */
+export async function obterCompatibilidade(id: number): Promise<Compatibilidade> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}/compatibilidade`, {
+        credentials: "include",
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao carregar a compatibilidade");
+
+    return resposta.json();
+}
+
+// ---------- Publicação e histórico (Spec 015) ----------
+
+export type EventoCardapio =
+    | "Criado"
+    | "Editado"
+    | "Duplicado"
+    | "RevisaoCriada"
+    | "Publicado"
+    | "Cancelado"
+    | "Substituido";
+
+export interface EventoHistoricoCardapio {
+    evento: EventoCardapio;
+    versao: number;
+    autor: string;
+    motivo: string | null;
+    criadoEm: string;
+}
+
+export interface AlteracaoCardapio {
+    id: number;
+    cardapioId: number;
+    cardapioNome: string;
+    unidadeNome: string;
+    evento: EventoCardapio;
+    versao: number;
+    autor: string;
+    motivo: string | null;
+    criadoEm: string;
+}
+
+export interface Pagina<T> {
+    pagina: number;
+    tamanho: number;
+    total: number;
+    itens: T[];
+}
+
+export async function publicarCardapio(id: number): Promise<Cardapio> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}/publicar`, {
+        method: "POST",
+        credentials: "include",
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao publicar o cardápio");
+
+    return resposta.json();
+}
+
+export async function cancelarCardapio(id: number, motivo: string): Promise<Cardapio> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}/cancelar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ motivo }),
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao cancelar o cardápio");
+
+    return resposta.json();
+}
+
+export async function criarRevisaoCardapio(id: number): Promise<Cardapio> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}/revisao`, {
+        method: "POST",
+        credentials: "include",
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao criar a revisão do cardápio");
+
+    return resposta.json();
+}
+
+export async function obterHistoricoCardapio(id: number): Promise<Pagina<EventoHistoricoCardapio>> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}/historico`, {
+        credentials: "include",
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao carregar o histórico do cardápio");
+
+    return resposta.json();
+}
+
+export async function listarAlteracoesCardapios(
+    desde: string,
+): Promise<Pagina<AlteracaoCardapio>> {
+    const resposta = await fetch(
+        `${ApiURL}/api/cardapios/alteracoes?desde=${encodeURIComponent(desde)}`,
+        { credentials: "include" },
+    );
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao carregar as alterações");
 
     return resposta.json();
 }

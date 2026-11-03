@@ -1,6 +1,6 @@
 ---
 name: geracao-automatica-cardapios
-status: created
+status: implemented
 references: V6, ADR-004, L7
 ---
 

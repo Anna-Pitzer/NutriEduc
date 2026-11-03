@@ -76,6 +76,71 @@ public class CardapioRepositoryFake : ICardapioRepository
     public bool ExisteCardapioDaUnidade(int unidadeId) =>
         _cardapios.Any(cardapio => cardapio.UnidadeId == unidadeId);
 
+    public IReadOnlyCollection<int> ObterAlimentosUsadosDesde(int unidadeId, DateOnly dataLimite) =>
+        _cardapios
+            .Where(cardapio =>
+                cardapio.UnidadeId == unidadeId &&
+                cardapio.Situacao == SituacaoCardapio.Publicado &&
+                cardapio.Periodo.Fim >= dataLimite)
+            .SelectMany(cardapio => cardapio.Refeicoes)
+            .SelectMany(refeicao => refeicao.Itens)
+            .Select(item => item.AlimentoId)
+            .Distinct()
+            .ToList();
+
+    public int? ExistePublicadoNoPeriodo(int unidadeId, PeriodoVigencia periodo, int? ignorarId) =>
+        _cardapios
+            .Where(cardapio =>
+                cardapio.UnidadeId == unidadeId &&
+                cardapio.Situacao == SituacaoCardapio.Publicado &&
+                (ignorarId == null || cardapio.Id != ignorarId) &&
+                cardapio.Periodo.Inicio <= periodo.Fim &&
+                cardapio.Periodo.Fim >= periodo.Inicio)
+            .Select(cardapio => (int?)cardapio.Id)
+            .FirstOrDefault();
+
+    public (List<HistoricoCardapio> Itens, int Total) ListarHistorico(
+        int cardapioId,
+        int pagina,
+        int tamanho)
+    {
+        var eventos = _cardapios
+            .Where(cardapio => cardapio.Id == cardapioId)
+            .SelectMany(cardapio => cardapio.Historico)
+            .OrderByDescending(historico => historico.CriadoEmUtc)
+            .ThenByDescending(historico => historico.Id)
+            .ToList();
+
+        return (Paginar(eventos, pagina, tamanho), eventos.Count);
+    }
+
+    public (List<AlteracaoCardapioItem> Itens, int Total) ListarAlteracoes(
+        int? unidadeId,
+        DateTime desde,
+        int pagina,
+        int tamanho)
+    {
+        var linhas = _cardapios
+            .Where(cardapio => unidadeId == null || cardapio.UnidadeId == unidadeId)
+            .SelectMany(cardapio => cardapio.Historico
+                .Where(historico => historico.CriadoEmUtc >= desde)
+                .Select(historico => new AlteracaoCardapioItem(
+                    historico.Id,
+                    cardapio.Id,
+                    cardapio.Nome,
+                    "Unidade",
+                    historico.Evento,
+                    historico.Versao,
+                    historico.AutorNome,
+                    historico.Motivo,
+                    historico.CriadoEmUtc)))
+            .OrderByDescending(linha => linha.CriadoEmUtc)
+            .ThenByDescending(linha => linha.Id)
+            .ToList();
+
+        return (Paginar(linhas, pagina, tamanho), linhas.Count);
+    }
+
     public Cardapio Add(Cardapio cardapio)
     {
         if (cardapio.Id == 0)
@@ -134,6 +199,6 @@ public class CardapioRepositoryFake : ICardapioRepository
         return consulta;
     }
 
-    private static List<Cardapio> Paginar(List<Cardapio> itens, int pagina, int tamanho) =>
+    private static List<T> Paginar<T>(List<T> itens, int pagina, int tamanho) =>
         itens.Skip((pagina - 1) * tamanho).Take(tamanho).ToList();
 }

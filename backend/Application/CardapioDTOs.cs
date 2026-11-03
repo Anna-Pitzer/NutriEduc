@@ -48,7 +48,11 @@ public class CardapioDTO
     public ValoresNutricionaisDTO Total { get; set; } = new();
 }
 
-/// <summary>Linha da listagem: metadados e quantidade de refeições, sem itens.</summary>
+/// <summary>
+/// Linha da listagem: metadados, quantidade de refeições e a contagem de
+/// incompatibilidades (Spec 014, RF9) para o selo visual — calculada no serviço e
+/// apenas renderizada pelo frontend.
+/// </summary>
 public class CardapioResumoDTO
 {
     public int Id { get; set; }
@@ -57,6 +61,8 @@ public class CardapioResumoDTO
     public SituacaoCardapio Situacao { get; set; }
     public PeriodoCardapioDTO Periodo { get; set; } = new();
     public int TotalRefeicoes { get; set; }
+    public int TotalBloqueantes { get; set; }
+    public int TotalAlertas { get; set; }
 }
 
 /// <summary>Item na entrada de criação e edição (RF3).</summary>

@@ -31,9 +31,9 @@
 | 010 | restricoes-e-alergias | implemented | V1; V6; ADR-004; L2 |
 | 011 | catalogo-alimentos | implemented | V6; ADR-004; L9 |
 | 012 | dominio-cardapio | implemented | V6; ADR-004; L10 |
-| 013 | geracao-automatica-cardapios | created | V6; ADR-004; L7 |
-| 014 | compatibilidade-cardapio-restricoes | created | V6; ADR-004; L5 |
-| 015 | publicacao-historico-cardapio | created | V6; ADR-004; L7 |
+| 013 | geracao-automatica-cardapios | implemented | V6; ADR-004; L7 |
+| 014 | compatibilidade-cardapio-restricoes | audited | V6; ADR-004; L5 |
+| 015 | publicacao-historico-cardapio | audited | V6; ADR-004; L7 |
 | 016 | ocorrencias | created | V6; ADR-004; L7 |
 | 017 | solicitacoes | created | V6; ADR-004; L7 |
 | 018 | feedback-e-notificacoes | created | V6; ADR-004; L7 |

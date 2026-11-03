@@ -19,18 +19,24 @@ public sealed class CardapioService
 
     private readonly ICardapioRepository _cardapios;
     private readonly IAlimentoRepository _alimentos;
+    private readonly IAlunoRepository _alunos;
     private readonly IEscolaRepository _escolas;
+    private readonly IUsuarioRepository _usuarios;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
 
     public CardapioService(
         ICardapioRepository cardapios,
         IAlimentoRepository alimentos,
+        IAlunoRepository alunos,
         IEscolaRepository escolas,
+        IUsuarioRepository usuarios,
         IUnidadeDeTrabalho unidadeDeTrabalho)
     {
         _cardapios = cardapios;
         _alimentos = alimentos;
+        _alunos = alunos;
         _escolas = escolas;
+        _usuarios = usuarios;
         _unidadeDeTrabalho = unidadeDeTrabalho;
     }
 
@@ -52,7 +58,7 @@ public sealed class CardapioService
         if (!TentarLerSituacao(situacao, out var situacaoFiltro))
         {
             return Resultado<PaginaDTO<CardapioResumoDTO>>.Invalido(
-                $"Situação inválida: '{situacao}'. Use Rascunho, Publicado ou Cancelado.");
+                $"Situação inválida: '{situacao}'. Use Rascunho, Publicado, Cancelado ou Substituido.");
         }
 
         if (escopo.Papel == PapelUsuario.Merendeira)
@@ -73,12 +79,21 @@ public sealed class CardapioService
             paginaEfetiva,
             tamanhoEfetivo);
 
+        var resumos = itens.Select(cardapio =>
+        {
+            var resumo = ParaResumo(cardapio);
+            var (bloqueantes, alertas) = ContarIncompatibilidades(cardapio);
+            resumo.TotalBloqueantes = bloqueantes;
+            resumo.TotalAlertas = alertas;
+            return resumo;
+        }).ToList();
+
         return Resultado<PaginaDTO<CardapioResumoDTO>>.Ok(new PaginaDTO<CardapioResumoDTO>
         {
             Pagina = paginaEfetiva,
             Tamanho = tamanhoEfetivo,
             Total = total,
-            Itens = itens.Select(ParaResumo).ToList()
+            Itens = resumos
         });
     }
 
@@ -139,7 +154,7 @@ public sealed class CardapioService
 
     // ---------- Escrita ----------
 
-    public Resultado<CardapioDTO> Criar(SalvarCardapioDTO dto)
+    public Resultado<CardapioDTO> Criar(SalvarCardapioDTO dto, EscopoUsuario escopo)
     {
         if (_escolas.GetUnidade(dto.UnidadeId) is null)
         {
@@ -155,12 +170,14 @@ public sealed class CardapioService
 
         var cardapio = new Cardapio(dto.Nome, dto.UnidadeId, Periodo(dto.Periodo), refeicoes);
 
+        cardapio.RegistrarCriacao(NomeDoAutor(escopo));
+
         _unidadeDeTrabalho.ExecutarEmTransacao(() => _cardapios.Add(cardapio));
 
         return Carregar(cardapio.Id);
     }
 
-    public Resultado<CardapioDTO> Atualizar(int id, SalvarCardapioDTO dto)
+    public Resultado<CardapioDTO> Atualizar(int id, SalvarCardapioDTO dto, EscopoUsuario escopo)
     {
         var cardapio = _cardapios.ObterComRefeicoes(id);
 
@@ -188,6 +205,7 @@ public sealed class CardapioService
         }
 
         cardapio.Atualizar(dto.Nome, Periodo(dto.Periodo), refeicoes);
+        cardapio.RegistrarEdicao(NomeDoAutor(escopo));
 
         _unidadeDeTrabalho.ExecutarEmTransacao(() => _cardapios.Update(cardapio));
 
@@ -213,7 +231,7 @@ public sealed class CardapioService
         return Resultado<bool>.Ok(true);
     }
 
-    public Resultado<CardapioDTO> Duplicar(int id, DuplicarCardapioDTO dto)
+    public Resultado<CardapioDTO> Duplicar(int id, DuplicarCardapioDTO dto, EscopoUsuario escopo)
     {
         var origem = _cardapios.ObterComRefeicoes(id);
 
@@ -225,6 +243,8 @@ public sealed class CardapioService
         var nome = string.IsNullOrWhiteSpace(dto.Nome) ? origem.Nome : dto.Nome!;
         var copia = Cardapio.Copiar(origem, nome, Periodo(dto.Periodo), duplicadoDeId: origem.Id);
 
+        copia.RegistrarDuplicacao(NomeDoAutor(escopo));
+
         _unidadeDeTrabalho.ExecutarEmTransacao(() => _cardapios.Add(copia));
 
         return Carregar(copia.Id);
@@ -234,6 +254,10 @@ public sealed class CardapioService
 
     private static bool PodeLer(EscopoUsuario escopo) =>
         escopo.Papel is PapelUsuario.Nutricionista or PapelUsuario.Merendeira;
+
+    /// <summary>Snapshot do autor do evento: o nome é copiado, nunca referenciado por FK.</summary>
+    private string NomeDoAutor(EscopoUsuario escopo) =>
+        _usuarios.GetById(escopo.UsuarioId)?.Nome ?? "sistema";
 
     private static bool TentarLerSituacao(string? texto, out SituacaoCardapio? situacao)
     {
@@ -319,65 +343,46 @@ public sealed class CardapioService
             : Resultado<CardapioDTO>.Ok(ParaDetalhe(cardapio));
     }
 
-    private static CardapioResumoDTO ParaResumo(Cardapio cardapio) => new()
+    /// <summary>
+    /// Conta bloqueantes e alertas de um cardápio para o selo da listagem (Spec 014, RF9),
+    /// reusando a função pura <see cref="AnaliseCompatibilidade"/> — a severidade nunca é
+    /// recalculada aqui (ADR-011). Recebe o cardápio já com refeições e itens carregados.
+    /// </summary>
+    private (int Bloqueantes, int Alertas) ContarIncompatibilidades(Cardapio cardapio)
     {
-        Id = cardapio.Id,
-        Nome = cardapio.Nome,
-        UnidadeId = cardapio.UnidadeId,
-        Situacao = cardapio.Situacao,
-        Periodo = new PeriodoCardapioDTO(cardapio.Periodo),
-        TotalRefeicoes = cardapio.Refeicoes.Count
-    };
+        var itens = cardapio.Refeicoes
+            .OrderBy(refeicao => refeicao.Ordem)
+            .SelectMany(refeicao => refeicao.Itens.Select(item => new ItemAnalisado(
+                refeicao.Ordem,
+                refeicao.Nome,
+                item.AlimentoId,
+                item.Alimento?.Nome ?? string.Empty)))
+            .ToList();
 
-    private static CardapioDTO ParaDetalhe(Cardapio cardapio)
-    {
-        var refeicoes = new List<RefeicaoCardapioDTO>();
-        var totaisPorRefeicao = new List<ValoresNutricionais>();
+        var ids = itens.Select(item => item.AlimentoId).Distinct().ToList();
 
-        foreach (var refeicao in cardapio.Refeicoes.OrderBy(refeicao => refeicao.Ordem))
-        {
-            var itens = new List<ItemCardapioDTO>();
-            var valoresDosItens = new List<ValoresNutricionais>();
+        var vinculosPorAlimento = _alimentos.ObterComVinculosPorIds(ids).ToDictionary(
+            alimento => alimento.Id,
+            alimento => (IReadOnlyList<VinculoAnalisado>)alimento.Vinculos
+                .Where(vinculo => vinculo.Restricao is not null)
+                .Select(vinculo => new VinculoAnalisado(
+                    vinculo.RestricaoId,
+                    vinculo.Restricao!.Nome,
+                    vinculo.Restricao.Categoria))
+                .ToList());
 
-            foreach (var item in refeicao.Itens)
-            {
-                var valores = item.Alimento is null
-                    ? ValoresNutricionais.Criar(0, 0, 0, 0, 0, 0)
-                    : CalculoNutricional.DoItem(item.Alimento.Valores, item.QuantidadeGramas);
+        var alunos = _alunos.Listar(new FiltroAluno(UnidadeId: cardapio.UnidadeId))
+            .Select(aluno => new AlunoAnalisado(aluno.Id, aluno.Nome, aluno.Restricoes))
+            .ToList();
 
-                valoresDosItens.Add(valores);
+        var resultado = AnaliseCompatibilidade.Analisar(itens, vinculosPorAlimento, alunos);
 
-                itens.Add(new ItemCardapioDTO
-                {
-                    AlimentoId = item.AlimentoId,
-                    Alimento = item.Alimento?.Nome ?? string.Empty,
-                    Gramas = item.QuantidadeGramas,
-                    Valores = new ValoresNutricionaisDTO(valores)
-                });
-            }
-
-            var totalDaRefeicao = CalculoNutricional.Somar(valoresDosItens);
-            totaisPorRefeicao.Add(totalDaRefeicao);
-
-            refeicoes.Add(new RefeicaoCardapioDTO
-            {
-                Nome = refeicao.Nome,
-                Ordem = refeicao.Ordem,
-                Itens = itens,
-                Total = new ValoresNutricionaisDTO(totalDaRefeicao)
-            });
-        }
-
-        return new CardapioDTO
-        {
-            Id = cardapio.Id,
-            Nome = cardapio.Nome,
-            UnidadeId = cardapio.UnidadeId,
-            Situacao = cardapio.Situacao,
-            Periodo = new PeriodoCardapioDTO(cardapio.Periodo),
-            CardapioDuplicadoDeId = cardapio.CardapioDuplicadoDeId,
-            Refeicoes = refeicoes,
-            Total = new ValoresNutricionaisDTO(CalculoNutricional.Somar(totaisPorRefeicao))
-        };
+        return (resultado.Bloqueantes.Count, resultado.Alertas.Count);
     }
+
+    private static CardapioResumoDTO ParaResumo(Cardapio cardapio) =>
+        CardapioMapper.ParaResumo(cardapio);
+
+    private static CardapioDTO ParaDetalhe(Cardapio cardapio) =>
+        CardapioMapper.ParaDetalhe(cardapio);
 }

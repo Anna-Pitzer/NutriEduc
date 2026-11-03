@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Ntc.Domain.Services;
 
 namespace Ntc.Middleware;
 
@@ -37,7 +38,7 @@ public sealed class ErrorHandlingMiddleware
                 throw;
             }
 
-            var (status, mensagem) = Mapear(excecao);
+            var (status, mensagem, detalhes) = Mapear(excecao);
 
             // O identificador de correlação liga a resposta ao registro de log sem expor
             // detalhe técnico ao cliente (RF2/RNF3).
@@ -53,18 +54,27 @@ public sealed class ErrorHandlingMiddleware
             context.Response.Clear();
             context.Response.StatusCode = status;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new { erro = mensagem });
+            if (detalhes is null)
+                await context.Response.WriteAsJsonAsync(new { erro = mensagem });
+            else
+                await context.Response.WriteAsJsonAsync(new { erro = mensagem, detalhes });
         }
     }
 
-    private static (int Status, string Mensagem) Mapear(Exception excecao) => excecao switch
+    private static (int Status, string Mensagem, object? Detalhes) Mapear(Exception excecao) => excecao switch
     {
+        GeracaoImpossivelException geracao => (StatusCodes.Status422UnprocessableEntity,
+            geracao.Message, geracao.Motivo),
+        PublicacaoBloqueadaException publicacao => (StatusCodes.Status422UnprocessableEntity,
+            publicacao.Message, publicacao.Detalhes),
+        PublicacaoSobrepostaException sobreposta => (StatusCodes.Status409Conflict,
+            sobreposta.Message, new { cardapioId = sobreposta.CardapioId }),
         ArgumentException => (StatusCodes.Status400BadRequest,
-            string.IsNullOrWhiteSpace(excecao.Message) ? "Dados inválidos." : excecao.Message),
-        KeyNotFoundException => (StatusCodes.Status404NotFound, excecao.Message),
-        InvalidOperationException => (StatusCodes.Status409Conflict, excecao.Message),
+            string.IsNullOrWhiteSpace(excecao.Message) ? "Dados inválidos." : excecao.Message, null),
+        KeyNotFoundException => (StatusCodes.Status404NotFound, excecao.Message, null),
+        InvalidOperationException => (StatusCodes.Status409Conflict, excecao.Message, null),
         DbUpdateConcurrencyException => (StatusCodes.Status409Conflict,
-            "O registro foi alterado por outra operação."),
-        _ => (StatusCodes.Status500InternalServerError, "Erro interno.")
+            "O registro foi alterado por outra operação.", null),
+        _ => (StatusCodes.Status500InternalServerError, "Erro interno.", null)
     };
 }

@@ -29,6 +29,8 @@ public class ConnectionContext : DbContext
     public DbSet<Cardapio> Cardapios {get;set;}
     public DbSet<Refeicao> Refeicoes {get;set;}
     public DbSet<ItemRefeicao> ItensRefeicao {get;set;}
+    public DbSet<ParametroGeracao> ParametrosGeracao {get;set;}
+    public DbSet<HistoricoCardapio> HistoricosCardapios {get;set;}
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -340,5 +342,62 @@ public class ConnectionContext : DbContext
             .WithMany()
             .HasForeignKey(item => item.AlimentoId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // ---------- Geração automática (Spec 013) ----------
+
+        modelBuilder.Entity<ParametroGeracao>()
+            .HasIndex(parametro => parametro.UnidadeId)
+            .IsUnique();
+
+        modelBuilder.Entity<ParametroGeracao>()
+            .HasOne<UnidadeEscolar>()
+            .WithMany()
+            .HasForeignKey(parametro => parametro.UnidadeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Coleções primitivas sobre campos privados, como Aluno.Restricoes (Spec 003).
+        modelBuilder.Entity<ParametroGeracao>()
+            .PrimitiveCollection(parametro => parametro.CategoriasObrigatorias)
+            .HasField("_categoriasObrigatorias")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<ParametroGeracao>()
+            .PrimitiveCollection(parametro => parametro.RefeicoesPadrao)
+            .HasField("_refeicoesPadrao")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // ---------- Publicação e histórico (Spec 015) ----------
+
+        // Concorrência otimista: Situacao e Versao entram no WHERE do UPDATE (ADR-010).
+        modelBuilder.Entity<Cardapio>()
+            .Property(cardapio => cardapio.Situacao)
+            .IsConcurrencyToken();
+
+        modelBuilder.Entity<Cardapio>()
+            .Property(cardapio => cardapio.Versao)
+            .IsConcurrencyToken();
+
+        // Revisão não cascateia ao apagar o original (Restrict); original publicado não é apagado.
+        modelBuilder.Entity<Cardapio>()
+            .HasOne<Cardapio>()
+            .WithMany()
+            .HasForeignKey(cardapio => cardapio.RevisaoDeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Trilha append-only: FK com cascade (rascunho apagado leva seus eventos) e índice
+        // por (CardapioId, CriadoEmUtc) para a linha do tempo (Spec 015, RNF5).
+        modelBuilder.Entity<Cardapio>()
+            .HasMany(cardapio => cardapio.Historico)
+            .WithOne()
+            .HasForeignKey(historico => historico.CardapioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Cardapio>()
+            .Navigation(cardapio => cardapio.Historico)
+            .HasField("_historico")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<HistoricoCardapio>()
+            .HasIndex(historico => new { historico.CardapioId, historico.CriadoEmUtc });
     }
 }

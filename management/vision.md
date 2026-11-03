@@ -150,7 +150,6 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 **Delivered by:** Spec 022 (bootstrap-admin-por-token)
 
 ### V12: Trilha de alterações do aluno
-
 **Problema:** a Spec 010 criou histórico append-only apenas para restrições. Alteração de nome, nascimento, responsável, telefone, observação, anafilaxia ou unidade não deixa rastro — quem consulta o cadastro não sabe o que mudou, quando, nem por quem.
 
 **Valor entregue:** uma única trilha por aluno, somente inserção, com autor (nome copiado), data em UTC e o que mudou em cada evento: criação do cadastro, cada campo alterado com valor anterior e novo, e as restrições adicionadas/removidas. A leitura é paginada e respeita o escopo por papel, e a tela do aluno passa a mostrar uma linha do tempo única em vez de olhar apenas restrições. A rota antiga de histórico de restrições continua respondendo (filtrada da nova trilha) para não quebrar consumidores.
@@ -160,7 +159,6 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 **Delivered by:** Spec 023 (historico-alteracoes-aluno)
 
 ### V13: Fronteiras DDD explícitas
-
 **Problema:** a análise feita para a Spec 024 encontrou sete fronteiras borradas entre camadas: DTOs servindo entrada e saída ao mesmo tempo, regra de negócio em serviço de aplicação (hash de token, unicidade de e-mail, existência de unidade), `EscopoUsuario` — vocabulário de autorização — dentro do domínio, 19 `SaveChanges` espalhados pelos repositórios sem unidade de trabalho, `ExclusaoService` misturando política de negócio com escopo do solicitante, `Usuario.Senha` exposta e serviços com 370+ linhas acumulando casos de uso.
 
 **Valor entregue:** fronteiras explícitas. Contratos `*Entrada`/`*Resposta` separados por operação; invariantes e políticas no domínio (hash de token como objeto de valor, unicidade e referências validadas na entidade); filtros de negócio no lugar de escopos de sessão dentro do domínio; uma unidade de trabalho transacional por caso de uso, tornando atômicas operações que hoje tocam dois agregados (bootstrap e vínculo); exclusão como serviço de domínio com a autorização na aplicação; e casos de uso divididos por intenção, cada um com um motivo único de mudança.
@@ -170,7 +168,6 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 **Delivered by:** Spec 024 (fronteiras-ddd)
 
 ### V14: Cada papel vê o seu
-
 **Problema:** as quatro áreas de acesso existem como estrutura (papéis, guarda de rota e menu), mas três delas são placeholders: secretaria não tem painel consolidado, merendeira não vê o cardápio do dia e a família não enxerga nada do filho. O conteúdo está espalhado por rotas internas que exigem conhecer o sistema.
 
 **Valor entregue:** cada papel entra e vê exatamente o que lhe cabe. A secretaria recebe um painel com indicadores da rede e acesso à gestão; a merendeira vê o cardápio do dia da própria unidade com os alertas de restrição dos alunos; a família vê o cardápio do dia, as restrições e o relatório **do próprio filho**, nunca de outro aluno. Nenhuma tela nova expõe dado fora do escopo: a agregação e o filtro acontecem no SQL, e aluno fora do vínculo responde 403 sem revelar existência.
@@ -180,7 +177,6 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 **Delivered by:** Spec 025 (painel-e-visao-por-papel)
 
 ### V15: Substituição assistida por IA, com o determinístico decidindo
-
 **Problema:** quando um item do cardápio é bloqueado por restrição, a troca é manual: o nutricionista precisa lembrar quais alimentos são equivalentes e conferir cada um contra as restrições. A decisão fica lenta e sujeita a esquecimento — e nenhuma spec cobre apoio à decisão, porque a geração (013) e a compatibilidade (014) são determinísticas por decisão de projeto.
 
 **Valor entregue:** sugestão assistida com autoridade invertida de propósito. Primeiro o motor determinístico monta a lista de candidatos **já válidos** (mesma categoria, valores próximos, sem vínculo bloqueante); só então um provedor de IA — plugável e opcional — ranqueia e justifica entre esses candidatos. A escolha volta ao motor determinístico para revalidação e só entra no cardápio depois de aprovação humana. Sem provedor configurado, sem rede ou com falha, o fluxo continua pelo fallback determinístico; nenhum dado de aluno é enviado ao provedor, e cada sugestão aceita ou recusada fica registrada com autor e data.
