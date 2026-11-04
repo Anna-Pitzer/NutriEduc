@@ -96,6 +96,15 @@ public class UsuarioRepositoryFake : IUsuarioRepository
     public int ContarPorPapel(PapelUsuario papel) =>
         _usuarios.Count(usuario => usuario.Papel == papel);
 
+    public int ContarSemVinculoObrigatorio() =>
+        _usuarios.Count(usuario =>
+            usuario.Papel is PapelUsuario.AdminSecretaria
+                or PapelUsuario.Nutricionista
+                or PapelUsuario.Responsavel
+                ? usuario.UnidadeId == null
+                : usuario.Papel is PapelUsuario.AdminEscola or PapelUsuario.Merendeira
+                    && usuario.EscolaId == null);
+
     private static void DefinirId(Usuario usuario, int id)
     {
         PropriedadesPrivadas.Definir(usuario, nameof(Usuario.Id), id);

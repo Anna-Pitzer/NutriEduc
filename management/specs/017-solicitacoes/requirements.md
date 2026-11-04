@@ -1,7 +1,7 @@
 ---
 name: solicitacoes
 status: created
-references: V6, ADR-004, L7
+references: V6, V17, V19, ADR-020, ADR-021, ADR-004, L7
 ---
 
 # Requirements — Solicitações
@@ -15,12 +15,14 @@ fluxo com decisão registrada e efeito explícito.
 
 ## Escopo
 
-- Backend: `Solicitacao` com cinco tipos, ciclo de status, histórico, escopo por
-  papel e aplicação do efeito apenas para solicitações de restrição.
+- Backend: `Solicitacao` com seis tipos, ciclo de status, histórico, escopo por
+  unidade, escola e vínculo (Specs 027 e 028) e aplicação do efeito apenas para
+  solicitações de restrição.
 - Frontend: telas de solicitação e acompanhamento para merendeira, pais e escola;
-  fila de decisão para nutrição.
+  filas de decisão para nutrição e para o ADM.
 - Fora de escopo: notificação (Spec 018), alteração automática de cardápio (Spec 015
-  é o dono da edição), cadastro do catálogo de restrições (Spec 010).
+  é o dono da edição), cadastro do catálogo de restrições (Spec 010) e o payload do
+  tipo `DadosCadastrais` (Spec 030).
 
 ### Cobertura de `implementacoes.md`
 
@@ -31,38 +33,54 @@ fluxo com decisão registrada e efeito explícito.
   alimentar, acompanhar solicitações realizadas e visualizar status das solicitações.
 - **Escolas (1):** acompanhar solicitações da escola.
 
+## Decisões e interpretações
+
+| # | Ponto | Decisão | Origem |
+|---|---|---|---|
+| D1 | Quem decide pedido de restrição ou alergia do responsável | `AdminSecretaria`, conforme a regra de negócio "encaminhadas para análise do ADM" | Regra do dono, Spec 028 |
+| D2 | Quem decide cardápio ou ingrediente | `Nutricionista` da própria unidade | Spec 028 |
+| D3 | Escopo da `Merendeira` | escola própria, não a unidade inteira | Spec 027 |
+| D4 | Sexto tipo | `DadosCadastrais` é detalhado pela Spec 030; aqui ficam o agregado e o fluxo | Spec 030, L12 |
+
 ## Requisitos funcionais
 
 - RF1: `Solicitacao` tem `Tipo` (`MudancaCardapio`, `Ingrediente`,
-  `FaltaIngrediente`, `InclusaoAlergia`, `AlteracaoRestricao`), `Descricao` (5–1000),
-  `Status` inicial `Aberta`, `UnidadeId`, `SolicitanteId` e `SolicitanteNome`.
+  `FaltaIngrediente`, `InclusaoAlergia`, `AlteracaoRestricao`, `DadosCadastrais`),
+  `Descricao` (5–1000), `Status` inicial `Aberta`, `UnidadeId`, `EscolaId` derivado,
+  `SolicitanteId` e `SolicitanteNome`. O tipo `DadosCadastrais` tem payload e regra de
+  aplicação definidos pela Spec 030; esta spec é dona apenas do agregado e do fluxo.
 - RF2: campos exigidos por tipo: `MudancaCardapio` exige `CardapioId`;
   `InclusaoAlergia` e `AlteracaoRestricao` exigem `AlunoId` e `RestricaoNome`;
-  `Ingrediente` e `FaltaIngrediente` exigem `Ingrediente` (2–120). Campo ausente
-  devolve 400.
-- RF3: quem solicita: `Merendeira` (unidade própria, tipos de cardápio/ingrediente),
-  `Responsavel` (aluno vinculado, tipos de restrição), `AdminEscola` (escola própria),
-  `Nutricionista` (qualquer unidade). `AdminSecretaria` não solicita.
+  `Ingrediente` e `FaltaIngrediente` exigem `Ingrediente` (2–120); `DadosCadastrais` tem
+  campos definidos pela Spec 030. Campo ausente devolve 400.
+- RF3: quem solicita: `Merendeira` (escola própria, tipos de cardápio/ingrediente),
+  `Responsavel` (aluno vinculado, tipos de restrição e dados cadastrais),
+  `AdminEscola` (escola própria), `Nutricionista` (própria unidade).
+  `AdminSecretaria` não solicita: decide, quando o tipo é de restrição ou cadastral.
 - RF4: transições: `Aberta → EmAnalise`, `EmAnalise → Aprovada`, `EmAnalise →
   Recusada`, `Aprovada → Concluida`, `Aberta → Cancelada`. Qualquer outra → 409.
-- RF5: `Nutricionista` decide (`EmAnalise`, `Aprovada`, `Recusada`, `Concluida`);
-  o solicitante pode cancelar apenas em `Aberta`. Aprovação e recusa exigem
-  `resposta` (2–500).
-- RF6: aprovar `InclusaoAlergia` ou `AlteracaoRestricao` aplica a mudança no aluno
-  pela regra da Spec 010 (catálogo + histórico), na mesma transação da decisão. Se a
-  restrição não existir no catálogo, a aprovação falha com 400 e nada muda.
+- RF5: a decisão é separada por natureza do pedido, sempre na própria unidade:
+  `Nutricionista` decide `MudancaCardapio`, `Ingrediente` e `FaltaIngrediente`;
+  `AdminSecretaria` decide `InclusaoAlergia`, `AlteracaoRestricao` e `DadosCadastrais`.
+  Cada decisor executa `EmAnalise`, `Aprovada`, `Recusada` e `Concluida`; decisão por
+  papel diferente do dono do tipo devolve 403. O solicitante cancela apenas em `Aberta`.
+  Aprovação e recusa exigem `resposta` (2–500).
+- RF6: aprovar `InclusaoAlergia` ou `AlteracaoRestricao` (decisão do ADM) aplica a
+  mudança no aluno pela regra da Spec 010 (catálogo + histórico), na mesma transação da
+  decisão. Se a restrição não existir no catálogo, a aprovação falha com 400 e nada muda.
 - RF7: aprovar `MudancaCardapio` **não** altera o cardápio: registra a decisão e o
   cardápio é editado pela Spec 015. A resposta deixa isso explícito.
-- RF8: `GET /api/solicitacoes` filtra por `tipo`, `status`, `unidadeId`, `alunoId`,
-  `cardapioId`, `de`, `ate`, `pagina`, `tamanho` (1–100) e aplica escopo do papel no
-  banco.
+- RF8: `GET /api/solicitacoes` filtra por `tipo`, `status`, `unidadeId`, `escolaId`,
+  `alunoId`, `cardapioId`, `de`, `ate`, `pagina`, `tamanho` (1–100) e aplica escopo do
+  papel no banco. Filtro de escopo fora do alcance da sessão devolve 403.
 - RF9: `GET /api/solicitacoes/{id}` devolve detalhe com alvo resolvido (aluno,
   cardápio ou ingrediente) e histórico de status com autor e resposta.
-- RF10: solicitante vê as próprias solicitações; `Responsavel` vê também as dos
-  alunos vinculados; `AdminEscola` as da escola; `Merendeira` as da unidade;
-  `Nutricionista` todas.
-- RF11: o frontend exibe fila de decisão para nutrição com filtro por status, e
-  acompanhamento com histórico para solicitante, escola e merendeira.
+- RF10: solicitante vê as próprias solicitações; `Responsavel` vê também as dos alunos
+  vinculados; `AdminEscola` e `Merendeira` veem as da própria escola; `Nutricionista` e
+  `AdminSecretaria` veem as da própria unidade. Nenhum papel enxerga outra unidade.
+- RF11: o frontend exibe fila de decisão para a nutrição (cardápio/ingrediente) e para
+  o ADM (restrição e dados cadastrais), com filtro por status, e acompanhamento com
+  histórico para solicitante, escola e merendeira.
 - RF12: nenhuma solicitação é apagada; cancelamento é status.
 
 ## Requisitos não funcionais
@@ -70,9 +88,9 @@ fluxo com decisão registrada e efeito explícito.
 - RNF1: invariantes e transições no agregado (ADR-004); controller sem regra.
 - RNF2: histórico append-only gravado na mesma transação da transição.
 - RNF3: snapshots de solicitante e de nomes de aluno/cardápio/restrição no evento.
-- RNF4: consultas paginadas e indexadas por `(UnidadeId, CriadoEmUtc)` e
-  `(Status, Tipo)`.
-- RNF5: contrato `{ erro }` em 400/403/404/409.
+- RNF4: consultas paginadas e indexadas por `(UnidadeId, CriadoEmUtc)`,
+  `(EscolaId, CriadoEmUtc)` e `(Status, Tipo)`.
+- RNF5: contrato `{ erro }` em 400/403/404/409; recurso de outra unidade responde 404.
 
 ## Restrições
 
@@ -83,13 +101,16 @@ fluxo com decisão registrada e efeito explícito.
 ## Dependências
 
 - Specs 009, 010, 012 e 015 implementadas (015 para o alvo de `MudancaCardapio`).
+- Specs 027 (hierarquia), 028 (matriz) e 030 (tipo `DadosCadastrais`) implementadas.
 - Spec 018 consome os eventos de status.
 
 ## Casos de borda
 
 - `RestricaoNome` fora do catálogo na aprovação → 400, solicitação permanece
   `EmAnalise`.
-- `CardapioId` de outra unidade → 403.
+- `CardapioId` de outra unidade → 404; da mesma unidade fora do escopo → 403.
+- `Nutricionista` tentando decidir restrição ou dado cadastral → 403.
+- `AdminSecretaria` tentando decidir cardápio ou ingrediente → 403.
 - Pai solicitando para aluno não vinculado → 403.
 - Aprovar solicitação já aprovada → 409.
 - Cancelar solicitação em `EmAnalise` → 409.
@@ -103,10 +124,12 @@ fluxo com decisão registrada e efeito explícito.
 
 - [ ] Cada tipo de solicitação valida seus campos obrigatórios.
 - [ ] Pai solicita inclusão de alergia para aluno vinculado e acompanha o status.
-- [ ] Nutrição aprova e a restrição aparece no aluno, com evento no histórico dele.
+- [ ] Nutrição decide cardápio/ingrediente; ADM decide restrição/dados; papel trocado
+  devolve 403.
+- [ ] ADM aprova a restrição e ela aparece no aluno, com evento no histórico dele.
 - [ ] Aprovar restrição inexistente devolve 400 e mantém `EmAnalise`.
 - [ ] Aprovar mudança de cardápio não altera o cardápio.
-- [ ] Escopo de listagem comprovado por papel e por unidade.
+- [ ] Escopo de listagem comprovado por papel, por escola e por unidade.
 - [ ] Transição inválida devolve 409.
 - [ ] Duas decisões concorrentes: uma 200 e uma 409.
 - [ ] `dotnet build`, `dotnet test`, `npm run build` e `npm run lint` sem erro.
@@ -114,6 +137,13 @@ fluxo com decisão registrada e efeito explícito.
 ## Validação
 
 Abrir uma solicitação de restrição (pai), uma de ingrediente (merendeira) e uma de
-cardápio (escola); decidir com nutrição; confirmar efeito no aluno, ausência de efeito
-no cardápio e histórico em todos os casos. Executar os gates: `dotnet build backend/backend.csproj`,
+cardápio (escola); decidir restrição com o ADM e cardápio/ingrediente com a nutrição;
+confirmar efeito no aluno, ausência de efeito no cardápio e histórico em todos os casos. Executar os gates: `dotnet build backend/backend.csproj`,
 `dotnet test backend.Tests/backend.Tests.csproj` e `cd frontend && npm run build && npm run lint`.
+
+## Revisão — 2026-11-04
+
+Conformidade com as Specs 027, 028 e 030: escopo por escola e unidade, `EscolaId`
+derivado e decisão separada por tipo (nutrição para cardápio/ingrediente, ADM para
+restrição e dados cadastrais). O sexto tipo delega payload e aplicação à Spec 030 para
+não declarar a mesma funcionalidade em duas specs.

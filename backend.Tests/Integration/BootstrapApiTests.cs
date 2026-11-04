@@ -147,13 +147,13 @@ public class BootstrapApiTests : IClassFixture<ApiFactory>
 
         Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
 
-        // A unidade nasce no bootstrap: não existe tela de cadastro de unidade.
-        var admin = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
-        var lista = JsonDocument.Parse(await admin.GetStringAsync("/api/unidades")).RootElement;
+        // A unidade nasce no bootstrap e fica visível apenas para o administrador dela.
+        using var scope = _factory.Services.CreateScope();
+        var escolas = scope.ServiceProvider.GetRequiredService<IEscolaRepository>();
 
         Assert.Contains(
-            lista.EnumerateArray(),
-            item => item.GetProperty("nome").GetString() == nomeUnidade);
+            escolas.ListarUnidades(),
+            unidade => unidade.Nome == nomeUnidade);
     }
 
     [Fact]

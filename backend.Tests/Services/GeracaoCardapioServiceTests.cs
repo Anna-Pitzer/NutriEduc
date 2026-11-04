@@ -12,7 +12,11 @@ public class GeracaoCardapioServiceTests
     private sealed record Cenario(
         GeracaoCardapioService Servico,
         ParametroGeracaoRepositoryFake Parametros,
-        AlimentoRepositoryFake Alimentos);
+        AlimentoRepositoryFake Alimentos,
+        CardapioRepositoryFake Cardapios);
+
+    /// <summary>Id da nutricionista semeada: a geração exige autoria informada.</summary>
+    private const int NutricionistaId = 1;
 
     private static Cenario Montar()
     {
@@ -21,16 +25,27 @@ public class GeracaoCardapioServiceTests
         var alunos = new AlunoRepositoryFake();
         var cardapios = new CardapioRepositoryFake();
         var unidadeDeTrabalho = new UnidadeDeTrabalhoFake();
+        var usuarios = new UsuarioRepositoryFake();
+
+        usuarios.Add(new Usuario(
+            "Nutri Teste",
+            "12345678901",
+            new DateOnly(1990, 1, 1),
+            "nutri.teste@nutrieduc.local",
+            PapelUsuario.Nutricionista,
+            unidadeId: 1,
+            crn: "CRN-3 12345"));
 
         var servico = new GeracaoCardapioService(
-            parametros, alimentos, alunos, cardapios, unidadeDeTrabalho);
+            parametros, alimentos, alunos, cardapios, usuarios, unidadeDeTrabalho);
 
-        return new Cenario(servico, parametros, alimentos);
+        return new Cenario(servico, parametros, alimentos, cardapios);
     }
 
     private static GerarCardapioDTO EntradaGerar(int unidadeId) => new()
     {
         UnidadeId = unidadeId,
+        NutricionistaId = NutricionistaId,
         Nome = "Semana 12",
         Periodo = new PeriodoCardapioDTO
         {
@@ -52,6 +67,21 @@ public class GeracaoCardapioServiceTests
 
         Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
         Assert.Contains("Parâmetros", resultado.Erro!);
+    }
+
+    [Fact]
+    public void Gerar_SemNutricionista_DevolveInvalido()
+    {
+        var cenario = Montar();
+        cenario.Parametros.Add(Parametros(unidadeId: 1));
+
+        var entrada = EntradaGerar(unidadeId: 1);
+        entrada.NutricionistaId = 0;
+
+        var resultado = cenario.Servico.Gerar(entrada);
+
+        Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
+        Assert.Contains("nutricionista", resultado.Erro!, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -21,6 +21,7 @@ const corSituacao: Record<SituacaoCardapio, string> = {
   Rascunho: "bg-bege text-roxo",
   Publicado: "bg-green-100 text-green-800",
   Cancelado: "bg-red-100 text-red-700",
+  Substituido: "bg-purple-100 text-purple-700",
 };
 
 function dataCurta(iso: string): string {

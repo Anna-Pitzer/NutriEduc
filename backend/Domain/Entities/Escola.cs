@@ -1,8 +1,8 @@
 namespace Ntc.Domain.Entity;
 
 /// <summary>
-/// Escola da rede. O nome é o rótulo exibido e a chave de unicidade (comparação sem
-/// diferenciar caixa); `Ativa` substitui a exclusão física (ADR-008).
+/// Escola da rede. Pertence a exatamente uma unidade (Spec 027) e o nome é único dentro
+/// dela. `Ativa` substitui a exclusão física (ADR-008).
 /// </summary>
 public class Escola
 {
@@ -13,6 +13,12 @@ public class Escola
 
     public string Nome { get; private set; } = string.Empty;
 
+    /// <summary>
+    /// Unidade à qual a escola pertence. Nulo apenas em registro legado anterior à
+    /// Spec 027; o construtor público nunca produz esse estado.
+    /// </summary>
+    public int? UnidadeId { get; private set; }
+
     public bool Ativa { get; private set; } = true;
 
     /// <summary>Somente para o EF Core.</summary>
@@ -20,9 +26,15 @@ public class Escola
     {
     }
 
-    public Escola(string nome)
+    public Escola(string nome, int unidadeId)
     {
+        if (unidadeId <= 0)
+        {
+            throw new ArgumentException("A escola exige uma unidade.");
+        }
+
         DefinirNome(nome);
+        UnidadeId = unidadeId;
         Ativa = true;
     }
 
@@ -37,6 +49,31 @@ public class Escola
         }
 
         Nome = valor;
+    }
+
+    /// <summary>
+    /// Move a escola de unidade. Bloqueado quando a escola possui alunos, porque o aluno
+    /// carrega a unidade derivada e a mudança criaria divergência silenciosa (Spec 027, RF5).
+    /// </summary>
+    public void DefinirUnidade(int unidadeId, bool possuiAlunos)
+    {
+        if (unidadeId <= 0)
+        {
+            throw new ArgumentException("A escola exige uma unidade.");
+        }
+
+        if (UnidadeId == unidadeId)
+        {
+            return;
+        }
+
+        if (possuiAlunos)
+        {
+            throw new ArgumentException(
+                "Escola com alunos não pode mudar de unidade.");
+        }
+
+        UnidadeId = unidadeId;
     }
 
     public void Desativar() => Ativa = false;

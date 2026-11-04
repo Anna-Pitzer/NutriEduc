@@ -31,7 +31,7 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
     private static string EmailUnico() =>
         $"papel.{Guid.NewGuid():N}@nutrieduc.local";
 
-    private static object PayloadAluno(string nome, int unidadeId) => new
+    private static object PayloadAluno(string nome, int escolaId) => new
     {
         nome,
         nascimento = "2015-05-10",
@@ -43,25 +43,23 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
         anafilaxia = false,
         nomeResponsavel = "Maria Teste",
         telefoneResponsavel = "11988888888",
-        unidadeId
+        escolaId
     };
 
     private async Task<(int EscolaId, int UnidadeId)> CriarEscolaComUnidade(
-        HttpClient admin,
-        string prefixoUnidade = "Unidade")
+        HttpClient admin)
     {
         var escola = await admin.PostAsJsonAsync("/api/escolas", new
         {
-            nome = NomeUnico("Escola")
+            nome = NomeUnico("Escola"),
+            unidadeId = _factory.UnidadeIdPadrao
         });
         escola.EnsureSuccessStatusCode();
 
-        var escolaId = (await Ler(escola)).GetProperty("id").GetInt32();
+        var corpo = await Ler(escola);
 
-        // Unidade nasce no bootstrap do primeiro admin; nos testes ela vem do repositório.
-        var (_, unidadeId) = _factory.CriarEscolaComUnidade($"{prefixoUnidade} {Guid.NewGuid():N}");
-
-        return (escolaId, unidadeId);
+        return (corpo.GetProperty("id").GetInt32(),
+                corpo.GetProperty("unidadeId").GetInt32());
     }
 
     private async Task<(int Id, string Email)> CriarUsuario(
@@ -91,10 +89,10 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
         return (id, email);
     }
 
-    private async Task<int> CriarAluno(HttpClient cliente, string nome, int unidadeId)
+    private async Task<int> CriarAluno(HttpClient cliente, string nome, int escolaId)
     {
         var resposta = await cliente.PostAsJsonAsync(
-            "/api/aluno/registrar", PayloadAluno(nome, unidadeId));
+            "/api/aluno/registrar", PayloadAluno(nome, escolaId));
         resposta.EnsureSuccessStatusCode();
 
         return (await Ler(resposta)).GetProperty("id").GetInt32();
@@ -138,17 +136,26 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task AdminEscola_CriaMerendeiraDaPropriaEscola()
+    public async Task AdminEscola_NaoCriaMerendeira()
     {
         var secretaria = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var (escolaId, unidadeId) = await CriarEscolaComUnidade(secretaria);
         var adminEscola = await _factory.CreateAuthenticatedClientAsync(
             PapelUsuario.AdminEscola, escolaId);
 
-        var (_, email) = await CriarUsuario(
-            adminEscola, PapelUsuario.Merendeira, escolaId, unidadeId);
+        var resposta = await adminEscola.PostAsJsonAsync("/api/usuarios", new
+        {
+            nome = "Merendeira Bloqueada",
+            cpf = "12345678901",
+            dataNascimento = "1990-01-01",
+            email = EmailUnico(),
+            senha = "senha12345",
+            papel = nameof(PapelUsuario.Merendeira),
+            escolaId,
+            unidadeId
+        });
 
-        Assert.False(string.IsNullOrWhiteSpace(email));
+        Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
     }
 
     [Fact]
@@ -182,10 +189,10 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
         var secretaria = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var (escolaId, unidadeA) = await CriarEscolaComUnidade(secretaria);
 
-        var unidadeB = _factory.CriarEscolaComUnidade($"Unidade B {Guid.NewGuid():N}").UnidadeId;
+        var (escolaB, _) = await CriarEscolaComUnidade(secretaria);
 
-        await CriarAluno(secretaria, "Aluno Unidade A", unidadeA);
-        await CriarAluno(secretaria, "Aluno Unidade B", unidadeB);
+        await CriarAluno(secretaria, "Aluno Unidade A", escolaId);
+        await CriarAluno(secretaria, "Aluno Unidade B", escolaB);
 
         var merendeira = await _factory.CreateAuthenticatedClientAsync(
             PapelUsuario.Merendeira, escolaId, unidadeA);
@@ -214,9 +221,9 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
         var secretaria = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var (escolaId, unidadeId) = await CriarEscolaComUnidade(secretaria);
 
-        var alunoId = await CriarAluno(secretaria, "Aluno Vinculado", unidadeId);
+        var alunoId = await CriarAluno(secretaria, "Aluno Vinculado", escolaId);
         var (responsavelId, responsavelEmail) = await CriarUsuario(
-            secretaria, PapelUsuario.Responsavel, escolaId);
+            secretaria, PapelUsuario.Responsavel, unidadeId: unidadeId);
 
         var responsavel = await _factory.EntrarAsync(responsavelEmail);
 
@@ -237,9 +244,9 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
     {
         var secretaria = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var (escolaId, unidadeId) = await CriarEscolaComUnidade(secretaria);
-        var alunoId = await CriarAluno(secretaria, "Aluno Duplicado", unidadeId);
+        var alunoId = await CriarAluno(secretaria, "Aluno Duplicado", escolaId);
         var (responsavelId, _) = await CriarUsuario(
-            secretaria, PapelUsuario.Responsavel, escolaId);
+            secretaria, PapelUsuario.Responsavel, unidadeId: unidadeId);
 
         var primeiro = await secretaria.PostAsync(
             $"/api/aluno/{alunoId}/responsaveis/{responsavelId}", null);
@@ -323,10 +330,18 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
         var secretaria = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var nome = NomeUnico("Escola Repetida");
 
-        var primeiro = await secretaria.PostAsJsonAsync("/api/escolas", new { nome });
+        var primeiro = await secretaria.PostAsJsonAsync("/api/escolas", new
+        {
+            nome,
+            unidadeId = _factory.UnidadeIdPadrao
+        });
         primeiro.EnsureSuccessStatusCode();
 
-        var segundo = await secretaria.PostAsJsonAsync("/api/escolas", new { nome });
+        var segundo = await secretaria.PostAsJsonAsync("/api/escolas", new
+        {
+            nome,
+            unidadeId = _factory.UnidadeIdPadrao
+        });
 
         Assert.Equal(HttpStatusCode.Conflict, segundo.StatusCode);
     }

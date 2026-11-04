@@ -45,6 +45,11 @@ public class UsuarioAdminController : RespostaController
             return SessaoInvalida();
         }
 
+        if (!_usuarios.FiltroNoEscopo(escolaId, unidadeId, escopo))
+        {
+            return Forbid();
+        }
+
         var filtro = new FiltroUsuarios(papel, escolaId, unidadeId, ativo, busca);
 
         return Ok(_usuarios.Listar(filtro, escopo));

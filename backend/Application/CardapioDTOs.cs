@@ -44,6 +44,10 @@ public class CardapioDTO
     public SituacaoCardapio Situacao { get; set; }
     public PeriodoCardapioDTO Periodo { get; set; } = new();
     public int? CardapioDuplicadoDeId { get; set; }
+
+    /// <summary>Nutricionista que elaborou o cardápio; nulo em cardápios legados.</summary>
+    public NutricionistaDTO? Nutricionista { get; set; }
+
     public List<RefeicaoCardapioDTO> Refeicoes { get; set; } = new();
     public ValoresNutricionaisDTO Total { get; set; } = new();
 }

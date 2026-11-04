@@ -5,7 +5,9 @@ import { ChevronLeft, Apple, Candy, CircleHelp, Milk, Wheat } from "lucide-react
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { atualizarAluno, buscarAlunoPorId, cadastrarAlunos, type AlunoCadastro, type AlunoResposta } from "../../../services/AlunoApi";
+import { listarEscolas, type EscolaResposta } from "../../../services/EscolaApi";
 import { naoAutorizado } from "../../../services/erroApi";
+import { listarUnidades, type Unidade } from "../../../services/UnidadeApi";
 import { useAuth } from "../../../context/authContext";
 
 interface FormularioAluno {
@@ -13,6 +15,7 @@ interface FormularioAluno {
     nascimento: string;
     serie: string;
     escola: string;
+    escolaId: number | null;
     telefone: string;
     observacoes: string;
     restricoes: string[];
@@ -27,6 +30,7 @@ const estadoInicial: FormularioAluno = {
     nascimento: "",
     serie: "",
     escola: "",
+    escolaId: null,
     telefone: "",
     observacoes: "",
     restricoes: [],
@@ -43,6 +47,7 @@ function mapearAlunoParaFormulario(aluno: AlunoResposta): FormularioAluno {
         nascimento: aluno.nascimento,
         serie: aluno.serie,
         escola: aluno.escola,
+        escolaId: aluno.escolaId ?? null,
         telefone: aluno.telefone,
         observacoes: aluno.observacao,
         restricoes: aluno.restricoes,
@@ -81,13 +86,6 @@ export function CadastroAlunos() {
     ];
 
     //IDEAL PUXAR DO BACK DPS
-    const escolasPermitidas = [
-        "Escola 1",
-        "Escola 2",
-        "Escola 3",
-    ];
-
-    //IDEAL PUXAR DO BACK DPS
     const limparTexto = (valor: string, limite: number): string => {
         return valor.replace(/[<>]/g, "")
             .replace(/\s+/g, " ")
@@ -107,10 +105,27 @@ export function CadastroAlunos() {
 
     const [form, setForm] = useState<FormularioAluno>(estadoInicial);
     const [formOriginal, setFormOriginal] = useState<FormularioAluno | null>(null);
+    const [unidades, setUnidades] = useState<Unidade[]>([]);
+    const [escolas, setEscolas] = useState<EscolaResposta[]>([]);
     const [mensagem, setMensagem] = useState("");
     const [tipoMensagem, setTipoMensagem] = useState<"erro" | "sucesso" | "">("");
     const [carregando, setCarregando] = useState(false);
     const [carregandoAluno, setCarregandoAluno] = useState(modoEdicao);
+
+    // A unidade é obrigatória: sem ela a restrição do aluno não entra na análise de
+    // compatibilidade do cardápio, então o select não pode ficar vazio.
+    useEffect(() => {
+        listarUnidades()
+            .then(setUnidades)
+            .catch(() => setUnidades([]));
+    }, []);
+
+    useEffect(() => {
+        // A escola é o vínculo institucional do aluno; a unidade é derivada dela.
+        listarEscolas()
+            .then(setEscolas)
+            .catch(() => setEscolas([]));
+    }, []);
 
     useEffect(() => {
         if (idEdicao === null) return;
@@ -206,8 +221,20 @@ export function CadastroAlunos() {
             return false;
         }
 
-        if (!escolasPermitidas.includes(form.escola)) {
-            mostrarErro("Selecione uma escola válida.");
+        if (form.unidadeId === null) {
+            mostrarErro("Selecione a unidade escolar do aluno.");
+            return false;
+        }
+
+        const escolaSelecionada = escolas.find(
+            (escola) =>
+                escola.id === form.escolaId &&
+                escola.unidadeId === form.unidadeId &&
+                escola.ativa,
+        );
+
+        if (!escolaSelecionada) {
+            mostrarErro("Selecione uma escola ativa da unidade escolhida.");
             return false;
         }
 
@@ -235,18 +262,20 @@ export function CadastroAlunos() {
     };
 
     const prepararDados = (): AlunoCadastro => {
+        const escolaSelecionada = escolas.find((escola) => escola.id === form.escolaId);
+
         return {
             nome: limparTexto(form.nome, 100),
             nascimento: form.nascimento,
             serie: form.serie,
-            escola: form.escola,
+            escola: escolaSelecionada?.nome ?? form.escola,
+            escolaId: form.escolaId,
             telefone: limparTelefone(form.telefone),
             observacao: limparTexto(form.observacoes, 350),
             restricoes: form.restricoes,
             anafilaxia: form.anafilaxia,
             nomeResponsavel: limparTexto(form.contatoEmerNome, 100),
             telefoneResponsavel: limparTelefone(form.contatoEmerTelefone),
-            unidadeId: form.unidadeId,
         };
     };
 
@@ -364,22 +393,59 @@ export function CadastroAlunos() {
                                 </option>
                             ))}
                         </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1 my-2">
                         <select className="w-full rounded-2xl border border-gray-200 bg-white  text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 
-                            hover:bg-gray-200 focus:border-[border] focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3" value={form.escola} onChange={(e) => atualizarCampo("escola", (e.target.value))}>
+                            hover:bg-gray-200 focus:border-[border] focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3 py-3" value={form.unidadeId ?? ""} onChange={(e) => {
+                                atualizarCampo("unidadeId", e.target.value === "" ? null : Number(e.target.value));
+                                atualizarCampo("escolaId", null);
+                                atualizarCampo("escola", "");
+                            }}>
                             <option value="">
-                                Escola
+                                Unidade escolar
                             </option>
-                            {escolasPermitidas.map(
-                                (escola) => (
+                            {unidades.map(
+                                (unidade) => (
                                     <option
-                                        key={escola}
-                                        value={escola}
+                                        key={unidade.id}
+                                        value={unidade.id}
                                     >
-                                        {escola}
+                                        {unidade.nome}
                                     </option>
                                 )
                             )}
                         </select>
+                        <p className="pl-2 text-xs text-gray-500">
+                            Obrigatória: define as escolas disponíveis para o aluno.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-1 my-2">
+                        <select className="w-full rounded-2xl border border-gray-200 bg-white text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 
+                            hover:bg-gray-200 focus:border-[border] focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3 py-3" value={form.escolaId ?? ""} onChange={(e) => {
+                                const escolaId = e.target.value === "" ? null : Number(e.target.value);
+                                const escola = escolas.find((item) => item.id === escolaId);
+
+                                atualizarCampo("escolaId", escolaId);
+                                atualizarCampo("escola", escola?.nome ?? "");
+                            }}>
+                            <option value="">
+                                Escola
+                            </option>
+                            {escolas
+                                .filter((escola) =>
+                                    escola.ativa &&
+                                    (form.unidadeId === null || escola.unidadeId === form.unidadeId))
+                                .map((escola) => (
+                                    <option key={escola.id} value={escola.id}>
+                                        {escola.nome}
+                                    </option>
+                                ))}
+                        </select>
+                        <p className="pl-2 text-xs text-gray-500">
+                            A escola precisa existir e estar ativa na unidade selecionada.
+                        </p>
                     </div>
 
                     <div>

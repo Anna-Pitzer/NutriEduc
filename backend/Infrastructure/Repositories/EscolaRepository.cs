@@ -29,15 +29,31 @@ public class EscolaRepository : IEscolaRepository
         return _context.Escolas.OrderBy(escola => escola.Nome).ToList();
     }
 
+    public List<Escola> ListarPorUnidade(int unidadeId)
+    {
+        return _context.Escolas
+            .Where(escola => escola.UnidadeId == unidadeId)
+            .OrderBy(escola => escola.Nome)
+            .ToList();
+    }
+
+    public List<Escola> ListarPorEscola(int escolaId)
+    {
+        return _context.Escolas
+            .Where(escola => escola.Id == escolaId)
+            .ToList();
+    }
+
     /// <summary>
-    /// Comparação sem diferenciar caixa, coerente com o índice NOCASE. O serviço usa
+    /// Comparação sem diferenciar caixa dentro da unidade (Spec 027, RF2). O serviço usa
     /// esta checagem para responder 409 antes de o banco recusar a gravação.
     /// </summary>
-    public bool ExisteNome(string nome, int? ignorarId = null)
+    public bool ExisteNome(string nome, int unidadeId, int? ignorarId = null)
     {
         var alvo = (nome ?? string.Empty).Trim().ToLowerInvariant();
 
         return _context.Escolas.Any(escola =>
+            escola.UnidadeId == unidadeId &&
             escola.Nome.ToLower() == alvo &&
             (ignorarId == null || escola.Id != ignorarId));
     }
@@ -105,4 +121,7 @@ public class EscolaRepository : IEscolaRepository
 
     public bool ExisteUnidadeDaEscola(int escolaId) =>
         _context.Unidades.Any(unidade => unidade.EscolaId == escolaId);
+
+    public int ContarSemUnidade() =>
+        _context.Escolas.Count(escola => escola.UnidadeId == null);
 }

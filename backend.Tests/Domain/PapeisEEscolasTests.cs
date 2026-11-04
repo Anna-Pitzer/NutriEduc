@@ -14,19 +14,19 @@ public class PapeisEEscolasTests
     [InlineData("A")]
     public void Escola_ComNomeCurto_Lanca(string nome)
     {
-        Assert.Throws<ArgumentException>(() => new Escola(nome));
+        Assert.Throws<ArgumentException>(() => new Escola(nome, 1));
     }
 
     [Fact]
     public void Escola_ComNomeLongo_Lanca()
     {
-        Assert.Throws<ArgumentException>(() => new Escola(new string('a', 121)));
+        Assert.Throws<ArgumentException>(() => new Escola(new string('a', 121), 1));
     }
 
     [Fact]
     public void Escola_ComNomeComEspacos_Normaliza()
     {
-        var escola = new Escola("  Escola Central  ");
+        var escola = new Escola("  Escola Central  ", 1);
 
         Assert.Equal("Escola Central", escola.Nome);
         Assert.True(escola.Ativa);
@@ -86,11 +86,14 @@ public class PapeisEEscolasTests
     }
 
     [Fact]
-    public void Usuario_AdminEscolaComUnidade_Lanca()
+    public void Usuario_AdminEscolaComUnidade_Aceita()
     {
-        Assert.Throws<ArgumentException>(() =>
-            new Usuario("Ana", "12345678901", new DateOnly(1990, 1, 1),
-                "ana@exemplo.com", PapelUsuario.AdminEscola, escolaId: 1, unidadeId: 2));
+        var usuario = new Usuario("Ana", "12345678901", new DateOnly(1990, 1, 1),
+            "ana@exemplo.com", PapelUsuario.AdminEscola, escolaId: 1, unidadeId: 2);
+
+        Assert.Equal(PapelUsuario.AdminEscola, usuario.Papel);
+        Assert.Equal(1, usuario.EscolaId);
+        Assert.Equal(2, usuario.UnidadeId);
     }
 
     /// <summary>
@@ -109,11 +112,41 @@ public class PapeisEEscolasTests
     }
 
     [Fact]
-    public void Usuario_NutricionistaComUnidade_Lanca()
+    public void Usuario_NutricionistaComUnidade_Aceita()
+    {
+        var usuario = new Usuario("Ana", "12345678901", new DateOnly(1990, 1, 1),
+            "ana@exemplo.com", PapelUsuario.Nutricionista, unidadeId: 2);
+
+        Assert.Equal(PapelUsuario.Nutricionista, usuario.Papel);
+        Assert.Equal(2, usuario.UnidadeId);
+        Assert.Null(usuario.EscolaId);
+    }
+
+    [Fact]
+    public void Usuario_NutricionistaSemUnidade_Lanca()
     {
         Assert.Throws<ArgumentException>(() =>
             new Usuario("Ana", "12345678901", new DateOnly(1990, 1, 1),
-                "ana@exemplo.com", PapelUsuario.Nutricionista, unidadeId: 2));
+                "ana@exemplo.com", PapelUsuario.Nutricionista));
+    }
+
+    [Fact]
+    public void Usuario_ResponsavelComUnidadeSemEscola_Aceita()
+    {
+        var usuario = new Usuario("Ana", "12345678901", new DateOnly(1990, 1, 1),
+            "ana@exemplo.com", PapelUsuario.Responsavel, unidadeId: 2);
+
+        Assert.Equal(PapelUsuario.Responsavel, usuario.Papel);
+        Assert.Equal(2, usuario.UnidadeId);
+        Assert.Null(usuario.EscolaId);
+    }
+
+    [Fact]
+    public void Usuario_ResponsavelComEscola_Lanca()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new Usuario("Ana", "12345678901", new DateOnly(1990, 1, 1),
+                "ana@exemplo.com", PapelUsuario.Responsavel, escolaId: 1, unidadeId: 2));
     }
 
     [Fact]
@@ -130,7 +163,7 @@ public class PapeisEEscolasTests
     public void Usuario_DesativarEReativar_AlteraAtivo()
     {
         var usuario = new Usuario("Ana", "12345678901", new DateOnly(1990, 1, 1),
-            "ana@exemplo.com", PapelUsuario.Nutricionista);
+            "ana@exemplo.com", PapelUsuario.Nutricionista, unidadeId: 2);
 
         usuario.Desativar();
         Assert.False(usuario.Ativo);

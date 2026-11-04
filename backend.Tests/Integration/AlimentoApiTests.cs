@@ -221,9 +221,20 @@ public class AlimentoApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Get_Alimentos_PorAdminSecretaria_Retorna403()
+    public async Task Get_Alimentos_PorAdminSecretaria_Retorna200()
     {
         var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
+
+        var resposta = await client.GetAsync("/api/alimentos");
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Get_Alimentos_PorResponsavel_Retorna403()
+    {
+        var client = await _factory.CreateAuthenticatedClientAsync(
+            PapelUsuario.Responsavel, unidadeId: _factory.UnidadeIdPadrao);
 
         var resposta = await client.GetAsync("/api/alimentos");
 

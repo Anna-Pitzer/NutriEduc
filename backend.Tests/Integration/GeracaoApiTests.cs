@@ -108,7 +108,12 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
     {
         using var scope = _factory.Services.CreateScope();
         var alunos = scope.ServiceProvider.GetRequiredService<IAlunoRepository>();
+        var escolas = scope.ServiceProvider.GetRequiredService<IEscolaRepository>();
         var unidadeDeTrabalho = scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
+
+        var escolaId = escolas.ListarPorUnidade(unidadeId).FirstOrDefault()?.Id
+            ?? throw new InvalidOperationException(
+                $"Unidade {unidadeId} não possui escola para vincular o aluno.");
 
         var aluno = new Aluno(
             $"Aluno {Guid.NewGuid():N}",
@@ -118,7 +123,8 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
             null,
             new[] { restricao },
             false,
-            new Responsavel("Ana Silva", "11988888888"));
+            new Responsavel("Ana Silva", "11988888888"),
+            escolaId);
 
         aluno.DefinirUnidade(unidadeId);
 
@@ -157,7 +163,7 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Gerar_ComParametrosValidos_RetornaCardapioDeterministico()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var (client, nutricionistaId) = await _factory.CriarClienteAutenticadoAsync();
         var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
 
@@ -171,24 +177,32 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
 
         Assert.Equal(HttpStatusCode.OK, parametros.StatusCode);
 
-        var corpoGerado = await Gerar(client, unidadeId, seed: 42);
-        var novamente = await Gerar(client, unidadeId, seed: 42);
+        var corpoGerado = await Gerar(client, unidadeId, nutricionistaId, seed: 42);
+        var novamente = await Gerar(client, unidadeId, nutricionistaId, seed: 42);
 
         Assert.Equal(corpoGerado.GetProperty("seed").GetInt32(), novamente.GetProperty("seed").GetInt32());
         Assert.Equal(
             corpoGerado.GetProperty("totais").GetRawText(),
             novamente.GetProperty("totais").GetRawText());
+
+        // Regra: o cardápio gerado registra a nutricionista autora (snapshot da criação).
+        var cardapioId = corpoGerado.GetProperty("cardapioId").GetInt32();
+        var detalhe = await client.GetFromJsonAsync<JsonElement>($"/api/cardapios/{cardapioId}");
+
+        Assert.False(string.IsNullOrWhiteSpace(
+            detalhe.GetProperty("nutricionista").GetProperty("nome").GetString()));
     }
 
     [Fact]
     public async Task Gerar_SemParametros_Retorna400()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var (client, nutricionistaId) = await _factory.CriarClienteAutenticadoAsync();
         var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
 
         var resposta = await client.PostAsJsonAsync("/api/cardapios/gerar", new
         {
             unidadeId,
+            nutricionistaId,
             nome = "Semana 12",
             periodo = new { inicio = "2026-11-02", fim = "2026-11-06" },
             seed = 42
@@ -215,11 +229,16 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
     }
 
-    private static async Task<JsonElement> Gerar(HttpClient client, int unidadeId, int seed)
+    private static async Task<JsonElement> Gerar(
+        HttpClient client,
+        int unidadeId,
+        int nutricionistaId,
+        int seed)
     {
         var resposta = await client.PostAsJsonAsync("/api/cardapios/gerar", new
         {
             unidadeId,
+            nutricionistaId,
             nome = $"Semana {Guid.NewGuid():N}",
             periodo = new { inicio = "2026-11-02", fim = "2026-11-06" },
             seed

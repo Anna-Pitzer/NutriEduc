@@ -1,6 +1,7 @@
 using Backend.Tests.Fakes;
 using Backend.Tests.Support;
 using Ntc.Application;
+using Ntc.Application.Seguranca;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
 using Xunit;
@@ -15,7 +16,12 @@ public class UsuarioServiceTests
     /// testes focados nas regras de usuário.
     /// </summary>
     private static UsuarioService CriarServico(IUsuarioRepository repositorio) =>
-        new(repositorio, new EscolaRepositoryFake(), new UnidadeDeTrabalhoFake());
+        new(
+            repositorio,
+            new EscolaRepositoryFake(),
+            new UnidadeDeTrabalhoFake(),
+            new AutorizacaoService(),
+            new TrilhaAcaoRepositoryFake());
 
     /// <summary>Autenticação é caso de uso próprio desde a Spec 024 (F9).</summary>
     private static AutenticacaoService Autenticacao(IUsuarioRepository repositorio) =>
@@ -152,7 +158,7 @@ public class UsuarioServiceTests
         servico.CriarUsuario(DtoUsuario());
 
         var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
-        usuario.DefinirPapel(PapelUsuario.Nutricionista, null, null);
+        usuario.DefinirPapel(PapelUsuario.Nutricionista, null, 1);
         usuario.Desativar();
         repositorio.Update(usuario);
 
@@ -171,7 +177,7 @@ public class UsuarioServiceTests
         servico.CriarUsuario(DtoUsuario());
 
         var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
-        usuario.DefinirPapel(PapelUsuario.Nutricionista, null, null);
+        usuario.DefinirPapel(PapelUsuario.Nutricionista, null, 1);
         repositorio.Update(usuario);
 
         var resultado = Autenticacao(repositorio).Autenticar(

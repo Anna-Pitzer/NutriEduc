@@ -34,6 +34,15 @@ export interface RefeicaoCardapio {
     total: ValoresItem;
 }
 
+/** Nutricionista que elaborou o cardápio (snapshot da autoria). */
+export interface NutricionistaCardapio {
+    id: number;
+    nome: string | null;
+    email: string | null;
+    cpf: string | null;
+    crn: string | null;
+}
+
 /** Cardápio completo, com refeições, itens e totais (RF11). */
 export interface Cardapio {
     id: number;
@@ -42,6 +51,8 @@ export interface Cardapio {
     situacao: SituacaoCardapio;
     periodo: PeriodoCardapio;
     cardapioDuplicadoDeId: number | null;
+    /** Nulo em cardápios criados antes da regra de autoria. */
+    nutricionista: NutricionistaCardapio | null;
     refeicoes: RefeicaoCardapio[];
     total: ValoresItem;
 }

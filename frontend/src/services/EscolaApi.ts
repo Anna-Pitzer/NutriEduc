@@ -3,6 +3,7 @@ import { extrairErro, ErroRequisicao } from "./erroApi";
 export interface EscolaResposta {
     id: number;
     nome: string;
+    unidadeId: number | null;
     ativa: boolean;
 }
 
@@ -42,8 +43,9 @@ export async function listarEscolas(): Promise<EscolaResposta[]> {
     return ler(resposta, "Não foi possível carregar as escolas.");
 }
 
-export async function criarEscola(nome: string): Promise<EscolaResposta> {
-    return enviar("/api/escolas", "POST", { nome }, "Não foi possível criar a escola.");
+/** Spec 027: a escola pertence a uma unidade; o backend confere contra a sessão. */
+export async function criarEscola(nome: string, unidadeId: number): Promise<EscolaResposta> {
+    return enviar("/api/escolas", "POST", { nome, unidadeId }, "Não foi possível criar a escola.");
 }
 
 export async function renomearEscola(id: number, nome: string): Promise<EscolaResposta> {

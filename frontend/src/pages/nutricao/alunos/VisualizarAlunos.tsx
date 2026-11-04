@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { ToastContainer, Zoom } from "react-toastify";
 import { confirmarExclusao } from "../../../components/Notificacoes";
 import { buscarAlunos, excluirAluno, type AlunoResposta } from "../../../services/AlunoApi";
+import { listarEscolas, type EscolaResposta } from "../../../services/EscolaApi";
 import { naoAutorizado } from "../../../services/erroApi";
 import { buscarHistoricoAluno, descreverEvento, type EventoAluno } from "../../../services/HistoricoAlunoApi";
 import { useAuth } from "../../../context/authContext";
@@ -18,12 +19,6 @@ export function VisualizarAlunos() {
 
 
   // ============ RESPOSTAS DO BACK ============
-  const escolasPermitidas = [
-    "Escola 1",
-    "Escola 2",
-    "Escola 3",
-  ];
-
   const seriesPermitidas = [
     "1 ano",
     "2 ano",
@@ -50,9 +45,12 @@ export function VisualizarAlunos() {
 
   // ============ ALUNOS ============
   type AlunoProps = AlunoResposta & { restricoes: Restricoes[] };
-  type FiltroAluno = Pick<AlunoProps, "nome" | "escola" | "serie" | "restricoes">;
+  type FiltroAluno = Pick<AlunoProps, "nome" | "serie" | "restricoes"> & {
+    escolaId: number | null;
+  };
 
   const [alunos, setAlunos] = useState<AlunoProps[]>([])
+  const [escolas, setEscolas] = useState<EscolaResposta[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState("")
 
@@ -82,6 +80,19 @@ export function VisualizarAlunos() {
       setErro("Não foi possível carregar o histórico do aluno.")
     }
   }
+  useEffect(() => {
+    listarEscolas()
+      .then(setEscolas)
+      .catch((error) => {
+        if (naoAutorizado(error)) {
+          void logout();
+          return;
+        }
+
+        setEscolas([]);
+      });
+  }, [logout])
+
   useEffect(() => {
     let ativo = true;
 
@@ -128,16 +139,22 @@ export function VisualizarAlunos() {
   // ============ SISTEMA DE FILTRAGEM ============
   const estadoInicialFiltros: FiltroAluno = {
     nome: "",
-    escola: "",
+    escolaId: null,
     serie: "",
     restricoes: [],
   }
   const [filtro, setFiltro] = useState<FiltroAluno>(estadoInicialFiltros)
-  const atualizarCampo = (campo: "nome" | "escola" | "serie", valor: string) => {
+  const atualizarCampo = (campo: "nome" | "serie", valor: string) => {
     setFiltro((prev) => ({
       ...prev, [campo]: valor
     }))
 
+  }
+  const atualizarEscola = (escolaId: number | null) => {
+    setFiltro((prev) => ({
+      ...prev,
+      escolaId,
+    }))
   }
   const limparCampos = () => {
     setFiltro(estadoInicialFiltros)
@@ -145,7 +162,7 @@ export function VisualizarAlunos() {
 
   const alunosFiltrados = alunos.filter((aluno) => {
     const nomeFiltrado = filtro.nome === "" || aluno.nome.includes(filtro.nome)
-    const escolaFiltrada = filtro.escola === "" || aluno.escola.includes(filtro.escola)
+    const escolaFiltrada = filtro.escolaId === null || aluno.escolaId === filtro.escolaId
     const serieFiltrada = filtro.serie === "" || aluno.serie.includes(filtro.serie)
     const restricoesValidas = filtro.restricoes.length === 0 || filtro.restricoes.some((restricao) => aluno.restricoes.includes(restricao));
 
@@ -264,20 +281,20 @@ export function VisualizarAlunos() {
             <label htmlFor="inEscola">Buscar por escola</label>
             <select
               id="inEscola"
-              value={filtro.escola}
-              onChange={(e) => atualizarCampo("escola", e.target.value)}
+              value={filtro.escolaId ?? ""}
+              onChange={(e) => atualizarEscola(e.target.value === "" ? null : Number(e.target.value))}
               className="h-12 w-70 rounded-2xl border border-gray-200 bg-white  text-sm text-gray-400 outline-none transition-all duration-200 hover:border-gray-300 
  hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 cursor-pointer px-4  shadow-[0_5px_20px_rgba(1,1,1,0.1)]" >
               <option value="">
                 Todas as escolas
               </option>
-              {escolasPermitidas.map(
+              {escolas.map(
                 (escola) => (
                   <option
-                    key={escola}
-                    value={escola}
+                    key={escola.id}
+                    value={escola.id}
                   >
-                    {escola}
+                    {escola.nome}
                   </option>
                 )
               )}

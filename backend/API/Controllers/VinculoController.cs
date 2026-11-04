@@ -21,7 +21,7 @@ public class VinculoController : RespostaController
         _escopo = escopo;
     }
 
-    [Authorize(Policy = "EquipeEscolar")]
+    [Authorize(Policy = "VinculoLeitura")]
     [HttpGet]
     public IActionResult Listar(int alunoId)
     {

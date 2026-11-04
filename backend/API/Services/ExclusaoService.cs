@@ -1,4 +1,5 @@
 ﻿using Ntc.Application;
+using Ntc.Application.Seguranca;
 using Ntc.Domain;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
@@ -18,6 +19,8 @@ public sealed class ExclusaoService
     private readonly ITokenDeCadastroRepository _tokens;
     private readonly IConsumoBootstrapRepository _consumos;
     private readonly ICardapioRepository _cardapios;
+    private readonly AutorizacaoService _autorizacao;
+    private readonly ITrilhaAcaoRepository _trilha;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
 
     public ExclusaoService(
@@ -28,6 +31,8 @@ public sealed class ExclusaoService
         ITokenDeCadastroRepository tokens,
         IConsumoBootstrapRepository consumos,
         ICardapioRepository cardapios,
+        AutorizacaoService autorizacao,
+        ITrilhaAcaoRepository trilha,
         IUnidadeDeTrabalho unidadeDeTrabalho)
     {
         _escolas = escolas;
@@ -37,10 +42,12 @@ public sealed class ExclusaoService
         _tokens = tokens;
         _consumos = consumos;
         _cardapios = cardapios;
+        _autorizacao = autorizacao;
+        _trilha = trilha;
         _unidadeDeTrabalho = unidadeDeTrabalho;
     }
 
-    public Resultado<bool> ExcluirEscola(int id)
+    public Resultado<bool> ExcluirEscola(int id, EscopoUsuario escopo)
     {
         var escola = _escolas.GetEscola(id);
 
@@ -49,10 +56,22 @@ public sealed class ExclusaoService
             return Resultado<bool>.NaoEncontrado("Escola não encontrada.");
         }
 
+        var negacao = _autorizacao.Verificar(
+            Recurso.Escola,
+            escopo,
+            OperacaoDeAcesso.Excluir,
+            new AlvoDeEscopo(escola.UnidadeId, escola.Id));
+
+        if (negacao is not null)
+        {
+            return Negado(negacao);
+        }
+
         var impedimento = PoliticaDeExclusao.ParaEscola(
             temUsuarios: _usuarios.ExistePorEscola(id),
             // Unidade deixou de pertencer a escola (ADR-013); só as legadas ainda a citam.
-            temUnidadesLegadas: _escolas.ExisteUnidadeDaEscola(id));
+            temUnidadesLegadas: _escolas.ExisteUnidadeDaEscola(id),
+            temAlunos: _alunos.ExistePorEscola(id));
 
         if (impedimento is not null)
         {
@@ -64,7 +83,7 @@ public sealed class ExclusaoService
         return Resultado<bool>.Ok(true);
     }
 
-    public Resultado<bool> ExcluirUnidade(int id)
+    public Resultado<bool> ExcluirUnidade(int id, EscopoUsuario escopo)
     {
         var unidade = _escolas.GetUnidade(id);
 
@@ -73,11 +92,23 @@ public sealed class ExclusaoService
             return Resultado<bool>.NaoEncontrado("Unidade não encontrada.");
         }
 
+        var negacao = _autorizacao.Verificar(
+            Recurso.Unidade,
+            escopo,
+            OperacaoDeAcesso.Excluir,
+            new AlvoDeEscopo(unidade.Id, null));
+
+        if (negacao is not null)
+        {
+            return Negado(negacao);
+        }
+
         var impedimento = PoliticaDeExclusao.ParaUnidade(
             temUsuarios: _usuarios.ExistePorUnidade(id),
             temAlunos: _alunos.ExistePorUnidade(id),
             temTokenOuConsumo: _tokens.ExistePorUnidade(id) || _consumos.UnidadeJaConsumiu(id),
-            temCardapios: _cardapios.ExisteCardapioDaUnidade(id));
+            temCardapios: _cardapios.ExisteCardapioDaUnidade(id),
+            temEscolas: _escolas.ListarPorUnidade(id).Count > 0);
 
         if (impedimento is not null)
         {
@@ -98,12 +129,15 @@ public sealed class ExclusaoService
             return Resultado<bool>.NaoEncontrado("Usuário não encontrado.");
         }
 
-        var administra = escopo.Administra &&
-            (escopo.Global || usuario.EscolaId == escopo.EscolaId);
+        var negacao = _autorizacao.Verificar(
+            Recurso.ContaUsuario,
+            escopo,
+            OperacaoDeAcesso.Excluir,
+            new AlvoDeEscopo(usuario.UnidadeId, usuario.EscolaId));
 
-        if (!administra)
+        if (negacao is not null)
         {
-            return Resultado<bool>.Proibido();
+            return Negado(negacao);
         }
 
         var impedimento = PoliticaDeExclusao.ParaUsuario(
@@ -119,8 +153,25 @@ public sealed class ExclusaoService
             return Resultado<bool>.Conflito(impedimento);
         }
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarios.Delete(usuario));
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            _usuarios.Delete(usuario);
+            _trilha.Add(new TrilhaAcao(
+                "UsuarioExcluido",
+                escopo.UsuarioId,
+                _usuarios.GetById(escopo.UsuarioId)?.Nome ?? "sistema",
+                "Usuario",
+                usuario.Id,
+                usuario.Papel?.ToString(),
+                null,
+                DateTime.UtcNow));
+        });
 
         return Resultado<bool>.Ok(true);
     }
+
+    private static Resultado<bool> Negado(ResultadoStatus? status) =>
+        status == ResultadoStatus.NaoEncontrado
+            ? Resultado<bool>.NaoEncontrado("Recurso não encontrado.")
+            : Resultado<bool>.Proibido();
 }

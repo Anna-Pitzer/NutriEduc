@@ -27,7 +27,8 @@ public class AlunoTests
             observacao,
             restricoes,
             anafilaxia,
-            new Responsavel(nomeResponsavel, telefoneResponsavel));
+            new Responsavel(nomeResponsavel, telefoneResponsavel),
+            1);
     }
 
     [Fact]
@@ -50,7 +51,7 @@ public class AlunoTests
         var turma = new Turma("Escola Municipal", "5 ano");
         var responsavel = new Responsavel("Ana Silva", "11988888888");
 
-        var aluno = new Aluno("Maria Silva", NascimentoPadrao, turma, null, null, null, false, responsavel);
+        var aluno = new Aluno("Maria Silva", NascimentoPadrao, turma, null, null, null, false, responsavel, 1);
 
         Assert.Same(turma, aluno.Turma);
         Assert.Same(responsavel, aluno.Responsavel);
@@ -63,7 +64,7 @@ public class AlunoTests
         {
             _ = new Aluno(
                 "Maria Silva", NascimentoPadrao, null!, null, null, null, false,
-                new Responsavel("Ana Silva", null));
+                new Responsavel("Ana Silva", null), 1);
         });
     }
 
@@ -74,7 +75,7 @@ public class AlunoTests
         {
             _ = new Aluno(
                 "Maria Silva", NascimentoPadrao, new Turma("Escola Municipal", "5 ano"),
-                null, null, null, false, null!);
+                null, null, null, false, null!, 1);
         });
     }
 
@@ -266,7 +267,8 @@ public class AlunoTests
             new[] { "Diabetes" },
             true,
             new Responsavel("Carlos Souza", "11977776666"),
-            null);
+            null,
+            1);
 
         Assert.Equal("João Souza", aluno.Nome);
         Assert.Equal("Escola Nova", aluno.Turma.Escola);
@@ -294,7 +296,8 @@ public class AlunoTests
             new[] { "Diabetes" },
             true,
             new Responsavel("Carlos Souza", null),
-            null));
+            null,
+            1));
 
         Assert.Equal("Maria Silva", aluno.Nome);
         Assert.Equal("Escola Municipal", aluno.Turma.Escola);
@@ -319,7 +322,8 @@ public class AlunoTests
             excedidas,
             true,
             new Responsavel("Carlos Souza", null),
-            null));
+            null,
+            1));
 
         Assert.Equal("Maria Silva", aluno.Nome);
         Assert.Equal("Escola Municipal", aluno.Turma.Escola);

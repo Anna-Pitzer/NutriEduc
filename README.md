@@ -171,17 +171,18 @@ Registros gravados antes dessa mudança ainda têm a senha em claro: no primeiro
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `POST` | `/api/aluno/registrar` | Cadastra um aluno | Sim |
-| `GET` | `/api/aluno` | Lista alunos | Sim |
-| `GET` | `/api/aluno/perfil/{id}` | Consulta um aluno pelo ID | Sim |
-| `PUT` | `/api/aluno/{id}` | Atualiza um aluno existente | Sim |
-| `DELETE` | `/api/aluno/{id}` | Exclui um aluno | Sim |
+| `POST` | `/api/aluno/registrar` | Cadastra um aluno; `escolaId` é obrigatório | `AdminSecretaria` |
+| `GET` | `/api/aluno` | Lista alunos no escopo do papel; aceita `escolaId`/`unidadeId` | Sessão válida |
+| `GET` | `/api/aluno/perfil/{id}` | Consulta um aluno pelo ID | Sessão válida; escopo por papel |
+| `PUT` | `/api/aluno/{id}` | Atualiza um aluno existente; não muda de unidade | `AdminSecretaria` |
+| `POST` | `/api/aluno/{id}/transferir-escola` | Transfere o aluno para outra escola da mesma unidade | `AdminSecretaria` |
+| `DELETE` | `/api/aluno/{id}` | Exclui um aluno | `AdminSecretaria` |
 | `GET` | `/api/aluno/{id}/historico` | Trilha de alterações do aluno (criação, campos e restrições), paginada e em ordem decrescente | Sim; `Nutricionista`, `AdminEscola`, `Merendeira` da unidade e `Responsavel` vinculado |
 | `GET` | `/api/aluno/{id}/restricoes/historico` | Histórico de restrições do aluno, paginado e em ordem decrescente (derivado da trilha; rota mantida por compatibilidade) | Sim; `Nutricionista`, `AdminEscola`, `Merendeira` da unidade e `Responsavel` vinculado |
 
 O campo de nascimento do DTO é `DateOnly`; envie uma data no formato `yyyy-MM-dd`. `anafilaxia` deve ser um booleano JSON (`true` ou `false`). As restrições alimentares são armazenadas como uma coleção JSON na tabela `Alunos`.
 
-Cada aluno pode ser vinculado a uma unidade (`UnidadeId`). Sem unidade, o aluno só é visível para `Nutricionista` e `AdminSecretaria`; `Escola` continua sendo apenas rótulo de exibição.
+Cada aluno pertence a uma escola (`EscolaId`), obrigatória no cadastro e na edição; a unidade (`UnidadeId`) é derivada da escola pelo servidor. `Aluno.Turma.Escola` continua apenas como rótulo de exibição.
 
 ### Restrições e alergias
 
@@ -203,19 +204,19 @@ O catálogo vive em `CategoriasAlimento`, `Alimentos` e `AlimentosRestricoes`. O
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `GET` | `/api/alimentos` | Lista paginada; aceita `busca`, `categoriaId`, `pagina`, `tamanho`, `incluirInativos` e `ordenar` (`nome`, `nome-desc`, `categoria` ou `recentes`) | Sim; `Nutricionista` ou `Merendeira` |
-| `GET` | `/api/alimentos/{id}` | Detalhe com composição, categoria e vínculos resolvidos | Sim; `Nutricionista` ou `Merendeira` |
+| `GET` | `/api/alimentos` | Lista paginada; aceita `busca`, `categoriaId`, `pagina`, `tamanho`, `incluirInativos` e `ordenar` (`nome`, `nome-desc`, `categoria` ou `recentes`) | `AdminSecretaria`, `AdminEscola`, `Nutricionista` ou `Merendeira` |
+| `GET` | `/api/alimentos/{id}` | Detalhe com composição, categoria e vínculos resolvidos | `AdminSecretaria`, `AdminEscola`, `Nutricionista` ou `Merendeira` |
 | `POST` | `/api/alimentos` | Cria alimento com os seis valores nutricionais e os vínculos | Sim; só `Nutricionista` |
 | `PUT` | `/api/alimentos/{id}` | Edita nome, categoria, composição e vínculos | Sim; só `Nutricionista` |
 | `POST` | `/api/alimentos/{id}/desativar` | Desativa (soft delete); continua legível por id | Sim; só `Nutricionista` |
 | `POST` | `/api/alimentos/{id}/reativar` | Reativa um alimento desativado | Sim; só `Nutricionista` |
-| `GET` | `/api/categorias-alimento` | Lista categorias; `incluirInativas` é exclusivo da nutrição | Sim; `Nutricionista` ou `Merendeira` |
+| `GET` | `/api/categorias-alimento` | Lista categorias; `incluirInativas` é exclusivo da nutrição | `AdminSecretaria`, `AdminEscola`, `Nutricionista` ou `Merendeira` |
 | `POST` | `/api/categorias-alimento` | Cria categoria | Sim; só `Nutricionista` |
 | `PUT` | `/api/categorias-alimento/{id}` | Renomeia categoria | Sim; só `Nutricionista` |
 | `POST` | `/api/categorias-alimento/{id}/desativar` | Desativa a categoria; ela não recebe alimento novo | Sim; só `Nutricionista` |
 | `POST` | `/api/categorias-alimento/{id}/reativar` | Reativa a categoria | Sim; só `Nutricionista` |
 
-A busca usa o nome normalizado: tenta prefixo primeiro e, somente quando não há resultado, repete por "contém" — por isso `leite` encontra `Leite de coco`. `Merendeira`, `AdminEscola` e `AdminSecretaria` recebem `403` na leitura do catálogo; `incluirInativos=true` fora da nutrição também responde `403`. Ordenação fora de `nome`, `nome-desc`, `categoria` e `recentes` responde `400` (o padrão é `nome`). Nome duplicado responde `409`; valor nutricional negativo ou com três casas decimais responde `400` sem persistir; categoria desativada não aceita alimento novo (`400`); o mesmo vínculo repetido responde `400`. Desativar o alimento não o esconde da leitura por id, e desativar a categoria não esconde os alimentos dela da listagem.
+A busca usa o nome normalizado: tenta prefixo primeiro e, somente quando não há resultado, repete por "contém" — por isso `leite` encontra `Leite de coco`. `Responsavel` recebe `403` na leitura do catálogo; `incluirInativos=true` fora da nutrição também responde `403`. Ordenação fora de `nome`, `nome-desc`, `categoria` e `recentes` responde `400` (o padrão é `nome`). Nome duplicado responde `409`; valor nutricional negativo ou com três casas decimais responde `400` sem persistir; categoria desativada não aceita alimento novo (`400`); o mesmo vínculo repetido responde `400`. Desativar o alimento não o esconde da leitura por id, e desativar a categoria não esconde os alimentos dela da listagem.
 
 ### Cardápio
 
@@ -245,9 +246,10 @@ a 100 g; o total calórico da refeição é a soma das calorias por 100 g dos it
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `GET` | `/api/unidades/{unidadeId}/parametros-geracao` | Parâmetros de geração da unidade | Sim; só `Nutricionista` |
+| `GET` | `/api/unidades/{unidadeId}/parametros-geracao` | Parâmetros de geração da unidade | `AdminSecretaria` ou `Nutricionista` |
 | `PUT` | `/api/unidades/{unidadeId}/parametros-geracao` | Cria ou altera os parâmetros de geração | Sim; só `Nutricionista` |
-| `POST` | `/api/cardapios/gerar` | Gera um cardápio `Rascunho` a partir dos parâmetros e da semente | Sim; só `Nutricionista` |
+| `GET` | `/api/nutricionistas` | Lista as nutricionistas ativas (nome, e-mail, CPF e CRN) para escolher a autora do cardápio | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios/gerar` | Gera um cardápio `Rascunho` a partir dos parâmetros, da semente e da nutricionista responsável | Sim; só `Nutricionista` |
 
 A geração responde `400` sem parâmetros configurados e `422` (`{ erro, detalhes }`) quando a
 geração é impossível (sem alimento ativo, categoria obrigatória sem candidato, candidatos
@@ -263,11 +265,13 @@ O login grava as claims `NameIdentifier`, `Role`, `escola` e `unidade`. Um usuá
 
 | Papel | Escopo de dados |
 | --- | --- |
-| `Nutricionista` | Toda a rede |
-| `AdminSecretaria` | Toda a rede |
-| `AdminEscola` | Só a própria escola |
-| `Merendeira` | Só a própria unidade, somente leitura de aluno |
-| `Responsavel` | Só alunos vinculados a ele |
+| `Nutricionista` | Própria unidade |
+| `AdminSecretaria` | Própria unidade |
+| `AdminEscola` | Própria escola |
+| `Merendeira` | Própria escola, somente leitura de aluno |
+| `Responsavel` | Apenas alunos vinculados a ele |
+
+Não existe perfil global: `AdminSecretaria` e `Nutricionista` atuam na própria unidade; a matriz da Spec 028 é a fonte autoritativa de permissão por recurso.
 
 **Bootstrap por token (duas vias):**
 
@@ -310,7 +314,7 @@ Usuários criados antes da Spec 009 ficam sem papel e não autenticam até um ad
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `GET` | `/api/escolas` | Lista escolas | Sessão válida |
+| `GET` | `/api/escolas` | Lista escolas no escopo; aceita `unidadeId` | `AdminSecretaria`, `AdminEscola`, `Nutricionista` ou `Merendeira` |
 | `POST` | `/api/escolas` | Cria escola | `AdminSecretaria` |
 | `PUT` | `/api/escolas/{id}` | Renomeia escola | `AdminSecretaria` |
 | `POST` | `/api/escolas/{id}/desativar` | Desativa escola | `AdminSecretaria` |
@@ -323,34 +327,40 @@ Unidade é da secretaria, **não pertence a escola**: o nome é único na rede. 
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `GET` | `/api/unidades` | Lista as unidades da rede | Sessão válida |
+| `GET` | `/api/unidades` | Lista as unidades da rede | `AdminSecretaria`, `AdminEscola`, `Nutricionista` ou `Merendeira` |
 | `PUT` | `/api/unidades/{id}` | Renomeia unidade | `AdminSecretaria` |
 | `POST` | `/api/unidades/{id}/desativar` | Desativa unidade | `AdminSecretaria` |
 | `POST` | `/api/unidades/{id}/reativar` | Reativa unidade | `AdminSecretaria` |
 | `DELETE` | `/api/unidades/{id}` | Exclui unidade sem usuário, aluno ou token vinculado (`409` caso contrário) | `AdminSecretaria` |
 
+### Diagnóstico da hierarquia
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/diagnostico/hierarquia` | Conta escolas sem unidade, alunos sem escola e usuários sem vínculo obrigatório; não corrige dados | `AdminSecretaria` |
+
 ### Gestão de usuários
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `GET` | `/api/usuarios` | Lista usuários com filtros `papel`, `escolaId`, `unidadeId`, `ativo`, `busca` | `AdminSecretaria` ou `AdminEscola` (escopo da escola) |
-| `POST` | `/api/usuarios` | Cria usuário com papel | `AdminSecretaria` ou `AdminEscola` (só `Responsavel`/`Merendeira` da própria escola) |
-| `PUT` | `/api/usuarios/{id}` | Atualiza usuário; papel e unidade só por administrador | Dono do perfil ou administrador do escopo |
-| `POST` | `/api/usuarios/{id}/ativar` | Reativa usuário | Administrador do escopo |
-| `POST` | `/api/usuarios/{id}/desativar` | Desativa usuário e invalida a sessão na requisição seguinte | Administrador do escopo |
-| `DELETE` | `/api/usuarios/{id}` | Exclui conta sem vínculo nem token emitido; bloqueia própria conta e último admin (`409`) | Administrador do escopo |
+| `GET` | `/api/usuarios` | Lista usuários com filtros `papel`, `escolaId`, `unidadeId`, `ativo`, `busca` | `AdminSecretaria` (própria unidade) ou `AdminEscola` (leitura da própria escola) |
+| `POST` | `/api/usuarios` | Cria usuário com papel | `AdminSecretaria` |
+| `PUT` | `/api/usuarios/{id}` | Atualiza dados do próprio perfil; papel e escopo só pelo ADM | Dono do perfil (dados próprios) ou `AdminSecretaria` (papel/escopo) |
+| `POST` | `/api/usuarios/{id}/ativar` | Reativa usuário | `AdminSecretaria` |
+| `POST` | `/api/usuarios/{id}/desativar` | Desativa usuário e invalida a sessão na requisição seguinte | `AdminSecretaria` |
+| `DELETE` | `/api/usuarios/{id}` | Exclui conta sem vínculo nem token emitido; bloqueia própria conta e último admin (`409`) | `AdminSecretaria` |
 
-`PUT /api/usuarios/{id}` aceita `unidadeId` apenas quando o papel resultante é `AdminSecretaria` (atribuição de origem, não escopo); nos demais papéis a unidade continua restrita a `Merendeira` e `Responsavel`, que também exigem escola. Papel e unidade viram claims **no login**: ao alterar a própria conta, saia e entre novamente para o painel reconhecer a unidade.
+`PUT /api/usuarios/{id}` não permite alterar o próprio papel. O escopo por papel é: `AdminSecretaria` e `Nutricionista` → unidade; `AdminEscola` e `Merendeira` → escola; `Responsavel` → unidade de origem, sem escola. Papel e escopo viram claims **no login**: mudança de papel/unidade/escola invalida a sessão na requisição seguinte.
 
 ### Vínculo responsável↔aluno
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `GET` | `/api/aluno/{alunoId}/responsaveis` | Lista responsáveis do aluno | `EquipeEscolar` do aluno |
-| `POST` | `/api/aluno/{alunoId}/responsaveis/{usuarioId}` | Vincula responsável | `AdminSecretaria` ou `AdminEscola` do aluno |
-| `DELETE` | `/api/aluno/{alunoId}/responsaveis/{usuarioId}` | Desvincula responsável | `AdminSecretaria` ou `AdminEscola` do aluno |
+| `GET` | `/api/aluno/{alunoId}/responsaveis` | Lista responsáveis do aluno | `AdminSecretaria`, `AdminEscola` ou `Responsavel` vinculado ao aluno |
+| `POST` | `/api/aluno/{alunoId}/responsaveis/{usuarioId}` | Vincula responsável | `AdminSecretaria` |
+| `DELETE` | `/api/aluno/{alunoId}/responsaveis/{usuarioId}` | Desvincula responsável | `AdminSecretaria` |
 
-O vínculo é único por par `(aluno, responsável)`: repetir devolve `409`. O responsável e o aluno precisam pertencer à mesma escola.
+O vínculo é único por par `(aluno, responsável)`: repetir devolve `409`. O responsável não carrega escola; o vínculo é a única autorização de leitura do aluno.
 
 Erros seguem um contrato único: corpo `{ "erro": "mensagem" }` em `400` (validação de domínio, modelo inválido ou JSON malformado), `401` (sem sessão), `403` (acesso negado), `404` (recurso ou rota inexistente), `405` (verbo não permitido), `409` (conflito de estado), `415` (content-type não suportado) e `500` (erro interno, sem detalhe técnico). As exceções são traduzidas por `ErrorHandlingMiddleware`; modelo inválido, `404` de rota inexistente, `405` e `415` são traduzidos por `API/Middleware/ContratoDeErro.cs`. Nenhum controller monta resposta de erro fora desse formato.
 

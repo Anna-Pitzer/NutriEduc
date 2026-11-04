@@ -15,8 +15,18 @@ public interface IAlunoRepository
 
     Aluno? Obter(int id, FiltroAluno filtro);
 
+    /// <summary>
+    /// Carrega pelo id sem aplicar escopo. Usado apenas para distinguir "não existe" (404)
+    /// de "existe fora do escopo" (403/404) no contrato HTTP (Spec 027, RF9).
+    /// </summary>
+    Aluno? ObterPorId(int id);
+
     void UpdateAluno(Aluno aluno);
     void DeleteAluno(Aluno aluno);
 
     bool ExistePorUnidade(int unidadeId);
+    bool ExistePorEscola(int escolaId);
+
+    /// <summary>Contagem de legado: alunos sem escola (Spec 027, T9).</summary>
+    int ContarSemEscola();
 }

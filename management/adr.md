@@ -260,7 +260,7 @@ emitido. A checagem vive em `ExclusaoService`, uma única fonte para HTTP e UI.
 
 ## ADR-013: Unidade é da rede, não da escola
 
-**Status:** aceito (2026-10-31)
+**Status:** superado pela ADR-020 (2026-11-04) nos pontos "unidade é da rede, não da escola" e "unidade é atribuição, não escopo"
 
 **Contexto:** a Spec 009 modelou `UnidadeEscolar` como subdivisão de uma escola, com nome
 único dentro dela. O cadastro por token (Spec 022) precisa de unidades organizacionais da
@@ -436,4 +436,88 @@ operação na unidade de trabalho, inclusive as de agregado único.
   integração por fluxo e a rede dos 329 testes existentes.
 - Negativo: código que chama repositório fora de um serviço (setup de teste) precisa usar a
   unidade de trabalho explicitamente — foi o caso de `ApiFactory`.
+
+## ADR-020: Hierarquia institucional única — rede → unidade → escola → aluno
+
+**Status:** aceito (2026-11-04) por decisão do dono do produto
+
+**Contexto:** a ADR-013 tornou `UnidadeEscolar` entidade da rede e `EscolaId` dado legado
+opcional. Efeito colateral registrado (PEND-024): `Aluno` deixou de ter escola alcançável,
+`AlunoRepository.Filtrar` passou a depender de um `Unidade.EscolaId` que é nulo em unidades
+novas e o escopo de `AdminEscola`/`Merendeira` ficou indefinido. A regra de negócio exige a
+cadeia `responsável → aluno → escola → unidade`, com isolamento por unidade e por escola.
+
+**Decisão:** `Unidade` continua entidade da rede (nome único na rede, criada pelo bootstrap),
+mas `Escola` pertence a **exatamente uma** unidade (`Escola.UnidadeId` obrigatório) e `Aluno`
+pertence a **exatamente uma** escola (`Aluno.EscolaId` obrigatório para novos e atualizados).
+`Aluno.UnidadeId` passa a ser campo denormalizado com **escritor único** (o domínio, derivado
+de `Escola.UnidadeId`), nunca aceito de entrada. `Responsavel` não tem unidade nem escola
+próprias: seu escopo é exclusivamente o conjunto de vínculos com alunos. Bootstrap passa a
+criar a unidade inicial quando ela não existir.
+
+**Consequências:**
+- Positivo: todo escopo (unidade, escola, vínculo) passa a ser derivável de uma única cadeia.
+- Positivo: `AdminEscola` e `Merendeira` voltam a ter escopo de escola verificável no banco.
+- Negativo: exige migration com colunas anuláveis para legado e comando de diagnóstico; o
+  domínio recusa novos registros sem escola até o backfill.
+- Negativo: escola com alunos ativos não pode mudar de unidade (evita divergência da coluna
+  denormalizada).
+- Regra derivada: nenhum DTO de entrada aceita `unidadeId` de aluno, nem `escolaId` de
+  usuário que não seja administrador daquela escola.
+
+## ADR-021: Escopo administrativo único por papel e matriz de permissões autoritativa
+
+**Status:** aceito (2026-11-04) por decisão do dono do produto
+
+**Contexto:** as permissões estão declaradas em treze specs diferentes (009, 010, 011, 012,
+013, 014, 015, 016, 017, 018, 019, 025) e não existe um lugar único que responda "quem pode
+fazer X". A Spec 009 deu a `AdminSecretaria` escopo global; a regra de negócio exige que o
+administrador atue **dentro da própria unidade**. Sem escopo único, isolamento depende de
+cada consulta lembrar do filtro.
+
+**Decisão:** cada usuário tem **um** escopo administrativo, derivado do papel:
+`AdminSecretaria` → unidade; `AdminEscola` → escola; `Merendeira` → escola; `Nutricionista`
+→ unidade; `Responsavel` → vínculos. Não existe perfil global. A matriz da Spec 028 é a
+**fonte autoritativa** da permissão por recurso; cada spec de recurso continua dona do
+detalhe comportamental e deve atualizar a matriz na mesma mudança que alterar uma permissão.
+Fronteira entre unidades é `404`; fronteira mais estreita dentro da mesma unidade é `403`.
+Catálogo de alimentos e catálogo de restrições são **dados de referência compartilhados**,
+exceção explícita ao isolamento.
+
+**Consequências:**
+- Positivo: isolamento vira invariante testável por uma matriz única, não por spec.
+- Positivo: painel da "rede" passa a significar a própria unidade (ajuste de leitura na 025).
+- Negativo: não há superusuário; operação de rede exige uma conta por unidade.
+- Negativo: mudança de papel ou escopo invalida a sessão na requisição seguinte.
+
+## ADR-022: Cardápio adaptado é derivado, único por escola e conjunto distinto de restrições
+
+**Status:** aceito (2026-11-04) por decisão do dono do produto; revisado em 2026-11-04 para
+incluir a escola na identidade da versão
+
+**Contexto:** o sistema entrega cardápio geral por unidade (Spec 012), detecta
+incompatibilidade com restrições (Spec 014) e versiona publicação (Spec 015), mas não produz
+uma versão adaptada. A regra de negócio exige duas versões relacionadas ao mesmo cardápio de
+origem, com preservação nutricional e respeitando o contexto de cada escola. A escolha "uma
+versão por aluno" multiplicaria cardápios; "uma versão agregada para a unidade" misturaria
+restrições de escolas diferentes e poderia servir ao aluno errado.
+
+**Decisão:** `Cardapio` ganha `Tipo` (`Geral` | `Adaptado`), `OrigemId` e `EscolaId` (nulo no
+geral, obrigatório no adaptado). Para cada cardápio geral existe **no máximo uma** versão
+adaptada publicada por **escola e conjunto distinto de restrições** presente nos alunos ativos
+daquela escola; a identidade é `(OrigemId, EscolaId, ConjuntoRestricoesChave)`, com o conjunto
+ordenado e sem repetição. A adaptação é determinística, reutiliza a compatibilidade da Spec 014
+e a substituição escolhe alimento da mesma categoria com menor distância nutricional dentro de
+tolerância. Item sem substituto válido marca a versão como `PendenteDeRevisao`, e essa versão
+não pode ser publicada nem servida. A criação exige nutricionista com CRN válido e grava
+snapshot de autor (ADR-009).
+
+**Consequências:**
+- Positivo: origem ↔ adaptado é rastreável e a regra nutricional é testável sem IA.
+- Positivo: alunos da mesma escola com o mesmo conjunto compartilham a versão; alunos de
+  escolas diferentes não compartilham, porque o contexto de alunos é da escola.
+- Negativo: o número de versões cresce com `escolas × conjuntos`; a geração precisa ser
+  idempotente por `(OrigemId, EscolaId, conjunto)` e limitada a 50 versões por origem.
+- Negativo: editar o geral torna as versões adaptadas `Desatualizado`; republicar exige
+  readaptar.
 

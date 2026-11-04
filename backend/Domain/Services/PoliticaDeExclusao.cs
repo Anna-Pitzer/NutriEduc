@@ -10,12 +10,20 @@ namespace Ntc.Domain.Services;
 /// </summary>
 public static class PoliticaDeExclusao
 {
-    /// <summary>Escola é bloqueada por usuário ou por unidade legada que ainda a cita.</summary>
-    public static string? ParaEscola(bool temUsuarios, bool temUnidadesLegadas)
+    /// <summary>Escola é bloqueada por usuário, aluno ou unidade legada que ainda a cita.</summary>
+    public static string? ParaEscola(
+        bool temUsuarios,
+        bool temUnidadesLegadas,
+        bool temAlunos = false)
     {
         if (temUsuarios)
         {
             return "Há usuários vinculados a esta escola. Exclua ou mova essas contas antes.";
+        }
+
+        if (temAlunos)
+        {
+            return "Há alunos vinculados a esta escola. Mova ou exclua esses alunos antes.";
         }
 
         if (temUnidadesLegadas)
@@ -35,16 +43,22 @@ public static class PoliticaDeExclusao
         bool temUsuarios,
         bool temAlunos,
         bool temTokenOuConsumo,
-        bool temCardapios = false)
+        bool temCardapios = false,
+        bool temEscolas = false)
     {
+        if (temAlunos)
+        {
+            return "Há alunos vinculados a esta unidade. Mova ou exclua esses alunos antes.";
+        }
+
         if (temUsuarios)
         {
             return "Há usuários vinculados a esta unidade. Mova ou exclua essas contas antes.";
         }
 
-        if (temAlunos)
+        if (temEscolas)
         {
-            return "Há alunos vinculados a esta unidade. Mova ou exclua esses alunos antes.";
+            return "Há escolas vinculadas a esta unidade. Mova ou exclua essas escolas antes.";
         }
 
         if (temCardapios)

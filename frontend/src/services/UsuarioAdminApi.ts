@@ -11,6 +11,8 @@ export interface UsuarioResposta {
     escolaId: number | null;
     unidadeId: number | null;
     ativo: boolean;
+    /** Registro no conselho de nutrição; nulo quando não informado. */
+    crn: string | null;
 }
 
 export interface FiltroUsuarios {
@@ -29,6 +31,8 @@ export interface NovoUsuario {
     senha: string;
     papel: PapelUsuario;
     escolaId: number | null;
+    /** Registro no conselho; usado na autoria do cardápio. */
+    crn: string | null;
 }
 
 export interface AtualizacaoUsuario {
@@ -39,6 +43,7 @@ export interface AtualizacaoUsuario {
     escolaId: number | null;
     /** Unidade de atribuição: o domínio só aceita para `AdminSecretaria`. */
     unidadeId: number | null;
+    crn: string | null;
 }
 
 async function ler<T>(resposta: Response, padrao: string): Promise<T> {

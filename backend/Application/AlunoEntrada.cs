@@ -18,6 +18,10 @@ public sealed record AlunoEntrada
     public string NomeResponsavel { get; init; } = string.Empty;
     public string TelefoneResponsavel { get; init; } = string.Empty;
 
-    /// <summary>Unidade institucional opcional (Spec 009); validada pelo caso de uso.</summary>
-    public int? UnidadeId { get; init; }
+    /// <summary>
+    /// Escola obrigatória (Spec 027): a unidade é derivada de `Escola.UnidadeId` e não
+    /// é aceita no payload. Só aluno vinculado a uma escola participa da análise de
+    /// compatibilidade.
+    /// </summary>
+    public int? EscolaId { get; init; }
 }

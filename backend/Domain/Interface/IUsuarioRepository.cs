@@ -25,4 +25,10 @@ public interface IUsuarioRepository
     bool ExistePorEscola(int escolaId);
     bool ExistePorUnidade(int unidadeId);
     int ContarPorPapel(PapelUsuario papel);
+
+    /// <summary>
+    /// Contagem de legado: usuários com papel que exige unidade/escola e sem o vínculo
+    /// correspondente (Spec 027, T9).
+    /// </summary>
+    int ContarSemVinculoObrigatorio();
 }

@@ -41,6 +41,8 @@ export interface GeracaoCardapio {
 
 export interface GerarCardapioEntrada {
     unidadeId: number;
+    /** Nutricionista que elaborou o cardápio; obrigatória na geração. */
+    nutricionistaId: number;
     nome: string;
     periodo: { inicio: string; fim: string };
     seed?: number;

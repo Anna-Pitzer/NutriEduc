@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Ntc.Domain.Entity;
 using Xunit;
 
 namespace Backend.Tests.Integration;
@@ -14,7 +15,7 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
         _factory = factory;
     }
 
-    private static object Payload(string nome) => new
+    private object Payload(string nome) => new
     {
         nome,
         nascimento = "2015-05-10",
@@ -25,7 +26,9 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
         restricoes = new[] { "Lactose" },
         anafilaxia = false,
         nomeResponsavel = "Maria Teste",
-        telefoneResponsavel = "11988888888"
+        telefoneResponsavel = "11988888888",
+        // Regra (Spec 027): o aluno exige escola; a unidade é derivada dela.
+        escolaId = _factory.EscolaIdPadrao
     };
 
     private async Task<int> CriarAluno(HttpClient client, string nome)
@@ -43,7 +46,7 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Post_ComDadosValidos_Retorna201ComLocation()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var resposta = await client.PostAsJsonAsync("/api/aluno/registrar", Payload("Ana Cadastro"));
 
@@ -57,7 +60,7 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Post_ComTresRestricoes_GetDevolveOsValoresPersistidos()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var payload = new
         {
@@ -70,7 +73,8 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
             restricoes = new[] { "Lactose", "Gluten", "Diabetes" },
             anafilaxia = true,
             nomeResponsavel = "Ana Teste",
-            telefoneResponsavel = "11988888888"
+            telefoneResponsavel = "11988888888",
+            escolaId = _factory.EscolaIdPadrao
         };
 
         var criado = await client.PostAsJsonAsync("/api/aluno/registrar", payload);
@@ -91,7 +95,7 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Post_ComDadosInvalidos_Retorna400ComErro()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var resposta = await client.PostAsJsonAsync("/api/aluno/registrar", Payload(""));
 
@@ -105,7 +109,7 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Get_ListaDevolveAlunoCadastrado()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         await CriarAluno(client, "Beto Lista");
 
         var alunos = await client.GetFromJsonAsync<List<JsonElement>>("/api/aluno");
@@ -121,7 +125,7 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Put_ComDadosValidos_PersisteAlteracao()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var id = await CriarAluno(client, "Carla Antes");
 
         var resposta = await client.PutAsJsonAsync($"/api/aluno/{id}", Payload("Carla Depois"));
@@ -134,7 +138,7 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Put_ComIdInexistente_Retorna404()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var resposta = await client.PutAsJsonAsync("/api/aluno/999999", Payload("Fantasma"));
 
@@ -147,7 +151,7 @@ public class AlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Delete_ComIdInexistente_Retorna404()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var resposta = await client.DeleteAsync("/api/aluno/999999");
 

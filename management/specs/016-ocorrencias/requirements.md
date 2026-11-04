@@ -1,7 +1,7 @@
 ---
 name: ocorrencias
 status: created
-references: V6, ADR-004, L7
+references: V6, V16, V17, ADR-020, ADR-021, ADR-004, L7
 ---
 
 # Requirements — Ocorrências
@@ -15,7 +15,7 @@ alérgica ou de refeição servida errada não deixa rastro e não pode ser audi
 ## Escopo
 
 - Backend: `Ocorrencia` com vínculos opcionais (aluno, cardápio/refeição, alimento),
-  ciclo de status, histórico e escopo por papel.
+  ciclo de status, histórico e escopo por unidade, escola e vínculo (Specs 027 e 028).
 - Frontend: formulário e listagem para merendeira, pais e escola; detalhe com
   histórico.
 - Fora de escopo: relatório consolidado de ocorrências (Spec 019), notificações de
@@ -33,24 +33,29 @@ alérgica ou de refeição servida errada não deixa rastro e não pode ser audi
 ## Requisitos funcionais
 
 - RF1: `Ocorrencia` tem `Tipo` (`Aluno`, `Refeicao`, `Alimento`, `Outro`),
-  `Descricao` (5–1000), `Status` inicial `Aberta`, `UnidadeId` obrigatório e
-  `AutorId`/`AutorNome` (snapshot).
+  `Descricao` (5–1000), `Status` inicial `Aberta`, `UnidadeId` obrigatório,
+  `EscolaId` derivado e `AutorId`/`AutorNome` (snapshot). `EscolaId` é a escola do aluno
+  quando `AlunoId` existe, a escola do autor quando o autor tem escola e nulo apenas para
+  ocorrência registrada por `Nutricionista` sem aluno (ocorrência da unidade).
 - RF2: ao menos um vínculo deve estar presente: `AlunoId` (tipo `Aluno`),
   `CardapioId`+`RefeicaoId` (tipo `Refeicao`) ou `AlimentoId` (tipo `Alimento`).
   Vínculo incoerente com o tipo devolve 400.
-- RF3: `Merendeira` registra ocorrência na própria unidade; `Responsavel` registra
-  apenas para aluno vinculado a ele; `Nutricionista` registra em qualquer unidade;
-  `AdminEscola` registra na própria escola.
+- RF3: `Merendeira` registra ocorrência na própria escola; `Responsavel` registra
+  apenas para aluno vinculado a ele; `Nutricionista` registra na própria unidade;
+  `AdminEscola` registra na própria escola. `AdminSecretaria` não registra (matriz 028).
 - RF4: transições de status permitidas:
   `Aberta → EmAnalise`, `EmAnalise → Resolvida`, `Resolvida → Arquivada`,
   `EmAnalise → Aberta` (reabertura). Qualquer outra devolve 409.
-- RF5: `Nutricionista` e `AdminEscola` mudam status; `Merendeira` e `Responsavel` não.
-  Toda mudança exige `observacao` (2–500) e gera evento de histórico.
-- RF6: `Responsavel` vê apenas ocorrências dos alunos vinculados; `Merendeira` vê as
-  da própria unidade; `AdminEscola` as da própria escola; `Nutricionista` todas
-  (filtro global opcional por escola/unidade).
+- RF5: `Nutricionista` (própria unidade) e `AdminEscola` (própria escola) mudam status;
+  `Merendeira` e `Responsavel` não. `AdminSecretaria` apenas lê. Toda mudança exige
+  `observacao` (2–500) e gera evento de histórico.
+- RF6: `Responsavel` vê apenas ocorrências dos alunos vinculados; `Merendeira` e
+  `AdminEscola` veem as da própria escola; `Nutricionista` e `AdminSecretaria` veem as da
+  própria unidade. Ocorrência com `EscolaId` nulo é visível apenas aos papéis de unidade.
+  Nenhum papel enxerga outra unidade.
 - RF7: `GET /api/ocorrencias` aceita `status`, `tipo`, `alunoId`, `unidadeId`,
-  `de`, `ate`, `pagina`, `tamanho` (1–100) e aplica o escopo do papel no banco.
+  `escolaId`, `de`, `ate`, `pagina`, `tamanho` (1–100) e aplica o escopo do papel no
+  banco. Filtro de escopo fora do alcance da sessão devolve 403 (Spec 028, RF10).
 - RF8: `GET /api/ocorrencias/{id}` devolve detalhe com vínculos resolvidos (nomes de
   aluno, cardápio, refeição e alimento) e histórico de status.
 - RF9: ocorrência não é apagada; encerramento é `Arquivada`. Autor pode cancelar
@@ -66,9 +71,10 @@ alérgica ou de refeição servida errada não deixa rastro e não pode ser audi
 - RNF2: histórico append-only na mesma transação da mudança de status.
 - RNF3: snapshot do autor e dos nomes de aluno/cardápio/alimento no evento, para o
   histórico não mudar quando o cadastro mudar.
-- RNF4: consultas paginadas e indexadas por `(UnidadeId, CriadoEmUtc)` e
-  `(AlunoId, CriadoEmUtc)`.
-- RNF5: contrato `{ erro }` em 400/403/404/409.
+- RNF4: consultas paginadas e indexadas por `(UnidadeId, CriadoEmUtc)`,
+  `(EscolaId, CriadoEmUtc)` e `(AlunoId, CriadoEmUtc)`.
+- RNF5: contrato `{ erro }` em 400/403/404/409; recurso de outra unidade responde 404
+  (Spec 028, I1).
 
 ## Restrições
 
@@ -78,12 +84,14 @@ alérgica ou de refeição servida errada não deixa rastro e não pode ser audi
 
 ## Dependências
 
-- Spec 009 (papéis e escopo) e Spec 012 (cardápio e refeições).
+- Spec 009 (papéis), Spec 012 (cardápio e refeições), Spec 027 (unidade → escola → aluno)
+  e Spec 028 (matriz de permissões).
 - Spec 018 consome os eventos de status; não é pré-requisito.
 
 ## Casos de borda
 
-- Ocorrência de aluno de outra unidade → 403.
+- Ocorrência de aluno de outra unidade → 404; de outra escola da mesma unidade → 403.
+- Ocorrência da unidade (`EscolaId` nulo) não aparece para `AdminEscola` nem `Merendeira`.
 - Vínculo de aluno inexistente → 400.
 - Refeição que não pertence ao cardápio informado → 400.
 - Descrição com 4 ou 1001 caracteres → 400.
@@ -96,7 +104,9 @@ alérgica ou de refeição servida errada não deixa rastro e não pode ser audi
 
 ## Critérios de aceitação
 
-- [ ] Merendeira registra ocorrência de refeição e ela aparece na listagem da unidade.
+- [ ] Merendeira registra ocorrência de refeição e ela aparece na listagem da escola.
+- [ ] `AdminEscola` não vê ocorrência de outra escola; `Nutricionista` não vê outra
+  unidade.
 - [ ] Pai registra ocorrência apenas para aluno vinculado; outro aluno devolve 403.
 - [ ] Transição inválida devolve 409 e não altera status.
 - [ ] Mudança de status grava evento com autor, observação e data.
@@ -111,3 +121,9 @@ Registrar uma ocorrência de aluno e uma de refeição, mudar status com nutriç
 escola, consultar com merendeira e pai, e conferir escopo, histórico e filtros.
 Executar os gates: `dotnet build backend/backend.csproj`,
 `dotnet test backend.Tests/backend.Tests.csproj` e `cd frontend && npm run build && npm run lint`.
+
+## Revisão — 2026-11-04
+
+Conformidade com as Specs 027 e 028: escopo por escola, `EscolaId` derivado, filtro de
+escopo no SQL e semântica 404 entre unidades. A criação e a mudança de status continuam
+separadas por papel (`RC` na matriz); nenhuma transição nova foi introduzida.

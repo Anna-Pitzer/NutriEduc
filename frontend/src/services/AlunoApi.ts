@@ -7,18 +7,20 @@ export interface AlunoCadastro {
     nascimento: string;
     serie: string;
     escola: string;
+    /** Escola do aluno (Spec 027): fonte de verdade do vínculo institucional. */
+    escolaId?: number | null;
     telefone: string;
     observacao: string;
     restricoes: string[];
     anafilaxia: boolean;
     nomeResponsavel: string;
     telefoneResponsavel: string;
-    /** Unidade vinculada (Spec 009). Enviada no PUT para não apagar o escopo do aluno. */
-    unidadeId?: number | null;
 }
 
 export interface AlunoResposta extends AlunoCadastro {
     id: number;
+    /** Derivada da escola pelo backend; nunca enviada no payload. */
+    unidadeId?: number | null;
 }
 
 async function falhar(resposta: Response, padrao: string): Promise<never> {

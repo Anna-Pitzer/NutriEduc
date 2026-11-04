@@ -222,6 +222,8 @@ filtrando os eventos de restrição da trilha única — nenhum consumidor quebr
 
 ## Spec 025 — painel-e-visao-por-papel
 
+**Status:** planejada — não implementada (roadmap `planned`).
+
 **Canonical creation path:** `backend/API/Controllers/PainelController.cs`,
 `backend/API/Services/PainelService.cs`, `frontend/src/pages/secretaria/HomeSecretaria.tsx`,
 `frontend/src/pages/merendeiras/HomeMerendeiras.tsx`, `frontend/src/pages/pais/HomePais.tsx`,
@@ -243,6 +245,8 @@ aqui, não na 019, que permanece o catálogo de relatórios de gestão.
 consulta fora do escopo — aluno fora do vínculo responde 403 sem revelar existência.
 
 ## Spec 026 — substituicao-assistida-ia
+
+**Status:** planejada — não implementada (roadmap `planned`).
 
 **Canonical creation path:** `backend/Domain/Entities/SugestaoDeSubstituicao.cs`,
 `backend/Domain/Interface/ISugestorDeSubstituicao.cs`,
@@ -288,3 +292,162 @@ serviços grandes por intenção, preservando os contratos HTTP existentes.
 
 **Regra derivada:** nenhum tipo de `Domain` pode conhecer sessão, HTTP, EF Core ou DTO; nenhum
 repositório decide transação sozinho; nenhum controller conhece mensagem de regra de negócio.
+
+## Spec 027 — hierarquia-unidade-escola-aluno
+
+**Canonical creation path:** `backend/Domain/Entities/Escola.cs`, `backend/Domain/Entities/Aluno.cs`,
+`backend/Domain/Entities/Usuario.cs`, `backend/Application/HierarquiaService.cs`,
+`backend/Infrastructure/Repositories/AlunoRepository.cs`, `backend/API/Services/EscolaService.cs`,
+`backend/API/Services/BootstrapService.cs`, `backend/Migrations/*_HierarquiaEscolaAluno.cs`,
+`backend.Tests/Integration/HierarquiaApiTests.cs`, `frontend/src/pages/secretaria/Escolas.tsx`,
+`frontend/src/pages/nutricao/alunos/CadastrarAlunos.tsx`.
+
+**Problema estrutural:** a ADR-013 tirou a escola da hierarquia e deixou o aluno apenas com
+`UnidadeId`; `AlunoRepository.Filtrar` ainda usava `Unidade.EscolaId`, nulo em unidades novas, e
+`AdminEscola`/`Merendeira` ficaram sem escopo de escola (PEND-024).
+
+**Decisão:** `Escola.UnidadeId` obrigatório, `Aluno.EscolaId` obrigatório e `Aluno.UnidadeId`
+denormalizado com escritor único no domínio; `HierarquiaService` deriva e valida a cadeia; o
+bootstrap cria a unidade inicial; migration `HierarquiaEscolaAluno` adiciona FKs/índices e faz
+backfill idempotente. O escopo de leitura deriva da sessão e da cadeia, nunca de parâmetro do
+cliente. Criação de escola exige `unidadeId` no payload, apenas confirmado contra a sessão.
+
+**Regra derivada:** nenhum DTO de entrada informa a unidade de um aluno; filtro de unidade e de
+escola é aplicado no banco. `GET /api/aluno` aceita `escolaId`/`unidadeId` e `GET /api/escolas`
+aceita `unidadeId` apenas como estreitamento do escopo. Leitura por id inexistente responde 404;
+fora do escopo, 404 na fronteira de unidade e 403 na fronteira de escola/vínculo. Mudança de
+papel, unidade ou escola invalida a sessão na requisição seguinte. `POST /api/aluno/{id}/transferir-escola`
+é exclusivo de `AdminSecretaria` e recusa unidade diferente. `GET /api/diagnostico/hierarquia`
+conta legado sem vínculo e não corrige dados.
+
+## Spec 028 — matriz-permissoes-e-isolamento
+
+**Canonical creation path:** `backend/Application/Seguranca/Recurso.cs`,
+`backend/Application/Seguranca/NivelDeAcesso.cs`,
+`backend/Application/Seguranca/MatrizDePermissoes.cs`,
+`backend/Application/Seguranca/AutorizacaoService.cs`,
+`backend/Infrastructure/Seguranca/FiltroDeEscopo.cs`,
+`backend/Domain/Entities/TrilhaAcao.cs`,
+`backend/Infrastructure/Repositories/TrilhaAcaoRepository.cs`,
+`backend.Tests/Domain/MatrizDePermissoesTests.cs`,
+`backend.Tests/Domain/AutorizacaoServiceTests.cs`,
+`backend.Tests/Integration/MatrizPermissoesTests.cs`,
+`backend.Tests/Integration/AuditoriaAcaoTests.cs`.
+
+**Problema estrutural:** a permissão está espalhada por treze specs, `AdminSecretaria` tem
+escopo global, `Merendeira` é escopada por unidade e não existe um conjunto único de invariantes
+de isolamento; cada consulta nova depende de disciplina.
+
+**Decisão:** matriz `(recurso, papel) → nível` como função pura (`Nivel` executável +
+`Documentada` legível), escopo único por papel, `AutorizacaoService` validando o alvo antes da
+escrita em aluno, usuário, vínculo, escola e unidade; escrita de catálogo/cardápio continua
+governada pela política de papel já equivalente à matriz. `FiltroDeEscopo` expressa o recorte
+em SQL para aluno, escola, usuário e cardápio. `TrilhaAcao` é append-only e grava papel,
+vínculo, transferência de aluno, desativação e exclusão de usuário na mesma transação da ação.
+Fronteira de unidade responde 404; fronteira de escola, 403.
+
+**Regra derivada:** recurso novo nasce sem permissão; célula da matriz sem teste é entrega
+incompleta. Recursos de specs 016–019/025/030/033 ainda sem endpoint têm célula na matriz e
+teste puro, mas não têm teste HTTP até a spec dona existir.
+
+## Spec 029 — cardapio-geral-e-adaptado
+
+**Canonical creation path:** `backend/Domain/Entities/Cardapio.cs`,
+`backend/Domain/Entities/ConjuntoDeRestricoes.cs`,
+`backend/Domain/Services/AdaptacaoDeCardapio.cs`,
+`backend/Application/Cardapios/AdaptarCardapioService.cs`,
+`backend/Application/Cardapios/CardapioServidoService.cs`,
+`backend/Application/Cardapios/ContextoDeRestricoesService.cs`,
+`frontend/src/pages/nutricao/cardapios/FormularioCardapio.tsx`.
+
+**Problema estrutural:** o cardápio é único, a compatibilidade apenas detecta conflito e não
+existe a refeição que o aluno com restrição recebe; a substituição é manual e sem vínculo com a
+origem. A criação manual não mostra alunos nem restrições e não associa autoria.
+
+**Decisão:** `Cardapio.Tipo` (`Geral` | `Adaptado`), `OrigemId` e `EscolaId`; uma versão
+adaptada por `(escola, conjunto distinto de restrições)`, gerada por função determinística com
+tolerância nutricional e `PendenteDeRevisao` quando não há substituto válido. A montagem manual
+carrega alunos e restrições por escola, bloqueia alimento sem substituto seguro e exige
+confirmação registrada para incompatibilidade com substituto. Criação exige nutricionista com
+CRN válido e snapshot de autor.
+
+**Regra derivada:** item bloqueante nunca é servido; sem versão publicada para `(escola,
+conjunto)`, o cardápio do aluno é `Indisponivel`; o geral nunca é fallback.
+
+## Spec 030 — solicitacao-alteracao-dados
+
+**Canonical creation path:** `backend/Domain/Entities/Solicitacao.cs`,
+`backend/Domain/Entities/AlteracaoDeDado.cs`,
+`backend/Application/Solicitacoes/DecidirSolicitacaoDeDadosService.cs`,
+`frontend/src/pages/pais/SolicitacoesDoFilho.tsx`,
+`frontend/src/pages/secretaria/FilaSolicitacoes.tsx`.
+
+**Problema estrutural:** o fluxo de solicitações cobre cardápio, ingrediente, restrição e
+alergia, mas não dados cadastrais; o responsável não tem canal e o ADM edita sem registrar o
+pedido.
+
+**Decisão:** novo tipo `DadosCadastrais` no agregado da Spec 017, com alterações imutáveis e
+snapshot do valor atual; aprovação atômica via `Aluno.AtualizarDados`, com recusa em 409 quando
+o valor divergiu e evento na trilha com a origem da solicitação.
+
+**Regra derivada:** aprovar não aplica pedido desatualizado; nada é aplicado parcialmente.
+
+## Spec 031 — perfil-crn-nutricionista
+
+**Canonical creation path:** `backend/Domain/Entities/CrnDeNutricionista.cs`,
+`backend/Domain/Entities/Usuario.cs`, `backend/Domain/Services/PoliticaDeCrn.cs`,
+`backend/API/Services/UsuarioService.cs`, `frontend/src/pages/secretaria/Usuarios.tsx`.
+
+**Problema estrutural:** o CRN é texto livre de 3 a 20 caracteres, sem formato, sem unicidade e
+sem obrigatoriedade. A geração aceita nutricionista sem registro e o snapshot nasce incompleto.
+
+**Decisão:** objeto de valor com formato `CRN-<região>-<número>` (regiões configuráveis),
+normalização única e unicidade no banco; obrigatório exclusivo de `Nutricionista`, no cadastro e
+em toda operação de cardápio. Legado sem CRN é diagnosticado e bloqueado de operar cardápio,
+mantendo o login. A validação é de formato, não de autenticidade.
+
+**Regra derivada:** nenhum serviço de cardápio reimplementa a regra; todos usam
+`PoliticaDeCrn` e a mesma mensagem.
+
+## Spec 032 — correcao-geracao-automatica-cardapios
+
+**Canonical creation path:** `backend/Domain/Services/SeletorDeRefeicao.cs`,
+`backend/Domain/Services/ValidadorDeCardapioGerado.cs`,
+`backend/Domain/Services/GeradorCardapioAutomatico.cs`,
+`backend/API/Services/GeracaoCardapioService.cs`,
+`frontend/src/pages/nutricao/cardapios/ParametrosGeracao.tsx`.
+
+**Problema estrutural:** o gerador faz uma passagem gulosa e lança 422 quando a faixa calórica
+não fecha; `usados` é global entre refeições e esgota o catálogo; o parâmetro
+`ExcluirAlimentosIncompativeis` filtra o geral por restrições individuais; a nutricionista não é
+validada por unidade nem CRN; e só o geral é persistido, sem adaptados.
+
+**Decisão:** seleção com até 5 tentativas determinísticas por refeição, validação do cardápio
+inteiro antes de abrir transação, geral sem filtro individual, nutricionista da mesma unidade
+com CRN válido e criação de geral + adaptados na mesma transação. Falha devolve 422 com faixa
+alcançável, categoria ausente e tentativas; nada é gravado.
+
+**Regra derivada:** cardápio só é salvo depois de validado; adaptado pendente bloqueia a
+publicação do geral; o seed devolvido reproduz o resultado.
+
+## Spec 033 — cadastro-e-autorizacao-de-acesso
+
+**Canonical creation path:** `backend/Domain/Entities/SolicitacaoDeAcesso.cs`,
+`backend/Domain/Services/PoliticaDeAprovacao.cs`,
+`backend/Application/Cadastro/AprovarAcessoService.cs`,
+`backend/API/Controllers/SolicitacaoAcessoController.cs`,
+`frontend/src/pages/secretaria/SolicitacoesAcesso.tsx`.
+
+**Problema estrutural:** o autocadastro não registra o tipo pedido; "sem papel" representa ao
+mesmo tempo não pediu, pediu e não foi visto, e foi recusado. A tela administrativa adivinha um
+papel, o vínculo do responsável é uma segunda operação e a hierarquia convive com regras antigas
+(`Responsavel` exige escola; `Nutricionista`/`AdminSecretaria` globais).
+
+**Decisão:** separar pessoa (conta), intenção (solicitação com tipo e unidade) e ato
+administrativo (aprovação). O cadastro cria usuário sem papel e solicitação `Pendente` na
+unidade escolhida; o login fica bloqueado; o ADM da unidade aprova em uma transação, atribuindo
+papel, escopo, CRN e vínculos do responsável. Recusa exige motivo; decisão concorrente devolve
+409; papel administrativo nunca é concedido pela fila.
+
+**Regra derivada:** pessoa, escola e unidade são conceitos distintos; a cadeia
+unidade→escola→aluno é validada no backend e no banco, e o frontend não é fonte de integridade.

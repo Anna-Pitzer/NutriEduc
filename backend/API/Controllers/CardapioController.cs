@@ -79,7 +79,7 @@ public class CardapioController : RespostaController
         return Traduzir(_cardapios.Obter(id, escopo), Ok);
     }
 
-    /// <summary>Análise de compatibilidade (Spec 014): nutrição vê toda a rede, merendeira só a própria unidade.</summary>
+    /// <summary>Análise de compatibilidade (Spec 014): nutrição vê a própria unidade, merendeira só a própria escola.</summary>
     [Authorize(Policy = "SessaoValida")]
     [HttpGet("{id:int}/compatibilidade")]
     public IActionResult Compatibilidade(int id)

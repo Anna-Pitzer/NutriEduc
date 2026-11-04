@@ -85,12 +85,12 @@ public sealed class HistoricoAlunoService
     }
 
     /// <summary>
-    /// Aluno inexistente é 404 apenas para o escopo global; fora do escopo é 403, sem
-    /// revelar existência — mesma regra do restante do módulo de aluno.
+    /// Aluno inexistente é 404 para o escopo de unidade; fora do escopo de escola é 403,
+    /// sem revelar existência — mesma regra do restante do módulo de aluno.
     /// </summary>
     private static Resultado<T> ForaDoEscopo<T>(EscopoUsuario escopo)
     {
-        return escopo.Global
+        return escopo.EscopoDeUnidade
             ? Resultado<T>.NaoEncontrado("Aluno não encontrado.")
             : Resultado<T>.Proibido();
     }

@@ -14,39 +14,78 @@ public class UnidadeController : RespostaController
 {
     private readonly EscolaService _escolas;
     private readonly ExclusaoService _exclusao;
+    private readonly EscopoService _escopo;
 
-    public UnidadeController(EscolaService escolas, ExclusaoService exclusao)
+    public UnidadeController(
+        EscolaService escolas,
+        ExclusaoService exclusao,
+        EscopoService escopo)
     {
         _escolas = escolas;
         _exclusao = exclusao;
+        _escopo = escopo;
     }
 
-    [Authorize(Policy = "SessaoValida")]
+    [Authorize(Policy = "HierarquiaLeitura")]
     [HttpGet]
     public IActionResult Listar()
     {
-        return Ok(_escolas.ListarUnidades());
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Ok(_escolas.ListarUnidades(escopo));
     }
 
     [Authorize(Policy = "AdminSecretaria")]
     [HttpPut("{id:int}")]
     public IActionResult Atualizar(int id, [FromBody] UnidadeDTO dto)
     {
-        return Traduzir(_escolas.AtualizarUnidade(id, dto), unidade => Ok(unidade));
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(
+            _escolas.AtualizarUnidade(id, dto, escopo),
+            unidade => Ok(unidade));
     }
 
     [Authorize(Policy = "AdminSecretaria")]
     [HttpPost("{id:int}/desativar")]
     public IActionResult Desativar(int id)
     {
-        return Traduzir(_escolas.DefinirAtivaUnidade(id, false), unidade => Ok(unidade));
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(
+            _escolas.DefinirAtivaUnidade(id, false, escopo),
+            unidade => Ok(unidade));
     }
 
     [Authorize(Policy = "AdminSecretaria")]
     [HttpPost("{id:int}/reativar")]
     public IActionResult Reativar(int id)
     {
-        return Traduzir(_escolas.DefinirAtivaUnidade(id, true), unidade => Ok(unidade));
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(
+            _escolas.DefinirAtivaUnidade(id, true, escopo),
+            unidade => Ok(unidade));
     }
 
     /// <summary>Exclusão definitiva: `409` quando há usuário, aluno ou token referenciando.</summary>
@@ -54,6 +93,13 @@ public class UnidadeController : RespostaController
     [HttpDelete("{id:int}")]
     public IActionResult Excluir(int id)
     {
-        return Traduzir(_exclusao.ExcluirUnidade(id), _ => NoContent());
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(_exclusao.ExcluirUnidade(id, escopo), _ => NoContent());
     }
 }

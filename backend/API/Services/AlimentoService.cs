@@ -297,12 +297,14 @@ public sealed class AlimentoService
     // ---------- Internos ----------
 
     /// <summary>
-    /// Leitura do catálogo é exclusiva de nutrição e merenda (RF9). Escola e secretaria
-    /// recebem 403 — o cardápio publicado (Spec 012/025) embute os valores de que
-    /// precisam, sem abrir o catálogo.
+    /// Leitura do catálogo segue a matriz (Spec 028): administração, escola, nutrição e
+    /// merenda leem; responsável não. Escrita permanece exclusiva de nutrição.
     /// </summary>
     private static bool PodeLer(EscopoUsuario escopo) =>
-        escopo.Papel is PapelUsuario.Nutricionista or PapelUsuario.Merendeira;
+        escopo.Papel is PapelUsuario.AdminSecretaria
+            or PapelUsuario.AdminEscola
+            or PapelUsuario.Nutricionista
+            or PapelUsuario.Merendeira;
 
     private static ValoresNutricionais ValoresDe(ValoresNutricionaisDTO? valores)
     {

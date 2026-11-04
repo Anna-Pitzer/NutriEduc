@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Ntc.Database;
+using Ntc.Application;
+using Ntc.Application.Seguranca;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
 using Ntc.Middleware;
@@ -25,6 +27,8 @@ builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<UsuarioService>();
 builder.Services.AddScoped<AutenticacaoService>();
 builder.Services.AddScoped<EscopoService>();
+builder.Services.AddScoped<AutorizacaoService>();
+builder.Services.AddScoped<ITrilhaAcaoRepository, TrilhaAcaoRepository>();
 builder.Services.AddScoped<EscolaService>();
 builder.Services.AddScoped<VinculoService>();
 builder.Services.AddScoped<ConfiguracaoDeBootstrap>();
@@ -39,6 +43,7 @@ builder.Services.AddScoped<IEscolaRepository, EscolaRepository>();
 builder.Services.AddScoped<IVinculoRepository, VinculoRepository>();
 
 builder.Services.AddScoped<AlunoService>();
+builder.Services.AddScoped<HierarquiaService>();
 builder.Services.AddScoped<IAlunoRepository, AlunoRepository>();
 builder.Services.AddScoped<IRestricaoRepository, RestricaoRepository>();
 builder.Services.AddScoped<RestricaoService>();
@@ -108,6 +113,33 @@ builder.Services
                 context.RejectPrincipal();
                 await context.HttpContext.SignOutAsync(
                     CookieAuthenticationDefaults.AuthenticationScheme);
+                return;
+            }
+
+            // RNF5 da Spec 027: mudança de papel, unidade ou escola invalida a sessão na
+            // requisição seguinte. As claims antigas não podem continuar autorizando.
+            var papelDaSessao = context.Principal?
+                .FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var escolaDaSessao = context.Principal?
+                .FindFirst("escola")?.Value ?? string.Empty;
+            var unidadeDaSessao = context.Principal?
+                .FindFirst("unidade")?.Value ?? string.Empty;
+
+            var escopoMudou =
+                !string.Equals(papelDaSessao, usuario.Papel.ToString(),
+                    StringComparison.Ordinal) ||
+                !string.Equals(escolaDaSessao,
+                    usuario.EscolaId?.ToString() ?? string.Empty,
+                    StringComparison.Ordinal) ||
+                !string.Equals(unidadeDaSessao,
+                    usuario.UnidadeId?.ToString() ?? string.Empty,
+                    StringComparison.Ordinal);
+
+            if (escopoMudou)
+            {
+                context.RejectPrincipal();
+                await context.HttpContext.SignOutAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme);
             }
         };
     });
@@ -128,14 +160,35 @@ builder.Services.AddAuthorization(options =>
             nameof(PapelUsuario.AdminSecretaria),
             nameof(PapelUsuario.AdminEscola)));
 
-    // Leitura da equipe escolar. AdminSecretaria entra na lista porque é global e não
-    // deve ser barrada por uma política de leitura — a diferença é o escopo de dados.
-    options.AddPolicy("EquipeEscolar", politica =>
+    // Leitura de vínculo (Spec 028): ADM e escola leem no escopo; responsável lê os
+    // próprios vínculos. Nutrição e merendeira não têm acesso a este recurso.
+    options.AddPolicy("VinculoLeitura", politica =>
         politica.RequireRole(
-            nameof(PapelUsuario.Nutricionista),
-            nameof(PapelUsuario.Merendeira),
+            nameof(PapelUsuario.AdminSecretaria),
             nameof(PapelUsuario.AdminEscola),
-            nameof(PapelUsuario.AdminSecretaria)));
+            nameof(PapelUsuario.Responsavel)));
+
+    // Leitura de unidade/escola (Spec 028): responsável não tem acesso institucional.
+    options.AddPolicy("HierarquiaLeitura", politica =>
+        politica.RequireRole(
+            nameof(PapelUsuario.AdminSecretaria),
+            nameof(PapelUsuario.AdminEscola),
+            nameof(PapelUsuario.Nutricionista),
+            nameof(PapelUsuario.Merendeira)));
+
+    // Catálogo de alimentos é dado de referência, mas o responsável não o consome.
+    options.AddPolicy("CatalogoDeAlimentosLeitura", politica =>
+        politica.RequireRole(
+            nameof(PapelUsuario.AdminSecretaria),
+            nameof(PapelUsuario.AdminEscola),
+            nameof(PapelUsuario.Nutricionista),
+            nameof(PapelUsuario.Merendeira)));
+
+    // Parâmetros de geração: ADM lê, nutrição lê e escreve (Spec 028).
+    options.AddPolicy("ParametroGeracaoLeitura", politica =>
+        politica.RequireRole(
+            nameof(PapelUsuario.AdminSecretaria),
+            nameof(PapelUsuario.Nutricionista)));
 
     // Leitura de aluno: todos os papéis leem, mas cada um vê apenas o próprio escopo
     // (RF8 e RF9). A restrição real está no filtro do repositório.

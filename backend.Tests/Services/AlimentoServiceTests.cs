@@ -177,13 +177,13 @@ public class AlimentoServiceTests
     }
 
     [Fact]
-    public void Listar_PorSecretaria_DevolveProibido()
+    public void Listar_PorSecretaria_DevolveOk()
     {
         var (servico, _, _, _) = Montar();
 
         var resultado = servico.Listar(null, null, null, null, incluirInativos: false, Secretaria);
 
-        Assert.Equal(ResultadoStatus.Proibido, resultado.Status);
+        Assert.Equal(ResultadoStatus.Ok, resultado.Status);
     }
 
     [Fact]

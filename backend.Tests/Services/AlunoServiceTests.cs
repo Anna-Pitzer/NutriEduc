@@ -1,5 +1,6 @@
 using Backend.Tests.Fakes;
 using Ntc.Application;
+using Ntc.Application.Seguranca;
 using Ntc.Domain;
 using Ntc.Domain.Entity;
 using Xunit;
@@ -8,9 +9,12 @@ namespace Backend.Tests.Services;
 
 public class AlunoServiceTests
 {
-    /// <summary>Escopo global: a nutrição enxerga toda a rede (Spec 009).</summary>
+    /// <summary>Escopo de unidade: a secretaria escreve o cadastro na própria unidade (Spec 028).</summary>
     private static readonly EscopoUsuario Escopo =
-        new(1, PapelUsuario.Nutricionista, null, null);
+        new(1, PapelUsuario.AdminSecretaria, null, 1);
+
+    /// <summary>Escola semeada no repositório fake: o cadastro de aluno exige escola.</summary>
+    private const int EscolaId = 1;
 
     private static AlunoEntrada DtoValido(
         string nome = "Maria Silva",
@@ -27,7 +31,8 @@ public class AlunoServiceTests
             Restricoes = restricoes ?? new List<string> { "APVL" },
             Anafilaxia = false,
             NomeResponsavel = "Ana Silva",
-            TelefoneResponsavel = "11988888888"
+            TelefoneResponsavel = "11988888888",
+            EscolaId = EscolaId
         };
     }
 
@@ -40,13 +45,18 @@ public class AlunoServiceTests
     {
         var alunos = new AlunoRepositoryFake();
         var restricoes = new RestricaoRepositoryFake("APVL", "Diabetes", "Lactose");
+        var escolas = new EscolaRepositoryFake();
+        var unidade = escolas.AddUnidade(new UnidadeEscolar("Unidade Central"));
+        escolas.Add(new Escola("Escola Municipal", unidade.Id));
 
         return (
             new AlunoService(
                 alunos,
                 restricoes,
                 new UsuarioRepositoryFake(),
-                new EscolaRepositoryFake(),
+                new HierarquiaService(escolas, alunos, new UsuarioRepositoryFake()),
+                new AutorizacaoService(),
+                new TrilhaAcaoRepositoryFake(),
                 new UnidadeDeTrabalhoFake()),
             alunos,
             restricoes);
@@ -73,6 +83,22 @@ public class AlunoServiceTests
         var (servico, repositorio, _) = CriarServico();
 
         Assert.Throws<ArgumentException>(() => servico.CriarAluno(DtoValido(nome: ""), Escopo));
+
+        Assert.Empty(repositorio.GetAlunos()!);
+    }
+
+    /// <summary>
+    /// Regra: aluno sem escola não aplica restrição no cardápio (Spec 014, RF6), então o
+    /// cadastro recusa a ausência em vez de gravar um registro silenciosamente inerte.
+    /// </summary>
+    [Fact]
+    public void CriarAluno_SemEscola_LancaENaoPersiste()
+    {
+        var (servico, repositorio, _) = CriarServico();
+
+        var entrada = DtoValido() with { EscolaId = null };
+
+        Assert.Throws<ArgumentException>(() => servico.CriarAluno(entrada, Escopo));
 
         Assert.Empty(repositorio.GetAlunos()!);
     }
@@ -154,18 +180,21 @@ public class AlunoServiceTests
         var (servico, _, _) = CriarServico();
         servico.CriarAluno(DtoValido(), Escopo);
 
-        var aluno = servico.ObterAlunoPorId(1, Escopo);
+        var resultado = servico.ObterAlunoPorId(1, Escopo);
 
-        Assert.NotNull(aluno);
-        Assert.Equal("Maria Silva", aluno!.Nome);
+        Assert.Equal(ResultadoStatus.Ok, resultado.Status);
+        Assert.NotNull(resultado.Valor);
+        Assert.Equal("Maria Silva", resultado.Valor!.Nome);
     }
 
     [Fact]
-    public void ObterAlunoPorId_Inexistente_DevolveNull()
+    public void ObterAlunoPorId_Inexistente_DevolveNaoEncontrado()
     {
         var (servico, _, _) = CriarServico();
 
-        Assert.Null(servico.ObterAlunoPorId(99, Escopo));
+        var resultado = servico.ObterAlunoPorId(99, Escopo);
+
+        Assert.Equal(ResultadoStatus.NaoEncontrado, resultado.Status);
     }
 
     [Fact]

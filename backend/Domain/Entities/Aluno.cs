@@ -72,6 +72,12 @@ public class Aluno
     /// </summary>
     public int? UnidadeId { get; private set; }
 
+    /// <summary>
+    /// Escola do aluno (Spec 027): fonte de verdade do vínculo institucional. Nulo
+    /// apenas em registro legado; o construtor público nunca produz esse estado.
+    /// </summary>
+    public int? EscolaId { get; private set; }
+
     /// <summary>Somente para o EF Core. Não valida e não deve ser usado pela aplicação.</summary>
     private Aluno()
     {
@@ -85,17 +91,19 @@ public class Aluno
         string? observacao,
         IEnumerable<string>? restricoes,
         bool anafilaxia,
-        Responsavel responsavel)
+        Responsavel responsavel,
+        int escolaId)
     {
         ArgumentNullException.ThrowIfNull(turma);
         ArgumentNullException.ThrowIfNull(responsavel);
 
         var dados = ValidarDados(nome, nascimento, telefone, observacao);
+        ValidarEscola(escolaId);
 
         // Buffer validado: nada é atribuído se alguma restrição violar o limite.
         var restricoesValidadas = NormalizarRestricoes(restricoes);
 
-        AplicarDados(dados, turma, anafilaxia, responsavel);
+        AplicarDados(dados, turma, anafilaxia, responsavel, escolaId);
 
         foreach (var restricao in restricoesValidadas)
             _restricoes.Add(restricao);
@@ -121,7 +129,8 @@ public class Aluno
         IEnumerable<string>? restricoes,
         bool anafilaxia,
         Responsavel responsavel,
-        int? unidadeId)
+        int? unidadeId,
+        int escolaId)
     {
         ArgumentNullException.ThrowIfNull(turma);
         ArgumentNullException.ThrowIfNull(responsavel);
@@ -131,6 +140,7 @@ public class Aluno
         var restricoesValidadas = NormalizarRestricoes(restricoes);
 
         ValidarUnidade(unidadeId);
+        ValidarEscola(escolaId);
 
         var adicionadas = restricoesValidadas
             .Where(nova => !ContemRestricao(_restricoes, nova))
@@ -152,8 +162,9 @@ public class Aluno
         Comparar(alteracoes, "Telefone do responsável", Responsavel.Telefone, responsavel.Telefone);
         Comparar(alteracoes, "Anafilaxia", TextoBooleano(Anafilaxia), TextoBooleano(anafilaxia));
         Comparar(alteracoes, "Unidade", TextoUnidade(UnidadeId), TextoUnidade(unidadeId));
+        Comparar(alteracoes, "Escola vinculada", TextoEscola(EscolaId), TextoEscola(escolaId));
 
-        AplicarDados(dados, turma, anafilaxia, responsavel);
+        AplicarDados(dados, turma, anafilaxia, responsavel, escolaId);
         UnidadeId = unidadeId;
 
         _restricoes.Clear();
@@ -243,6 +254,29 @@ public class Aluno
         UnidadeId = unidadeId;
     }
 
+    /// <summary>
+    /// Move o aluno para outra escola da mesma unidade (Spec 027, RF11). A unidade de
+    /// destino é derivada pelo serviço; a comparação de unidade é feita antes da mutação.
+    /// </summary>
+    public void TransferirEscola(int escolaId, int unidadeId, bool mesmaUnidade)
+    {
+        ValidarEscola(escolaId);
+
+        if (unidadeId <= 0)
+        {
+            throw new ArgumentException("Unidade inválida.");
+        }
+
+        if (!mesmaUnidade)
+        {
+            throw new ArgumentException(
+                "Transferência entre unidades é proibida nesta spec.");
+        }
+
+        EscolaId = escolaId;
+        UnidadeId = unidadeId;
+    }
+
     private readonly record struct DadosValidados(
         string Nome,
         DateOnly Nascimento,
@@ -287,6 +321,15 @@ public class Aluno
         if (unidadeId is <= 0)
             throw new ArgumentException("Unidade inválida.");
     }
+
+    private static void ValidarEscola(int escolaId)
+    {
+        if (escolaId <= 0)
+            throw new ArgumentException("Escola inválida.");
+    }
+
+    private static string TextoEscola(int? escolaId) =>
+        escolaId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
 
     /// <summary>
     /// Compara o valor atual com o validado e registra a alteração quando diferem. A
@@ -371,7 +414,8 @@ public class Aluno
         DadosValidados dados,
         Turma turma,
         bool anafilaxia,
-        Responsavel responsavel)
+        Responsavel responsavel,
+        int escolaId)
     {
         Nome = dados.Nome;
         Nascimento = dados.Nascimento;
@@ -380,5 +424,6 @@ public class Aluno
         Observacao = dados.Observacao;
         Anafilaxia = anafilaxia;
         Responsavel = responsavel;
+        EscolaId = escolaId;
     }
 }

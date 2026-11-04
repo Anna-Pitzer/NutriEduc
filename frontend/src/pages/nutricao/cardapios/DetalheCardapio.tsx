@@ -50,7 +50,6 @@ export function DetalheCardapio() {
     const [mensagem, setMensagem] = useState<string | null>(null);
     const [compatibilidade, setCompatibilidade] = useState<Compatibilidade | null>(null);
     const [historico, setHistorico] = useState<EventoHistoricoCardapio[]>([]);
-    const [motivo, setMotivo] = useState("");
 
     useEffect(() => {
         async function carregar() {
@@ -289,6 +288,30 @@ export function DetalheCardapio() {
                                 Unidade #{cardapio.unidadeId} · {dataCurta(cardapio.periodo.inicio)} a{" "}
                                 {dataCurta(cardapio.periodo.fim)}
                             </p>
+
+                            <p className="text-sm text-gray-500">
+                                Vale para todas as escolas desta unidade.
+                            </p>
+
+                            {cardapio.nutricionista && (
+                                <div className="mt-4 rounded-2xl border border-[#fce9d3] bg-white p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-roxo/60">
+                                        Cardápio elaborado por
+                                    </p>
+                                    <p className="mt-1 font-bold text-gray-800">
+                                        {cardapio.nutricionista.nome}
+                                        {cardapio.nutricionista.crn
+                                            ? ` · CRN ${cardapio.nutricionista.crn}`
+                                            : ""}
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                        {cardapio.nutricionista.email}
+                                        {cardapio.nutricionista.cpf
+                                            ? ` · CPF ${cardapio.nutricionista.cpf}`
+                                            : ""}
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="mt-6 flex flex-col gap-6">
                                 {cardapio.refeicoes.length === 0 && (

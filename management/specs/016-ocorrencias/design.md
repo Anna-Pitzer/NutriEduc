@@ -1,7 +1,7 @@
 ---
 name: ocorrencias
 status: created
-references: V6, ADR-004, L7
+references: V6, V16, V17, ADR-020, ADR-021, ADR-004, L7
 ---
 
 # Design — Ocorrências
@@ -36,6 +36,7 @@ public class Ocorrencia
     public int Id { get; private set; }
     public TipoOcorrencia Tipo { get; private set; }
     public int UnidadeId { get; private set; }
+    public int? EscolaId { get; private set; }
     public int? AlunoId { get; private set; }
     public int? CardapioId { get; private set; }
     public int? RefeicaoId { get; private set; }
@@ -48,16 +49,16 @@ public class Ocorrencia
     public DateTime AtualizadoEmUtc { get; private set; }
     public IReadOnlyList<HistoricoOcorrencia> Historico => _historico.AsReadOnly();
 
-    public Ocorrencia(TipoOcorrencia tipo, int unidadeId, int autorId, string autorNome,
-                      string descricao, int? alunoId, int? cardapioId, int? refeicaoId,
-                      int? alimentoId, DateTime utc)
+    public Ocorrencia(TipoOcorrencia tipo, int unidadeId, int? escolaId, int autorId,
+                      string autorNome, string descricao, int? alunoId, int? cardapioId,
+                      int? refeicaoId, int? alimentoId, DateTime utc)
     {
         descricao = (descricao ?? string.Empty).Trim();
         if (descricao.Length is < 5 or > 1000)
             throw new ArgumentException("A descrição deve ter entre 5 e 1000 caracteres.");
         ValidarVinculos(tipo, alunoId, cardapioId, refeicaoId, alimentoId);
 
-        Tipo = tipo; UnidadeId = unidadeId; AutorId = autorId;
+        Tipo = tipo; UnidadeId = unidadeId; EscolaId = escolaId; AutorId = autorId;
         AutorNome = autorNome.Trim(); Descricao = descricao;
         Status = StatusOcorrencia.Aberta;
         CriadoEmUtc = AtualizadoEmUtc = utc;
@@ -101,6 +102,10 @@ public class Ocorrencia
 `ValidarVinculos` é estático e privado: verifica que o vínculo preenchido corresponde
 ao `Tipo` e que pelo menos um existe. Não consulta banco.
 
+`EscolaId` é derivado pelo serviço, nunca informado pelo cliente (Spec 027): escola do
+`AlunoId` quando existe; escola do autor quando o autor tem escola; nulo quando o autor
+é `Nutricionista` e não há aluno. `UnidadeId` é sempre derivado da escola ou da sessão.
+
 `HistoricoOcorrencia` guarda `Status`, `AutorNome`, `Observacao` e `CriadoEmUtc` —
 snapshots, sem FK para usuário.
 
@@ -110,21 +115,24 @@ snapshots, sem FK para usuário.
 em filtro de consulta:
 
 ```text
-Nutricionista     → sem filtro (pode filtrar por escola/unidade)
-AdminSecretaria   → sem filtro
-AdminEscola       → UnidadeId in (unidades da escola)
-Merendeira        → UnidadeId == unidade da sessão
+Nutricionista     → UnidadeId == unidade da sessão
+AdminSecretaria   → UnidadeId == unidade da sessão (leitura)
+AdminEscola       → EscolaId == escola da sessão
+Merendeira        → EscolaId == escola da sessão
 Responsavel       → AlunoId in (alunos vinculados ao usuário)
 ```
 
-O filtro de responsável vem da tabela `Vinculos` (Spec 009), nunca de lista em
+Ocorrência com `EscolaId` nulo é visível apenas a `Nutricionista` e `AdminSecretaria` da
+mesma unidade. Filtro de `escolaId`/`unidadeId` fora do escopo devolve 403 (Spec 028).
+
+O filtro de responsável vem da tabela `Vinculos` (Spec 027), nunca de lista em
 memória.
 
 ## Contrato de API
 
 | Método | Rota | Política |
 |---|---|---|
-| `GET` | `/api/ocorrencias?status=&tipo=&alunoId=&unidadeId=&de=&ate=&pagina=&tamanho=` | sessão, escopo por papel |
+| `GET` | `/api/ocorrencias?status=&tipo=&alunoId=&unidadeId=&escolaId=&de=&ate=&pagina=&tamanho=` | sessão, escopo por papel |
 | `GET` | `/api/ocorrencias/{id}` | sessão, escopo por papel |
 | `POST` | `/api/ocorrencias` | `Merendeira`, `Responsavel`, `Nutricionista`, `AdminEscola` |
 | `POST` | `/api/ocorrencias/{id}/status` | `Nutricionista`, `AdminEscola` |
@@ -132,7 +140,7 @@ memória.
 
 ```json
 { "id": 5, "tipo": "Refeicao", "status": "EmAnalise",
-  "unidadeId": 3, "alunoId": 9, "cardapioId": 12, "refeicaoId": 31,
+  "unidadeId": 3, "escolaId": 7, "alunoId": 9, "cardapioId": 12, "refeicaoId": 31,
   "alimentoId": null, "descricao": "Refeição servida com atraso.",
   "autor": "Carla", "criadoEm": "2026-10-30T11:00:00Z",
   "historico": [ { "status": "EmAnalise", "autor": "Maria",
@@ -142,8 +150,8 @@ memória.
 ## Persistência
 
 - `Ocorrencias`: FKs anuláveis para `Alunos`, `Cardapios`, `Refeicoes`, `Alimentos`
-  com `OnDelete(SetNull)`; FKs `UnidadeId` (`Restrict`); índices
-  `(UnidadeId, CriadoEmUtc)` e `(AlunoId, CriadoEmUtc)`.
+  com `OnDelete(SetNull)`; FKs `UnidadeId` e `EscolaId` (`Restrict`); índices
+  `(UnidadeId, CriadoEmUtc)`, `(EscolaId, CriadoEmUtc)` e `(AlunoId, CriadoEmUtc)`.
 - `HistoricoOcorrencias`: FK `OcorrenciaId` (`Cascade`), índice
   `(OcorrenciaId, CriadoEmUtc)`.
 - Migration `Ocorrencias`.
@@ -151,7 +159,7 @@ memória.
 ## Frontend
 
 - `pages/merendeiras/Ocorrencias.tsx`: formulário contextual (cardápio/refeição/
-  alimento) e listagem da unidade.
+  alimento) e listagem da escola.
 - `pages/pais/Ocorrencias.tsx`: restrito aos alunos vinculados; botão "Relatar" a
   partir do aluno.
 - `pages/escolas/Ocorrencias.tsx`: painel de acompanhamento com filtro de status.
@@ -165,7 +173,8 @@ memória.
 | Domínio | todas as transições válidas e inválidas |
 | Domínio | cancelar em outro dia lança |
 | Serviço | pai registrando para aluno não vinculado → 403 |
-| Serviço | escopo de listagem por papel em base com duas unidades |
+| Serviço | `EscolaId` derivado do aluno e do autor; nulo só para nutrição sem aluno |
+| Serviço | escopo de listagem por papel em base com duas unidades e duas escolas |
 | HTTP | 400/403/404/409 e contrato `{ erro }` |
 | HTTP | histórico preservado após aluno excluído |
 
@@ -177,3 +186,5 @@ memória.
   exibir autor.
 - **Cardápio/refeição excluídos**: `SetNull` preserva a ocorrência e o histórico;
   o detalhe mostra o vínculo como ausente.
+- **Legado sem escola**: ocorrência criada antes da Spec 027 fica com `EscolaId` nulo e
+  visível apenas aos papéis de unidade; não é reescrita por migration.

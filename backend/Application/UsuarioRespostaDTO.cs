@@ -15,10 +15,11 @@ public sealed record UsuarioRespostaDTO(
     PapelUsuario? Papel,
     int? EscolaId,
     int? UnidadeId,
-    bool Ativo);
+    bool Ativo,
+    string? Crn = null);
 
 /// <summary>Resposta de escola.</summary>
-public sealed record EscolaRespostaDTO(int Id, string Nome, bool Ativa);
+public sealed record EscolaRespostaDTO(int Id, string Nome, int? UnidadeId, bool Ativa);
 
 /// <summary>Resposta de unidade da rede.</summary>
 public sealed record UnidadeRespostaDTO(int Id, string Nome, bool Ativa);

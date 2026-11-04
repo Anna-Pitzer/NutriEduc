@@ -34,6 +34,8 @@ public class AlunoRepositoryFake : IAlunoRepository
         return Filtrar(filtro).FirstOrDefault(aluno => aluno.Id == id);
     }
 
+    public Aluno? ObterPorId(int id) => GetAluno(id);
+
     /// <summary>Somente para asserções dos testes; ignora escopo de propósito.</summary>
     public List<Aluno> GetAlunos() => _alunos.ToList();
 
@@ -64,9 +66,13 @@ public class AlunoRepositoryFake : IAlunoRepository
             consulta = consulta.Where(aluno => aluno.UnidadeId == unidadeId);
         }
 
-        // O fake não modela escola nem vínculo: quando o filtro depende deles, devolve
-        // vazio — o mesmo que o banco faria sem unidade ou vínculo correspondente.
-        if (filtro.EscolaId is not null || filtro.ResponsavelUsuarioId is not null)
+        // O fake modela a escola no aluno; o vínculo de responsável continua fora dele.
+        if (filtro.EscolaId is { } escolaId)
+        {
+            consulta = consulta.Where(aluno => aluno.EscolaId == escolaId);
+        }
+
+        if (filtro.ResponsavelUsuarioId is not null)
         {
             return Enumerable.Empty<Aluno>();
         }
@@ -76,6 +82,12 @@ public class AlunoRepositoryFake : IAlunoRepository
 
     public bool ExistePorUnidade(int unidadeId) =>
         _alunos.Any(aluno => aluno.UnidadeId == unidadeId);
+
+    public bool ExistePorEscola(int escolaId) =>
+        _alunos.Any(aluno => aluno.EscolaId == escolaId);
+
+    public int ContarSemEscola() =>
+        _alunos.Count(aluno => aluno.EscolaId == null);
 
     private static void DefinirId(Aluno aluno, int id)
     {

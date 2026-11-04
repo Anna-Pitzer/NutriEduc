@@ -31,6 +31,7 @@ public class ConnectionContext : DbContext
     public DbSet<ItemRefeicao> ItensRefeicao {get;set;}
     public DbSet<ParametroGeracao> ParametrosGeracao {get;set;}
     public DbSet<HistoricoCardapio> HistoricosCardapios {get;set;}
+    public DbSet<TrilhaAcao> TrilhaAcoes {get;set;}
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -92,6 +93,10 @@ public class ConnectionContext : DbContext
             .HasColumnName("Senha");
 
         modelBuilder.Entity<Usuario>()
+            .Property(usuario => usuario.Crn)
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<Usuario>()
             .HasOne<Escola>()
             .WithMany()
             .HasForeignKey(u => u.EscolaId)
@@ -110,8 +115,17 @@ public class ConnectionContext : DbContext
             .UseCollation("NOCASE");
 
         modelBuilder.Entity<Escola>()
-            .HasIndex(e => e.Nome)
-            .IsUnique();
+            .HasOne<UnidadeEscolar>()
+            .WithMany()
+            .HasForeignKey(e => e.UnidadeId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Nome único por unidade (Spec 027); o filtro preserva escolas legadas sem unidade.
+        modelBuilder.Entity<Escola>()
+            .HasIndex(e => new { e.UnidadeId, e.Nome })
+            .IsUnique()
+            .HasFilter("\"UnidadeId\" IS NOT NULL");
 
         modelBuilder.Entity<UnidadeEscolar>()
             .Property(u => u.Nome)
@@ -135,6 +149,17 @@ public class ConnectionContext : DbContext
             .WithMany()
             .HasForeignKey(a => a.UnidadeId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Escola é a fonte de verdade do vínculo institucional (Spec 027).
+        modelBuilder.Entity<Aluno>()
+            .HasOne<Escola>()
+            .WithMany()
+            .HasForeignKey(a => a.EscolaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Aluno>()
+            .HasIndex(a => a.EscolaId);
 
         // Unicidade do catálogo por categoria: a coluna normalizada resolve caixa e acento,
         // que o SQLite não compara nativamente (Spec 010, RF1).
@@ -304,6 +329,27 @@ public class ConnectionContext : DbContext
         modelBuilder.Entity<Cardapio>()
             .HasIndex(cardapio => cardapio.Situacao);
 
+        // Autoria do cardápio (Spec 027): snapshot sem FK. Os limites espelham os do
+        // cadastro de usuário; cardápios anteriores à regra ficam com texto vazio.
+        modelBuilder.Entity<Cardapio>()
+            .Property(cardapio => cardapio.NutricionistaNome)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        modelBuilder.Entity<Cardapio>()
+            .Property(cardapio => cardapio.NutricionistaEmail)
+            .HasMaxLength(150)
+            .IsRequired();
+
+        modelBuilder.Entity<Cardapio>()
+            .Property(cardapio => cardapio.NutricionistaCpf)
+            .HasMaxLength(20)
+            .IsRequired();
+
+        modelBuilder.Entity<Cardapio>()
+            .Property(cardapio => cardapio.NutricionistaCrn)
+            .HasMaxLength(20);
+
         // Ordem única por cardápio: duas refeições não podem ocupar o mesmo lugar (RF2).
         modelBuilder.Entity<Refeicao>()
             .HasIndex(refeicao => new { refeicao.CardapioId, refeicao.Ordem })
@@ -399,5 +445,23 @@ public class ConnectionContext : DbContext
 
         modelBuilder.Entity<HistoricoCardapio>()
             .HasIndex(historico => new { historico.CardapioId, historico.CriadoEmUtc });
+
+        // ---------- Trilha de ação privilegiada (Spec 028) ----------
+        modelBuilder.Entity<TrilhaAcao>(entity =>
+        {
+            entity.ToTable("TrilhaAcoes");
+            entity.HasKey(acao => acao.Id);
+            entity.Property(acao => acao.Tipo).HasMaxLength(60).IsRequired();
+            entity.Property(acao => acao.AutorNome).HasMaxLength(100).IsRequired();
+            entity.Property(acao => acao.AlvoTipo).HasMaxLength(60).IsRequired();
+            entity.Property(acao => acao.ValorAnterior).HasMaxLength(300);
+            entity.Property(acao => acao.ValorNovo).HasMaxLength(300);
+            entity.Property(acao => acao.EmUtc)
+                .HasConversion(
+                    valor => valor,
+                    valor => DateTime.SpecifyKind(valor, DateTimeKind.Utc));
+            entity.HasIndex(acao => new { acao.AlvoTipo, acao.AlvoId });
+            entity.HasIndex(acao => acao.EmUtc);
+        });
     }
 }

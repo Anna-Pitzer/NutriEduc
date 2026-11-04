@@ -27,6 +27,11 @@ public class AlunoRepository : IAlunoRepository
         return Filtrar(filtro).FirstOrDefault(aluno => aluno.Id == id);
     }
 
+    public Aluno? ObterPorId(int id)
+    {
+        return _context.Alunos.FirstOrDefault(aluno => aluno.Id == id);
+    }
+
     public void UpdateAluno(Aluno aluno)
     {
         _context.Alunos.Update(aluno);
@@ -38,8 +43,8 @@ public class AlunoRepository : IAlunoRepository
     }
 
     /// <summary>
-    /// Filtro de negócio aplicado em SQL (RNF4 da Spec 009): unidade, escola (via unidade
-    /// de origem) e responsável vinculado. Aluno sem unidade só aparece no filtro global.
+    /// Filtro de negócio aplicado em SQL (RNF4 da Spec 009): unidade, escola e responsável
+    /// vinculado. O recorte nunca é aplicado em memória (Spec 027, RNF1).
     /// </summary>
     private IQueryable<Aluno> Filtrar(FiltroAluno filtro)
     {
@@ -52,12 +57,7 @@ public class AlunoRepository : IAlunoRepository
 
         if (filtro.EscolaId is { } escolaId)
         {
-            var unidadesDaEscola = _context.Unidades
-                .Where(unidade => unidade.EscolaId == escolaId);
-
-            alunos = alunos.Where(aluno =>
-                aluno.UnidadeId != null &&
-                unidadesDaEscola.Any(unidade => unidade.Id == aluno.UnidadeId));
+            alunos = alunos.Where(aluno => aluno.EscolaId == escolaId);
         }
 
         if (filtro.ResponsavelUsuarioId is { } usuarioId)
@@ -74,4 +74,10 @@ public class AlunoRepository : IAlunoRepository
 
     public bool ExistePorUnidade(int unidadeId) =>
         _context.Alunos.Any(aluno => aluno.UnidadeId == unidadeId);
+
+    public bool ExistePorEscola(int escolaId) =>
+        _context.Alunos.Any(aluno => aluno.EscolaId == escolaId);
+
+    public int ContarSemEscola() =>
+        _context.Alunos.Count(aluno => aluno.EscolaId == null);
 }

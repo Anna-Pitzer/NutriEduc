@@ -13,8 +13,11 @@ public sealed record EscopoUsuario(
     int? EscolaId,
     int? UnidadeId)
 {
-    /// <summary>Nutricionista e AdminSecretaria enxergam toda a rede.</summary>
-    public bool Global => Papel is PapelUsuario.AdminSecretaria or PapelUsuario.Nutricionista;
+    /// <summary>
+    /// Papéis que enxergam toda a unidade (nunca outra): AdminSecretaria e Nutricionista.
+    /// </summary>
+    public bool EscopoDeUnidade =>
+        Papel is PapelUsuario.AdminSecretaria or PapelUsuario.Nutricionista;
 
     /// <summary>Papéis que administram usuários (RF4, RF5).</summary>
     public bool Administra => Papel is PapelUsuario.AdminSecretaria or PapelUsuario.AdminEscola;

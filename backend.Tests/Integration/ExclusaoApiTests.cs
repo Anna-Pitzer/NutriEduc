@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Ntc.Domain.Entity;
+using Ntc.Domain.Interface;
 using Xunit;
 
 namespace Backend.Tests.Integration;
@@ -21,16 +23,17 @@ public class ExclusaoApiTests : IClassFixture<ApiFactory>
 
     private static string Nome(string prefixo) => $"{prefixo} {Guid.NewGuid():N}";
 
-    private static async Task<int> CriarEscola(HttpClient admin)
+    private async Task<int> CriarEscola(HttpClient admin)
     {
-        var resposta = await admin.PostAsJsonAsync("/api/escolas", new { nome = Nome("Escola") });
+        var resposta = await admin.PostAsJsonAsync("/api/escolas", new
+        {
+            nome = Nome("Escola"),
+            unidadeId = _factory.UnidadeIdPadrao
+        });
         resposta.EnsureSuccessStatusCode();
 
         return (await Ler(resposta)).GetProperty("id").GetInt32();
     }
-
-    /// <summary>Unidade nasce no bootstrap; aqui ela é criada direto no repositório.</summary>
-    private int CriarUnidade() => _factory.CriarEscolaComUnidade().UnidadeId;
 
     private static async Task<(int Id, string Email)> CriarUsuario(
         HttpClient admin,
@@ -56,7 +59,7 @@ public class ExclusaoApiTests : IClassFixture<ApiFactory>
         return ((await Ler(resposta)).GetProperty("id").GetInt32(), email);
     }
 
-    private static async Task<int> CriarAluno(HttpClient admin, int unidadeId)
+    private static async Task<int> CriarAluno(HttpClient admin, int escolaId)
     {
         var resposta = await admin.PostAsJsonAsync("/api/aluno/registrar", new
         {
@@ -70,7 +73,7 @@ public class ExclusaoApiTests : IClassFixture<ApiFactory>
             anafilaxia = false,
             nomeResponsavel = "Maria Teste",
             telefoneResponsavel = "11988888888",
-            unidadeId
+            escolaId
         });
         resposta.EnsureSuccessStatusCode();
 
@@ -105,22 +108,24 @@ public class ExclusaoApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Unidade_SemReferencias_Exclui204()
+    public async Task Unidade_ComAdminDaPropriaUnidade_Retorna409()
     {
         var admin = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
-        var unidadeId = CriarUnidade();
+        var perfil = await Ler(await admin.GetAsync("/api/usuario/me"));
+        var unidadeId = perfil.GetProperty("unidadeId").GetInt32();
 
         var resposta = await admin.DeleteAsync($"/api/unidades/{unidadeId}");
 
-        Assert.Equal(HttpStatusCode.NoContent, resposta.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, resposta.StatusCode);
     }
 
     [Fact]
     public async Task Unidade_ComUsuarioVinculado_Retorna409()
     {
         var admin = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
+        var perfil = await Ler(await admin.GetAsync("/api/usuario/me"));
+        var unidadeId = perfil.GetProperty("unidadeId").GetInt32();
         var escolaId = await CriarEscola(admin);
-        var unidadeId = CriarUnidade();
         await CriarUsuario(admin, PapelUsuario.Merendeira, escolaId, unidadeId);
 
         var resposta = await admin.DeleteAsync($"/api/unidades/{unidadeId}");
@@ -132,9 +137,10 @@ public class ExclusaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Unidade_ComAlunoVinculado_Retorna409()
     {
-        var admin = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
-        var unidadeId = CriarUnidade();
-        await CriarAluno(admin, unidadeId);
+        var (escolaId, unidadeId) = _factory.CriarEscolaComUnidade();
+        var admin = await _factory.CreateAuthenticatedClientAsync(
+            PapelUsuario.AdminSecretaria, unidadeId: unidadeId);
+        await CriarAluno(admin, escolaId);
 
         var resposta = await admin.DeleteAsync($"/api/unidades/{unidadeId}");
 

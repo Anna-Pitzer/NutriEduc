@@ -95,6 +95,9 @@ namespace backend.Migrations
                     b.Property<bool>("Anafilaxia")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("EscolaId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateOnly>("Nascimento")
                         .HasColumnType("TEXT");
 
@@ -149,6 +152,8 @@ namespace backend.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EscolaId");
+
                     b.HasIndex("UnidadeId");
 
                     b.ToTable("Alunos");
@@ -171,6 +176,28 @@ namespace backend.Migrations
 
                     b.Property<string>("Nome")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NutricionistaCpf")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NutricionistaCrn")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NutricionistaEmail")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("NutricionistaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NutricionistaNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("PublicadoEmUtc")
@@ -275,10 +302,14 @@ namespace backend.Migrations
                         .HasColumnType("TEXT")
                         .UseCollation("NOCASE");
 
+                    b.Property<int?>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("Nome")
-                        .IsUnique();
+                    b.HasIndex("UnidadeId", "Nome")
+                        .IsUnique()
+                        .HasFilter("\"UnidadeId\" IS NOT NULL");
 
                     b.ToTable("Escolas");
                 });
@@ -497,6 +528,53 @@ namespace backend.Migrations
                     b.ToTable("TokensDeCadastro");
                 });
 
+            modelBuilder.Entity("Ntc.Domain.Entity.TrilhaAcao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AlvoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AlvoTipo")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AutorId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AutorNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ValorAnterior")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ValorNovo")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmUtc");
+
+                    b.HasIndex("AlvoTipo", "AlvoId");
+
+                    b.ToTable("TrilhaAcoes", (string)null);
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.UnidadeEscolar", b =>
                 {
                     b.Property<int>("Id")
@@ -536,6 +614,10 @@ namespace backend.Migrations
                         .HasDefaultValue(true);
 
                     b.Property<string>("Cpf")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Crn")
+                        .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
                     b.Property<DateOnly>("DataNascimento")
@@ -623,6 +705,11 @@ namespace backend.Migrations
 
             modelBuilder.Entity("Ntc.Domain.Entity.Aluno", b =>
                 {
+                    b.HasOne("Ntc.Domain.Entity.Escola", null)
+                        .WithMany()
+                        .HasForeignKey("EscolaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
                         .WithMany()
                         .HasForeignKey("UnidadeId")
@@ -650,6 +737,14 @@ namespace backend.Migrations
                         .HasForeignKey("UnidadeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Escola", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.HistoricoAluno", b =>

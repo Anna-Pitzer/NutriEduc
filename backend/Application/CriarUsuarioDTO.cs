@@ -31,6 +31,10 @@ public class CriarUsuarioDTO
     public string? Telefone { get; set; }
     public string? Foto { get; set; }
 
+    /// <summary>Registro no conselho de nutrição; identifica a autora do cardápio.</summary>
+    [StringLength(20, ErrorMessage = "O CRN deve ter no máximo 20 caracteres.")]
+    public string? Crn { get; set; }
+
     [Required(ErrorMessage = "O papel é obrigatório.")]
     public PapelUsuario? Papel { get; set; }
 

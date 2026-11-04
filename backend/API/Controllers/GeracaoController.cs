@@ -19,7 +19,7 @@ public class GeracaoController : RespostaController
         _geracao = geracao;
     }
 
-    [Authorize(Policy = "Nutricionista")]
+    [Authorize(Policy = "ParametroGeracaoLeitura")]
     [HttpGet("unidades/{unidadeId:int}/parametros-geracao")]
     public IActionResult Obter(int unidadeId)
         => Traduzir(_geracao.ObterParametros(unidadeId), Ok);

@@ -15,6 +15,12 @@ public class Usuario {
     public string? Foto{get;private set;}
 
     /// <summary>
+    /// Registro profissional no Conselho Regional de Nutricionistas. Nulo para papéis que não
+    /// são nutrição e para cadastros anteriores. É snapshot no cardápio, nunca FK.
+    /// </summary>
+    public string? Crn {get;private set;}
+
+    /// <summary>
     /// Hash da senha. Interno de propósito (Spec 024, F8): material de autenticação não é
     /// parte do contrato da entidade — o exterior só pergunta <see cref="SenhaConfere"/>.
     /// Persistido na coluna <c>Senha</c> por configuração explícita no mapeamento.
@@ -24,7 +30,7 @@ public class Usuario {
     /// <summary>
     /// Nulo significa "aguardando definição de papel". O tipo é anulável de propósito:
     /// o valor 0 do enum é <see cref="PapelUsuario.Nutricionista"/> e um `default`
-    /// acidental daria escopo global a registros legados.
+    /// acidental daria um escopo indevido a registros legados.
     /// </summary>
     public PapelUsuario? Papel {get;private set;}
 
@@ -45,7 +51,8 @@ public class Usuario {
     /// autocadastro; a conta só autentica depois que um administrador define o papel.
     /// </summary>
     public Usuario(string nome, string cpf, DateOnly dataNascimento, string email,
-                   PapelUsuario? papel = null, int? escolaId = null, int? unidadeId = null)
+                   PapelUsuario? papel = null, int? escolaId = null, int? unidadeId = null,
+                   string? crn = null)
     {
         // `DateOnly` é struct: um JSON sem `dataNascimento` chega como 0001-01-01 e passaria
         // pela validação de modelo. A invariante é do domínio (ADR-004), não do DTO.
@@ -58,13 +65,15 @@ public class Usuario {
         Cpf = cpf;
         DataNascimento = dataNascimento;
         DefinirPapel(papel, escolaId, unidadeId);
+        DefinirCrn(crn);
         Ativo = true;
     }   
 
     /// <summary>
-    /// Define o papel e o escopo. As regras de combinação são do domínio, não do
-    /// serviço: AdminEscola, Merendeira e Responsável exigem escola; unidade só se
-    /// aplica a Merendeira e Responsável; Nutricionista e AdminSecretaria são globais.
+    /// Define o papel e o escopo (Spec 027, RF6). A unidade é o escopo de
+    /// `AdminSecretaria` e `Nutricionista`; escola é o escopo de `AdminEscola` e
+    /// `Merendeira`; `Responsavel` guarda apenas a unidade administrativa de origem e
+    /// nunca uma escola.
     /// </summary>
     public void DefinirPapel(PapelUsuario? papel, int? escolaId, int? unidadeId)
     {
@@ -82,25 +91,45 @@ public class Usuario {
             return;
         }
 
-        var exigeEscola = papel is PapelUsuario.AdminEscola
-            or PapelUsuario.Merendeira
-            or PapelUsuario.Responsavel;
-
-        if (exigeEscola && escolaId is null)
+        switch (papel.Value)
         {
-            throw new ArgumentException("Este papel exige escola.");
-        }
+            case PapelUsuario.AdminSecretaria:
+            case PapelUsuario.Nutricionista:
+                if (escolaId is not null)
+                {
+                    throw new ArgumentException("Este papel não pertence a uma escola.");
+                }
 
-        if (!exigeEscola && escolaId is not null)
-        {
-            throw new ArgumentException("Este papel não pertence a uma escola.");
-        }
+                if (unidadeId is null)
+                {
+                    throw new ArgumentException("Este papel exige unidade.");
+                }
 
-        if (unidadeId is not null &&
-            papel is not (PapelUsuario.Merendeira or PapelUsuario.Responsavel or PapelUsuario.AdminSecretaria))
-        {
-            throw new ArgumentException(
-                "Unidade só se aplica a merendeira, responsável ou secretaria.");
+                break;
+
+            case PapelUsuario.AdminEscola:
+            case PapelUsuario.Merendeira:
+                if (escolaId is null)
+                {
+                    throw new ArgumentException("Este papel exige escola.");
+                }
+
+                break;
+
+            case PapelUsuario.Responsavel:
+                if (escolaId is not null)
+                {
+                    throw new ArgumentException(
+                        "O responsável não pertence a uma escola.");
+                }
+
+                if (unidadeId is null)
+                {
+                    throw new ArgumentException(
+                        "O responsável exige a unidade administrativa de origem.");
+                }
+
+                break;
         }
 
         Papel = papel;
@@ -111,6 +140,28 @@ public class Usuario {
     public void Desativar() => Ativo = false;
 
     public void Reativar() => Ativo = true;
+
+    /// <summary>
+    /// Registro do conselho de nutrição, usado para identificar a autora do cardápio.
+    /// Valor em branco significa "não informado" e é gravado como nulo.
+    /// </summary>
+    public void DefinirCrn(string? crn)
+    {
+        if (string.IsNullOrWhiteSpace(crn))
+        {
+            Crn = null;
+            return;
+        }
+
+        var valor = crn.Trim().ToUpperInvariant().Replace(" ", string.Empty);
+
+        if (valor.Length < 3 || valor.Length > 20)
+        {
+            throw new ArgumentException("O CRN deve ter entre 3 e 20 caracteres.");
+        }
+
+        Crn = valor;
+    }
 
     public void AtualizarPerfil(string nome, string email)
     {

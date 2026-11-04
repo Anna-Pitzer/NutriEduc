@@ -30,7 +30,7 @@ public class AlimentoController : RespostaController
     /// Listagem paginada com busca, categoria, inativos (exclusivo da nutrição) e
     /// ordenação por nome, categoria ou mais recentes.
     /// </summary>
-    [Authorize(Policy = "SessaoValida")]
+    [Authorize(Policy = "CatalogoDeAlimentosLeitura")]
     [HttpGet]
     public IActionResult Listar(
         [FromQuery] string? busca,
@@ -53,7 +53,7 @@ public class AlimentoController : RespostaController
             Ok);
     }
 
-    [Authorize(Policy = "SessaoValida")]
+    [Authorize(Policy = "CatalogoDeAlimentosLeitura")]
     [HttpGet("{id:int}")]
     public IActionResult Obter(int id)
     {

@@ -27,6 +27,7 @@ const usuarioVazio = {
     senha: "",
     papel: "Nutricionista" as PapelUsuario,
     escolaId: "" as number | "",
+    crn: "",
 };
 
 export function Usuarios() {
@@ -139,6 +140,7 @@ export function Usuarios() {
                 senha: novo.senha,
                 papel: novo.papel,
                 escolaId: exigeEscola(novo.papel) && novo.escolaId !== "" ? novo.escolaId : null,
+                crn: novo.crn.trim() === "" ? null : novo.crn.trim(),
             });
 
             setNovo(usuarioVazio);
@@ -252,6 +254,8 @@ export function Usuarios() {
                 unidadeId: edicao.papel === "AdminSecretaria" && edicao.unidadeId !== ""
                     ? edicao.unidadeId
                     : null,
+                // Reenviado para não apagar o CRN ao trocar apenas o papel.
+                crn: usuario.crn,
             });
 
             setUsuarios((atuais) => atuais.map((item) => (item.id === usuario.id ? atualizado : item)));
@@ -378,6 +382,20 @@ export function Usuarios() {
                             ))}
                         </select>
                     </div>
+
+                    {novo.papel === "Nutricionista" && (
+                        <div className="flex flex-col gap-1">
+                            <label htmlFor="crn" className="text-sm font-medium text-gray-700">CRN</label>
+                            <input
+                                id="crn"
+                                maxLength={20}
+                                placeholder="Ex.: CRN-3 12345"
+                                value={novo.crn}
+                                onChange={(evento) => atualizarCampo("crn", evento.target.value)}
+                                className="h-11 rounded-2xl border border-gray-200 px-4 text-sm outline-none focus:border-roxo"
+                            />
+                        </div>
+                    )}
 
                     {exigeEscola(novo.papel) && (
                         <div className="flex flex-col gap-1">

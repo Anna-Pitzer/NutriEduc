@@ -120,7 +120,12 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
     {
         using var scope = _factory.Services.CreateScope();
         var alunos = scope.ServiceProvider.GetRequiredService<IAlunoRepository>();
+        var escolas = scope.ServiceProvider.GetRequiredService<IEscolaRepository>();
         var unidadeDeTrabalho = scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
+
+        var escolaId = escolas.ListarPorUnidade(unidadeId).FirstOrDefault()?.Id
+            ?? throw new InvalidOperationException(
+                $"Unidade {unidadeId} não possui escola para vincular o aluno.");
 
         var aluno = new Aluno(
             $"Aluno {Guid.NewGuid():N}",
@@ -130,7 +135,8 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
             null,
             new[] { restricao },
             false,
-            new Responsavel("Ana Silva", "11988888888"));
+            new Responsavel("Ana Silva", "11988888888"),
+            escolaId);
 
         aluno.DefinirUnidade(unidadeId);
 

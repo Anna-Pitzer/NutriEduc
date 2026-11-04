@@ -1,7 +1,7 @@
 ---
 name: relatorios-e-exportacao
 status: created
-references: V6, ADR-004, L6
+references: V6, V16, V17, V18, ADR-020, ADR-021, ADR-022, ADR-004, L6
 ---
 
 # Design — Relatórios e exportação
@@ -62,15 +62,16 @@ public interface IRelatorio
 
 `FiltroRelatorio` é validado no serviço:
 `de <= ate`, intervalo ≤ 366 dias, `escolaId`/`unidadeId` coerentes com o escopo.
+Valor de escopo fora do alcance da sessão devolve 403, sem consultar dados.
 Datas são `DateOnly` na entrada e convertidas para UTC apenas na serialização.
 
 ## Catálogo
 
 | Tipo | Colunas principais | Ordenação |
 |---|---|---|
-| `Cardapios` | unidade, nome, início, fim, situação, versão, kcal total | unidade, início, nome |
-| `AlunosRestricoes` | aluno, unidade, restrições, anafilaxia | unidade, aluno |
-| `Ocorrencias` | data, tipo, status, unidade, aluno, descrição (120 chars) | data desc, id |
+| `Cardapios` | tipo (Geral/Adaptado), origem, unidade, nome, início, fim, situação, versão, kcal total | unidade, tipo, início, nome |
+| `AlunosRestricoes` | aluno, escola, unidade, restrições, anafilaxia | unidade, escola, aluno |
+| `Ocorrencias` | data, tipo, status, unidade, escola, aluno, descrição (120 chars) | data desc, id |
 | `SolicitacoesFeedbacks` | tipo, status, solicitante, unidade, criado em, atualizado em | criado em desc, id |
 | `IndicadoresAdministrativos` | indicador, valor | ordem fixa do catálogo |
 
@@ -82,15 +83,15 @@ consulta, não no exportador.
 `RelatorioService` resolve o escopo antes de delegar:
 
 ```text
-Nutricionista    → todos os tipos, sem filtro obrigatório
-AdminSecretaria  → IndicadoresAdministrativos, SolicitacoesFeedbacks (global)
-AdminEscola      → AlunosRestricoes, Ocorrencias, SolicitacoesFeedbacks,
-                   IndicadoresAdministrativos (forçado à escola da sessão)
+Nutricionista    → todos os tipos, forçado à unidade da sessão
+AdminSecretaria  → todos os tipos, forçado à unidade da sessão
+AdminEscola      → todos os tipos, forçado à escola da sessão
 Merendeira       → 403
 Responsavel      → 403
 ```
 
-`escolaId` enviado fora do escopo de `AdminEscola` → 403, sem consultar dados.
+`escolaId`/`unidadeId` enviados fora do escopo → 403, sem consultar dados. Recurso de
+outra unidade → 404; recurso da mesma unidade fora da escola → 403 (Spec 028).
 
 ## Exportadores
 
@@ -119,8 +120,8 @@ adicionar um formato novo não altera a montagem.
 
 | Método | Rota | Política |
 |---|---|---|
-| `GET` | `/api/relatorios/{tipo}/preview?de=&ate=&escolaId=&unidadeId=` | por escopo |
-| `GET` | `/api/relatorios/{tipo}/exportar?formato=&de=&ate=&escolaId=&unidadeId=` | por escopo |
+| `GET` | `/api/relatorios/{tipo}/preview?de=&ate=&escolaId=&unidadeId=` | por escopo; 403 fora dele |
+| `GET` | `/api/relatorios/{tipo}/exportar?formato=&de=&ate=&escolaId=&unidadeId=` | por escopo; 403 fora dele |
 
 ```json
 { "tipo": "Ocorrencias", "titulo": "Ocorrências por período",
@@ -142,8 +143,9 @@ filename="relatorio-ocorrencias-202610301300.pdf"`.
 
 ## Frontend
 
-- `pages/nutricao/relatorios/` e `pages/escolas/relatorios/` com seleção de tipo,
-  filtros de data/escola/unidade, tabela de pré-visualização, totais e três botões.
+- `pages/nutricao/relatorios/`, `pages/secretaria/relatorios/` e
+  `pages/escolas/relatorios/` com seleção de tipo, filtros de data/escola/unidade,
+  tabela de pré-visualização, totais e três botões.
 - Download via `fetch` + `Blob` para preservar o `Content-Disposition` e o cookie de
   sessão; nenhuma biblioteca de exportação no cliente.
 
@@ -153,7 +155,8 @@ filename="relatorio-ocorrencias-202610301300.pdf"`.
 |---|---|
 | Serviço | totais de cada relatório conferem com base fixa |
 | Serviço | escopo de `AdminEscola` restringe escola e 403 fora dela |
-| Serviço | `Cardapios` por `AdminEscola` → 403 |
+| Serviço | `Nutricionista` não vê outra unidade; 404 entre unidades |
+| Serviço | `Merendeira` e `Responsavel` → 403 em qualquer tipo |
 | Serviço | período > 366 dias → 400 |
 | Exportação | PDF inicia com `%PDF`; XLSX/DOCX iniciam com `PK` |
 | Exportação | nome e extensão por formato |
@@ -170,3 +173,5 @@ filename="relatorio-ocorrencias-202610301300.pdf"`.
   materializações descontroladas.
 - **Divergência entre preview e exportação**: ambos usam o mesmo `IRelatorio`; o
   exportador só recebe `RelatorioGerado`, nunca monta consulta própria.
+- **Escopo herdado global**: relatório de `Nutricionista` não pode mais ser global; a
+  mudança é de consulta, não de catálogo. Teste com duas unidades impede regressão.

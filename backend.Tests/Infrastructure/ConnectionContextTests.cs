@@ -55,6 +55,7 @@ public class ConnectionContextTests
             {
                 "Anafilaxia",
                 "Escola",
+                "EscolaId",
                 "Id",
                 "Nascimento",
                 "Nome",

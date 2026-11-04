@@ -67,8 +67,23 @@ public static class CardapioMapper
             Situacao = cardapio.Situacao,
             Periodo = new PeriodoCardapioDTO(cardapio.Periodo),
             CardapioDuplicadoDeId = cardapio.CardapioDuplicadoDeId,
+            Nutricionista = ParaNutricionista(cardapio),
             Refeicoes = refeicoes,
             Total = new ValoresNutricionaisDTO(CalculoNutricional.Somar(totaisPorRefeicao))
         };
     }
+
+    /// <summary>
+    /// Retrato da autoria (Spec 027). Cardápio sem responsável informado — anterior à regra —
+    /// devolve nulo para o frontend não exibir autor inventado.
+    /// </summary>
+    private static NutricionistaDTO? ParaNutricionista(Cardapio cardapio) =>
+        cardapio.NutricionistaId is null && cardapio.NutricionistaNome.Length == 0
+            ? null
+            : new NutricionistaDTO(
+                cardapio.NutricionistaId ?? 0,
+                cardapio.NutricionistaNome,
+                cardapio.NutricionistaEmail,
+                cardapio.NutricionistaCpf,
+                cardapio.NutricionistaCrn);
 }

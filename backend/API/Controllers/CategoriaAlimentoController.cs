@@ -21,7 +21,7 @@ public class CategoriaAlimentoController : RespostaController
         _escopo = escopo;
     }
 
-    [Authorize(Policy = "SessaoValida")]
+    [Authorize(Policy = "CatalogoDeAlimentosLeitura")]
     [HttpGet]
     public IActionResult Listar([FromQuery] bool incluirInativas = false)
     {

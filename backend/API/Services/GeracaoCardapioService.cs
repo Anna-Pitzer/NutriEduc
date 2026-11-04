@@ -17,6 +17,7 @@ public sealed class GeracaoCardapioService
     private readonly IAlimentoRepository _alimentos;
     private readonly IAlunoRepository _alunos;
     private readonly ICardapioRepository _cardapios;
+    private readonly IUsuarioRepository _usuarios;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
 
     public GeracaoCardapioService(
@@ -24,12 +25,14 @@ public sealed class GeracaoCardapioService
         IAlimentoRepository alimentos,
         IAlunoRepository alunos,
         ICardapioRepository cardapios,
+        IUsuarioRepository usuarios,
         IUnidadeDeTrabalho unidadeDeTrabalho)
     {
         _parametros = parametros;
         _alimentos = alimentos;
         _alunos = alunos;
         _cardapios = cardapios;
+        _usuarios = usuarios;
         _unidadeDeTrabalho = unidadeDeTrabalho;
     }
 
@@ -96,6 +99,20 @@ public sealed class GeracaoCardapioService
             return Resultado<GeracaoCardapioDTO>.Invalido(
                 "Parâmetros de geração não configurados para a unidade.");
 
+        if (dto.NutricionistaId <= 0)
+            return Resultado<GeracaoCardapioDTO>.Invalido(
+                "Selecione a nutricionista responsável pelo cardápio.");
+
+        var nutricionista = _usuarios.GetById(dto.NutricionistaId);
+
+        if (nutricionista is null || nutricionista.Papel != PapelUsuario.Nutricionista)
+            return Resultado<GeracaoCardapioDTO>.Invalido(
+                "Selecione uma nutricionista válida para o cardápio.");
+
+        if (!nutricionista.Ativo)
+            return Resultado<GeracaoCardapioDTO>.Invalido(
+                "A nutricionista selecionada está inativa.");
+
         // Determinismo: os candidatos são carregados já ordenados por id, antes do embaralhamento.
         var alimentos = _alimentos.ListarAtivosComVinculos();
         var candidatos = alimentos
@@ -126,7 +143,7 @@ public sealed class GeracaoCardapioService
             bloqueados,
             seed));
 
-        var cardapio = MontarCardapio(dto, resultado);
+        var cardapio = MontarCardapio(dto, resultado, nutricionista);
 
         _unidadeDeTrabalho.ExecutarEmTransacao(() => _cardapios.Add(cardapio));
 
@@ -160,7 +177,10 @@ public sealed class GeracaoCardapioService
             .ToHashSet();
     }
 
-    private static Cardapio MontarCardapio(GerarCardapioDTO dto, ResultadoGeracao resultado)
+    private static Cardapio MontarCardapio(
+        GerarCardapioDTO dto,
+        ResultadoGeracao resultado,
+        Usuario nutricionista)
     {
         var refeicoes = resultado.Refeicoes
             .Select(refeicao => new Refeicao(
@@ -169,11 +189,19 @@ public sealed class GeracaoCardapioService
                 refeicao.Itens.Select(item => new ItemRefeicao(item.AlimentoId, GramasPorcao))))
             .ToList();
 
+        var responsavel = new NutricionistaResponsavel(
+            nutricionista.Id,
+            nutricionista.Nome,
+            nutricionista.Email,
+            nutricionista.Cpf,
+            nutricionista.Crn);
+
         return new Cardapio(
             dto.Nome,
             dto.UnidadeId,
             new PeriodoVigencia(dto.Periodo!.Inicio, dto.Periodo.Fim),
-            refeicoes);
+            refeicoes,
+            nutricionista: responsavel);
     }
 
     private static ParametroGeracaoDTO ParaDTO(ParametroGeracao parametro) => new()

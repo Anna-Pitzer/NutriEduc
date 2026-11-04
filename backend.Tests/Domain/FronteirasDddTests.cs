@@ -97,13 +97,13 @@ public class PoliticaDeExclusaoTests
 public class FiltrosDeConsultaTests
 {
     [Fact]
-    public void Aluno_PapeisGlobais_NaoFiltram()
+    public void Aluno_PapeisDeUnidade_FiltramPorUnidade()
     {
-        var nutricionista = new EscopoUsuario(1, PapelUsuario.Nutricionista, null, null);
-        var secretaria = new EscopoUsuario(2, PapelUsuario.AdminSecretaria, null, null);
+        var nutricionista = new EscopoUsuario(1, PapelUsuario.Nutricionista, null, 12);
+        var secretaria = new EscopoUsuario(2, PapelUsuario.AdminSecretaria, null, 12);
 
-        Assert.Equal(FiltroAluno.Todos, FiltrosDeConsulta.ParaAluno(nutricionista));
-        Assert.Equal(FiltroAluno.Todos, FiltrosDeConsulta.ParaAluno(secretaria));
+        Assert.Equal(new FiltroAluno(UnidadeId: 12), FiltrosDeConsulta.ParaAluno(nutricionista));
+        Assert.Equal(new FiltroAluno(UnidadeId: 12), FiltrosDeConsulta.ParaAluno(secretaria));
     }
 
     [Fact]
@@ -115,11 +115,11 @@ public class FiltrosDeConsultaTests
     }
 
     [Fact]
-    public void Aluno_Merendeira_FiltraPorUnidade()
+    public void Aluno_Merendeira_FiltraPorEscola()
     {
         var escopo = new EscopoUsuario(4, PapelUsuario.Merendeira, 9, 12);
 
-        Assert.Equal(new FiltroAluno(UnidadeId: 12), FiltrosDeConsulta.ParaAluno(escopo));
+        Assert.Equal(new FiltroAluno(EscolaId: 9), FiltrosDeConsulta.ParaAluno(escopo));
     }
 
     [Fact]
@@ -148,11 +148,11 @@ public class FiltrosDeConsultaTests
     }
 
     [Fact]
-    public void Usuario_Global_MantemFiltroDaRequisicao()
+    public void Usuario_SemUnidade_NaoVeNada()
     {
         var escopo = new EscopoUsuario(8, PapelUsuario.AdminSecretaria, null, null);
         var filtro = new FiltroUsuarios(PapelUsuario.Merendeira, 4, null, true, null);
 
-        Assert.Equal(filtro, FiltrosDeConsulta.ParaUsuario(filtro, escopo));
+        Assert.Equal(-1, FiltrosDeConsulta.ParaUsuario(filtro, escopo).UnidadeId);
     }
 }

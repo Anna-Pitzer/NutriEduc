@@ -7,7 +7,14 @@ public interface IEscolaRepository
     Escola Add(Escola escola);
     Escola? GetEscola(int id);
     List<Escola> Listar();
-    bool ExisteNome(string nome, int? ignorarId = null);
+
+    /// <summary>Escolas da unidade, no SQL (Spec 027).</summary>
+    List<Escola> ListarPorUnidade(int unidadeId);
+
+    /// <summary>Escola específica, usada pelo escopo de AdminEscola/Merendeira.</summary>
+    List<Escola> ListarPorEscola(int escolaId);
+
+    bool ExisteNome(string nome, int unidadeId, int? ignorarId = null);
     void Update(Escola escola);
 
     UnidadeEscolar AddUnidade(UnidadeEscolar unidade);
@@ -29,4 +36,7 @@ public interface IEscolaRepository
 
     /// <summary>True quando alguma unidade ainda guarda esta escola como origem (legado).</summary>
     bool ExisteUnidadeDaEscola(int escolaId);
+
+    /// <summary>Contagem de legado: escolas sem unidade (Spec 027, T9).</summary>
+    int ContarSemUnidade();
 }

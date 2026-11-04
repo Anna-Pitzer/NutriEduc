@@ -50,8 +50,12 @@ export default function Header() {
                 />
             </svg>
 
-            {/* Mesma coluna de conteúdo das páginas: as ações ficam alinhadas ao cartão. */}
-            <div className="relative z-10 mx-auto flex h-full w-full max-w-7xl items-start justify-between px-4 py-8 md:px-6">
+            {/*
+              Mesma coluna de conteúdo das páginas: as ações ficam alinhadas ao cartão.
+              O padding direito é maior que o esquerdo de propósito: as ações (Sair/Perfil)
+              encostavam na borda direita e na parte mais fina da curva rosa.
+            */}
+            <div className="relative z-10 mx-auto flex h-full w-full max-w-7xl items-start justify-between py-8 pl-4 pr-8 md:pl-6 md:pr-12">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-branco md:text-5xl lg:text-6xl">NutriEduc</h1>
                     <p className=" mt-1 text-sm font-light text-white/75 md:text-base">Alimentação que educa, nutrição que transforma</p>

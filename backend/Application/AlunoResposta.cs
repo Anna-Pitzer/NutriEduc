@@ -17,5 +17,6 @@ public sealed record AlunoResposta
     public bool Anafilaxia { get; init; }
     public string NomeResponsavel { get; init; } = string.Empty;
     public string TelefoneResponsavel { get; init; } = string.Empty;
+    public int? EscolaId { get; init; }
     public int? UnidadeId { get; init; }
 }

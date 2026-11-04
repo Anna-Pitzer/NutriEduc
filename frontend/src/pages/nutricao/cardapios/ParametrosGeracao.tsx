@@ -12,6 +12,7 @@ import {
     type ParametroGeracao,
 } from "../../../services/GeracaoApi";
 import { listarUnidades, type Unidade } from "../../../services/UnidadeApi";
+import { listarNutricionistas, type Nutricionista } from "../../../services/NutricionistaApi";
 
 /**
  * Tela de parâmetros de geração automática (Spec 013, RF12): a nutrição configura a faixa
@@ -23,7 +24,9 @@ export function ParametrosGeracao() {
 
     const [unidades, setUnidades] = useState<Unidade[]>([]);
     const [unidadeId, setUnidadeId] = useState<number | "">("");
-    const [parametro, setParametro] = useState<ParametroGeracao | null>(null);
+    const [nutricionistas, setNutricionistas] = useState<Nutricionista[]>([]);
+    const [nutricionistaId, setNutricionistaId] = useState<number | "">("");
+    const [, setParametro] = useState<ParametroGeracao | null>(null);
 
     const [caloriasMinimas, setCaloriasMinimas] = useState(0);
     const [caloriasMaximas, setCaloriasMaximas] = useState(500);
@@ -46,6 +49,10 @@ export function ParametrosGeracao() {
         listarUnidades()
             .then(setUnidades)
             .catch(() => setUnidades([]));
+
+        listarNutricionistas()
+            .then(setNutricionistas)
+            .catch(() => setNutricionistas([]));
     }, []);
 
     useEffect(() => {
@@ -112,6 +119,11 @@ export function ParametrosGeracao() {
             return;
         }
 
+        if (nutricionistaId === "") {
+            setErro("Selecione a nutricionista responsável pelo cardápio.");
+            return;
+        }
+
         setErro(null);
         setMensagem(null);
         setCarregando(true);
@@ -119,6 +131,7 @@ export function ParametrosGeracao() {
         try {
             const gerado = await gerarCardapio({
                 unidadeId: Number(unidadeId),
+                nutricionistaId: Number(nutricionistaId),
                 nome: nome.trim(),
                 periodo: { inicio, fim },
                 seed: seed.trim() === "" ? undefined : Number(seed),
@@ -173,6 +186,9 @@ export function ParametrosGeracao() {
                                     </option>
                                 ))}
                             </select>
+                            <p className="mt-1 text-xs text-gray-500">
+                                O cardápio gerado vale para todas as escolas desta unidade.
+                            </p>
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
@@ -258,6 +274,25 @@ export function ParametrosGeracao() {
                     <div className="my-5 w-full border border-gray-200 rounded-3xl" />
 
                     <div className="grid gap-4 md:grid-cols-2">
+                        <div className="flex flex-col">
+                            <label htmlFor="inNutricionista">Nutricionista responsável</label>
+                            <select
+                                id="inNutricionista"
+                                value={nutricionistaId}
+                                onChange={(evento) =>
+                                    setNutricionistaId(evento.target.value === "" ? "" : Number(evento.target.value))
+                                }
+                                className="h-12 rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-600 outline-none focus:border-roxo focus:ring-4 focus:ring-roxo/10"
+                            >
+                                <option value="">Selecione a nutricionista</option>
+                                {nutricionistas.map((nutricionista) => (
+                                    <option key={nutricionista.id} value={nutricionista.id}>
+                                        {nutricionista.nome}
+                                        {nutricionista.crn ? ` — CRN ${nutricionista.crn}` : ""}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="flex flex-col">
                             <label htmlFor="inNome">Nome do cardápio</label>
                             <input

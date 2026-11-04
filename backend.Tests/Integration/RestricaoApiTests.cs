@@ -22,7 +22,7 @@ public class RestricaoApiTests : IClassFixture<ApiFactory>
 
     private static object PayloadAluno(
         string nome,
-        int? unidadeId = null,
+        int? escolaId = null,
         params string[] restricoes) => new
     {
         nome,
@@ -35,7 +35,7 @@ public class RestricaoApiTests : IClassFixture<ApiFactory>
         anafilaxia = false,
         nomeResponsavel = "Maria Teste",
         telefoneResponsavel = "11988888888",
-        unidadeId
+        escolaId
     };
 
     private static object NovaRestricao(string nome, CategoriaRestricao categoria) =>
@@ -120,7 +120,7 @@ public class RestricaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Aluno_ComRestricaoForaDoCatalogo_Retorna400ENaoGrava()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var resposta = await client.PostAsJsonAsync(
             "/api/aluno/registrar",
@@ -141,11 +141,11 @@ public class RestricaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Aluno_ComDuasRestricoes_GravaDoisEventosAdicionada()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var criacao = await client.PostAsJsonAsync(
             "/api/aluno/registrar",
-            PayloadAluno("Aluno Com Duas", null, "Lactose", "Gluten"));
+            PayloadAluno("Aluno Com Duas", _factory.EscolaIdPadrao, "Lactose", "Gluten"));
         Assert.Equal(HttpStatusCode.Created, criacao.StatusCode);
 
         var alunoId = (await criacao.Content.ReadFromJsonAsync<JsonElement>())
@@ -163,17 +163,17 @@ public class RestricaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Aluno_TrocandoRestricao_GravaAdicaoERemocao()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var criacao = await client.PostAsJsonAsync(
             "/api/aluno/registrar",
-            PayloadAluno("Aluno Troca", null, "Lactose"));
+            PayloadAluno("Aluno Troca", _factory.EscolaIdPadrao, "Lactose"));
         var alunoId = (await criacao.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetInt32();
 
         var atualizacao = await client.PutAsJsonAsync(
             $"/api/aluno/{alunoId}",
-            PayloadAluno("Aluno Troca", null, "Gluten"));
+            PayloadAluno("Aluno Troca", _factory.EscolaIdPadrao, "Gluten"));
         Assert.Equal(HttpStatusCode.OK, atualizacao.StatusCode);
 
         var historico = await client.GetFromJsonAsync<JsonElement>(
@@ -191,17 +191,17 @@ public class RestricaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Aluno_SemMudarRestricao_NaoGravaEvento()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var criacao = await client.PostAsJsonAsync(
             "/api/aluno/registrar",
-            PayloadAluno("Aluno Sem Mudanca", null, "Lactose"));
+            PayloadAluno("Aluno Sem Mudanca", _factory.EscolaIdPadrao, "Lactose"));
         var alunoId = (await criacao.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetInt32();
 
         await client.PutAsJsonAsync(
             $"/api/aluno/{alunoId}",
-            PayloadAluno("Aluno Sem Mudanca", null, "Lactose"));
+            PayloadAluno("Aluno Sem Mudanca", _factory.EscolaIdPadrao, "Lactose"));
 
         var historico = await client.GetFromJsonAsync<JsonElement>(
             $"/api/aluno/{alunoId}/restricoes/historico");
@@ -212,19 +212,20 @@ public class RestricaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Historico_MerendeiraDeOutraUnidade_Retorna403()
     {
-        var nutricionista = await _factory.CreateAuthenticatedClientAsync();
         var (escolaDoAluno, unidadeDoAluno) = _factory.CriarEscolaComUnidade();
-        var (_, outraUnidade) = _factory.CriarEscolaComUnidade();
+        var administracao = await _factory.CreateAuthenticatedClientAsync(
+            PapelUsuario.AdminSecretaria, unidadeId: unidadeDoAluno);
+        var (escolaDaMerendeira, outraUnidade) = _factory.CriarEscolaComUnidade();
 
-        var criacao = await nutricionista.PostAsJsonAsync(
+        var criacao = await administracao.PostAsJsonAsync(
             "/api/aluno/registrar",
-            PayloadAluno("Aluno Da Unidade", unidadeDoAluno, "Lactose"));
+            PayloadAluno("Aluno Da Unidade", escolaDoAluno, "Lactose"));
         var alunoId = (await criacao.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetInt32();
 
         var merendeira = await _factory.CreateAuthenticatedClientAsync(
             PapelUsuario.Merendeira,
-            escolaId: escolaDoAluno,
+            escolaId: escolaDaMerendeira,
             unidadeId: outraUnidade);
 
         var resposta = await merendeira.GetAsync(
@@ -236,18 +237,19 @@ public class RestricaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Historico_ResponsavelNaoVinculado_Retorna403()
     {
-        var nutricionista = await _factory.CreateAuthenticatedClientAsync();
         var (escolaDoAluno, unidade) = _factory.CriarEscolaComUnidade();
+        var administracao = await _factory.CreateAuthenticatedClientAsync(
+            PapelUsuario.AdminSecretaria, unidadeId: unidade);
 
-        var criacao = await nutricionista.PostAsJsonAsync(
+        var criacao = await administracao.PostAsJsonAsync(
             "/api/aluno/registrar",
-            PayloadAluno("Aluno Nao Vinculado", unidade, "Lactose"));
+            PayloadAluno("Aluno Nao Vinculado", escolaDoAluno, "Lactose"));
         var alunoId = (await criacao.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetInt32();
 
         var responsavel = await _factory.CreateAuthenticatedClientAsync(
             PapelUsuario.Responsavel,
-            escolaId: escolaDoAluno);
+            unidadeId: unidade);
 
         var resposta = await responsavel.GetAsync(
             $"/api/aluno/{alunoId}/restricoes/historico");

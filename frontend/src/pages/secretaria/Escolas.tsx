@@ -11,10 +11,12 @@ import {
     type EscolaResposta,
 } from "../../services/EscolaApi";
 import { LayoutSecretaria } from "./layoutSecretaria";
+import { listarUnidades, type Unidade } from "../../services/UnidadeApi";
 
 export function Escolas() {
     const { logout } = useAuth();
     const [escolas, setEscolas] = useState<EscolaResposta[]>([]);
+    const [unidades, setUnidades] = useState<Unidade[]>([]);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState("");
 
@@ -44,6 +46,13 @@ export function Escolas() {
         };
     }, [logout]);
 
+    useEffect(() => {
+        // A escola pertence a uma unidade; o backend confere contra a sessão.
+        listarUnidades()
+            .then(setUnidades)
+            .catch(() => setUnidades([]));
+    }, []);
+
     async function tratar(falha: unknown): Promise<never> {
         if (naoAutorizado(falha)) {
             void logout();
@@ -52,9 +61,13 @@ export function Escolas() {
         throw falha;
     }
 
-    async function aoCriar(nome: string) {
+    async function aoCriar(nome: string, unidadeId?: number) {
+        if (!unidadeId) {
+            throw new Error("Selecione a unidade da escola.");
+        }
+
         try {
-            const criada = await criarEscola(nome);
+            const criada = await criarEscola(nome, unidadeId);
             setEscolas((atuais) => [...atuais, criada]);
         } catch (falha) {
             return tratar(falha);
@@ -104,6 +117,10 @@ export function Escolas() {
                 rotuloVazio="Nenhuma escola cadastrada ainda."
                 itens={escolas}
                 carregando={carregando}
+                vinculo={{
+                    rotulo: "Unidade",
+                    opcoes: unidades.map((unidade) => ({ id: unidade.id, nome: unidade.nome })),
+                }}
                 aoCriar={aoCriar}
                 aoRenomear={aoRenomear}
                 aoAlternarAtiva={aoAlternarAtiva}

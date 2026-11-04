@@ -7,14 +7,21 @@ export interface ItemDeNome {
     ativa: boolean;
 }
 
+export interface OpcaoDeVinculo {
+    id: number;
+    nome: string;
+}
+
 interface TabelaDeNomesProps {
     titulo: string;
     descricao: string;
     rotuloVazio: string;
     itens: ItemDeNome[];
     carregando: boolean;
+    /** Quando informado, a criação exige a escolha de um vínculo (ex.: unidade da escola). */
+    vinculo?: { rotulo: string; opcoes: OpcaoDeVinculo[] };
     /** Sem `aoCriar` não há formulário: a tela só lista (unidade nasce no bootstrap). */
-    aoCriar?: (nome: string) => Promise<void>;
+    aoCriar?: (nome: string, vinculoId?: number) => Promise<void>;
     aoRenomear?: (id: number, nome: string) => Promise<void>;
     aoAlternarAtiva?: (item: ItemDeNome) => Promise<void>;
     /** Exclusão definitiva: o backend bloqueia com `409` quando há referência. */
@@ -31,12 +38,14 @@ export function TabelaDeNomes({
     rotuloVazio,
     itens,
     carregando,
+    vinculo,
     aoCriar,
     aoRenomear,
     aoAlternarAtiva,
     aoExcluir,
 }: TabelaDeNomesProps) {
     const [novoNome, setNovoNome] = useState("");
+    const [novoVinculoId, setNovoVinculoId] = useState("");
     const [editandoId, setEditandoId] = useState<number | null>(null);
     const [nomeEditando, setNomeEditando] = useState("");
     const [ocupado, setOcupado] = useState(false);
@@ -65,9 +74,15 @@ export function TabelaDeNomes({
             return;
         }
 
+        if (vinculo && !novoVinculoId) {
+            setErro(`Selecione ${vinculo.rotulo.toLowerCase()}.`);
+            return;
+        }
+
         await executar(async () => {
-            await aoCriar?.(nome);
+            await aoCriar?.(nome, novoVinculoId ? Number(novoVinculoId) : undefined);
             setNovoNome("");
+            setNovoVinculoId("");
         });
     }
 
@@ -110,6 +125,26 @@ export function TabelaDeNomes({
                     placeholder="Novo nome"
                     className="h-11 w-full flex-1 rounded-2xl border border-gray-200 bg-white px-4 text-sm outline-none focus:border-roxo focus:ring-4 focus:ring-roxo/10 sm:min-w-0"
                 />
+                {vinculo && (
+                    <>
+                        <label htmlFor="vinculo-novo" className="sr-only">
+                            {vinculo.rotulo}
+                        </label>
+                        <select
+                            id="vinculo-novo"
+                            value={novoVinculoId}
+                            onChange={(evento) => setNovoVinculoId(evento.target.value)}
+                            className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm outline-none focus:border-roxo focus:ring-4 focus:ring-roxo/10 sm:w-auto"
+                        >
+                            <option value="">{vinculo.rotulo}</option>
+                            {vinculo.opcoes.map((opcao) => (
+                                <option key={opcao.id} value={opcao.id}>
+                                    {opcao.nome}
+                                </option>
+                            ))}
+                        </select>
+                    </>
+                )}
                 <button
                     type="submit"
                     disabled={ocupado}

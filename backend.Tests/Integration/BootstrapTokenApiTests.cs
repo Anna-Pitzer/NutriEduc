@@ -2,6 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Ntc.Database;
 using Ntc.Domain.Entity;
 using Xunit;
 
@@ -231,8 +234,18 @@ public class BootstrapTokenApiTests
     public async Task GerarToken_SemUnidadeNaConta_Retorna403()
     {
         using var fabrica = new ApiFactoryComRelogio();
-        var secretaria = await fabrica.CreateAuthenticatedClientAsync(
-            PapelUsuario.AdminSecretaria);
+        var (_, email) = await fabrica.RegistrarAsync();
+        fabrica.DefinirPapel(email, PapelUsuario.AdminSecretaria, unidadeId: fabrica.UnidadeIdPadrao);
+
+        // Simula registro legado gravado antes da Spec 027, sem vínculo de unidade.
+        using (var scope = fabrica.Services.CreateScope())
+        {
+            var banco = scope.ServiceProvider.GetRequiredService<ConnectionContext>();
+            await banco.Database.ExecuteSqlRawAsync(
+                "UPDATE Usuarios SET UnidadeId = NULL WHERE Email = {0}", email);
+        }
+
+        var secretaria = await fabrica.EntrarAsync(email);
 
         var resposta = await secretaria.PostAsJsonAsync("/api/bootstrap/token", new { });
 

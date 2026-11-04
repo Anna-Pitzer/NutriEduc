@@ -5,7 +5,8 @@ namespace Ntc.Domain;
 /// e responsável. Não conhece sessão, papel nem claims — quem traduz o escopo do
 /// solicitante para este record é a aplicação.
 ///
-/// Campos nulos não filtram; <see cref="Todos"/> representa o escopo global.
+/// Campos nulos não filtram; <see cref="Todos"/> é ausência de recorte e NUNCA deve ser
+/// usado como escopo de sessão.
 /// </summary>
 public sealed record FiltroAluno(
     int? UnidadeId = null,

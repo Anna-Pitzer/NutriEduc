@@ -48,6 +48,8 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     private bool _catalogoSemeado;
 
+    private (int EscolaId, int UnidadeId)? _padrao;
+
     public ApiFactory()
     {
         _connection.Open();
@@ -118,11 +120,12 @@ public class ApiFactory : WebApplicationFactory<Program>
         var escolas = scope.ServiceProvider.GetRequiredService<IEscolaRepository>();
         var unidadeDeTrabalho = scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
 
-        var escola = unidadeDeTrabalho.ExecutarEmTransacao(
-            () => escolas.Add(new Escola($"Escola de teste {Guid.NewGuid():N}")));
         var unidade = unidadeDeTrabalho.ExecutarEmTransacao(
             () => escolas.AddUnidade(new UnidadeEscolar(
                 nomeDaUnidade ?? $"Unidade {Guid.NewGuid():N}")));
+        var escola = unidadeDeTrabalho.ExecutarEmTransacao(
+            () => escolas.Add(new Escola(
+                $"Escola de teste {Guid.NewGuid():N}", unidade.Id)));
 
         return (escola.Id, unidade.Id);
     }
@@ -134,6 +137,17 @@ public class ApiFactory : WebApplicationFactory<Program>
         if (disposing)
             _connection.Dispose();
     }
+
+    /// <summary>
+    /// Escola e unidade padrão da mesma cadeia, criadas uma única vez por fábrica. O
+    /// cadastro de aluno exige escola, e a unidade é sempre derivada dela.
+    /// </summary>
+    private (int EscolaId, int UnidadeId) Padrao => _padrao ??= CriarEscolaComUnidade();
+
+    public int UnidadeIdPadrao => Padrao.UnidadeId;
+
+    /// <summary>Escola padrão da mesma unidade usada pelos testes de aluno.</summary>
+    public int EscolaIdPadrao => Padrao.EscolaId;
 
     public void DefinirPapel(
         string email,
@@ -161,7 +175,37 @@ public class ApiFactory : WebApplicationFactory<Program>
         int? escolaId = null,
         int? unidadeId = null)
     {
+        var (client, _) = await CriarClienteAutenticadoAsync(papel, escolaId, unidadeId);
+        return client;
+    }
+
+    /// <summary>
+    /// Mesma autenticação, devolvendo também o id do usuário criado — necessário quando o
+    /// teste precisa referenciar a conta autenticada (por exemplo, autoria do cardápio).
+    /// </summary>
+    public async Task<(HttpClient Client, int UsuarioId)> CriarClienteAutenticadoAsync(
+        PapelUsuario papel = PapelUsuario.Nutricionista,
+        int? escolaId = null,
+        int? unidadeId = null)
+    {
         var (client, email) = await RegistrarAsync();
+
+        if (papel is PapelUsuario.AdminEscola or PapelUsuario.Merendeira &&
+            escolaId is null)
+        {
+            var padrao = CriarEscolaComUnidade();
+            escolaId = padrao.EscolaId;
+            unidadeId ??= padrao.UnidadeId;
+        }
+        else if (papel is PapelUsuario.AdminSecretaria
+                 or PapelUsuario.Nutricionista
+                 or PapelUsuario.Responsavel &&
+                 unidadeId is null)
+        {
+            unidadeId = UnidadeIdPadrao;
+        }
+
+        int usuarioId;
 
         using (var scope = Services.CreateScope())
         {
@@ -170,6 +214,7 @@ public class ApiFactory : WebApplicationFactory<Program>
                 ?? throw new InvalidOperationException($"Usuário {email} não foi criado.");
 
             usuario.DefinirPapel(papel, escolaId, unidadeId);
+            usuarioId = usuario.Id;
             scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>()
                 .ExecutarEmTransacao(() => usuarios.Update(usuario));
         }
@@ -181,7 +226,7 @@ public class ApiFactory : WebApplicationFactory<Program>
         });
         login.EnsureSuccessStatusCode();
 
-        return client;
+        return (client, usuarioId);
     }
 
     /// <summary>

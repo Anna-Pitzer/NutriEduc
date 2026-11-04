@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Ntc.Domain.Entity;
 using Xunit;
 
 namespace Backend.Tests.Integration;
@@ -21,7 +22,7 @@ public class ContratoRotasTests : IClassFixture<ApiFactory>
         _factory = factory;
     }
 
-    private static object PayloadAluno(string nome) => new
+    private object PayloadAluno(string nome) => new
     {
         nome,
         nascimento = "2015-05-10",
@@ -32,7 +33,8 @@ public class ContratoRotasTests : IClassFixture<ApiFactory>
         restricoes = new[] { "Lactose" },
         anafilaxia = false,
         nomeResponsavel = "Maria Teste",
-        telefoneResponsavel = "11988888888"
+        telefoneResponsavel = "11988888888",
+        escolaId = _factory.EscolaIdPadrao
     };
 
     private static object PayloadUsuario(string email) => new
@@ -61,7 +63,7 @@ public class ContratoRotasTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Post_Aluno_Retorna201ComLocationECorpo()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var resposta = await client.PostAsJsonAsync("/api/aluno/registrar", PayloadAluno("Aluno Contrato"));
 
@@ -225,7 +227,7 @@ public class ContratoRotasTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Delete_AlunoExistente_Retorna204SemCorpo()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
         var criado = await client.PostAsJsonAsync("/api/aluno/registrar", PayloadAluno("Aluno Excluido"));
         var id = (await LerCorpo(criado)).GetProperty("id").GetInt32();

@@ -40,7 +40,9 @@ public class AlunoController : RespostaController
 
     [Authorize(Policy = "LeituraAluno")]
     [HttpGet]
-    public IActionResult Listar()
+    public IActionResult Listar(
+        [FromQuery] int? escolaId,
+        [FromQuery] int? unidadeId)
     {
         var escopo = ObterEscopo(_escopo);
 
@@ -49,7 +51,12 @@ public class AlunoController : RespostaController
             return SessaoInvalida();
         }
 
-        return Ok(_alunoService.ListarAlunos(escopo));
+        if (!_alunoService.FiltroNoEscopo(escolaId, unidadeId, escopo))
+        {
+            return Forbid();
+        }
+
+        return Ok(_alunoService.ListarAlunos(escopo, escolaId, unidadeId));
     }
 
     [Authorize(Policy = "LeituraAluno")]
@@ -63,18 +70,7 @@ public class AlunoController : RespostaController
             return SessaoInvalida();
         }
 
-        var dadosAluno = _alunoService.ObterAlunoPorId(id, escopo);
-
-        if (dadosAluno != null)
-        {
-            return Ok(dadosAluno);
-        }
-
-        // RF9: fora do escopo responde 403 sem revelar existência. Apenas o escopo
-        // global distingue "não existe" (404) de "não é seu" (403).
-        return escopo.Global
-            ? NotFound(new { erro = "Aluno não encontrado." })
-            : Forbid();
+        return Traduzir(_alunoService.ObterAlunoPorId(id, escopo), Ok);
     }
 
     /// <summary>
@@ -141,7 +137,34 @@ public class AlunoController : RespostaController
             return Ok(aluno);
         }
 
-        return escopo.Global
+        return escopo.EscopoDeUnidade
+            ? NotFound(new { erro = "Aluno não encontrado." })
+            : Forbid();
+    }
+
+    /// <summary>
+    /// Transfere o aluno entre escolas da mesma unidade (Spec 027, RF11), registrando a
+    /// mudança na trilha do aluno.
+    /// </summary>
+    [Authorize(Policy = "AdminSecretaria")]
+    [HttpPost("{id:int}/transferir-escola")]
+    public IActionResult TransferirEscola(int id, [FromBody] TransferirEscolaDTO dto)
+    {
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        var aluno = _alunoService.TransferirEscola(id, dto.EscolaId, escopo);
+
+        if (aluno != null)
+        {
+            return Ok(aluno);
+        }
+
+        return escopo.EscopoDeUnidade
             ? NotFound(new { erro = "Aluno não encontrado." })
             : Forbid();
     }
@@ -162,7 +185,7 @@ public class AlunoController : RespostaController
             return NoContent();
         }
 
-        return escopo.Global
+        return escopo.EscopoDeUnidade
             ? NotFound(new { erro = "Aluno não encontrado." })
             : Forbid();
     }

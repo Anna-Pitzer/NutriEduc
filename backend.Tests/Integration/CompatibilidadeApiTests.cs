@@ -76,7 +76,12 @@ public class CompatibilidadeApiTests : IClassFixture<ApiFactory>
     {
         using var scope = _factory.Services.CreateScope();
         var alunos = scope.ServiceProvider.GetRequiredService<IAlunoRepository>();
+        var escolas = scope.ServiceProvider.GetRequiredService<IEscolaRepository>();
         var unidadeDeTrabalho = scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
+
+        var escolaId = escolas.ListarPorUnidade(unidadeId).FirstOrDefault()?.Id
+            ?? throw new InvalidOperationException(
+                $"Unidade {unidadeId} não possui escola para vincular o aluno.");
 
         var aluno = new Aluno(
             $"Aluno {Guid.NewGuid():N}",
@@ -86,7 +91,8 @@ public class CompatibilidadeApiTests : IClassFixture<ApiFactory>
             null,
             new[] { restricao },
             false,
-            new Responsavel("Ana Silva", "11988888888"));
+            new Responsavel("Ana Silva", "11988888888"),
+            escolaId);
 
         aluno.DefinirUnidade(unidadeId);
 
@@ -168,14 +174,14 @@ public class CompatibilidadeApiTests : IClassFixture<ApiFactory>
     {
         _factory.GarantirCatalogo();
         var nutricionista = await _factory.CreateAuthenticatedClientAsync();
-        var (escolaId, unidadeId) = _factory.CriarEscolaComUnidade();
+        var (_, unidadeId) = _factory.CriarEscolaComUnidade();
         var iogurte = await CriarAlimentoComVinculo(
             nutricionista, ObterRestricaoId("Lactose"), $"Iogurte {Guid.NewGuid():N}");
 
         var cardapioId = await CriarCardapio(nutricionista, unidadeId, iogurte);
 
         var responsavel = await _factory.CreateAuthenticatedClientAsync(
-            PapelUsuario.Responsavel, escolaId, unidadeId);
+            PapelUsuario.Responsavel, unidadeId: unidadeId);
 
         var resposta = await responsavel.GetAsync($"/api/cardapios/{cardapioId}/compatibilidade");
 

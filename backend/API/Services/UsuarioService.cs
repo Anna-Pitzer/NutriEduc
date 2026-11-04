@@ -1,4 +1,5 @@
 ﻿using Ntc.Application;
+using Ntc.Application.Seguranca;
 using Ntc.Domain;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
@@ -8,15 +9,21 @@ public class UsuarioService
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IEscolaRepository _escolaRepository;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
+    private readonly AutorizacaoService _autorizacao;
+    private readonly ITrilhaAcaoRepository _trilha;
 
     public UsuarioService(
         IUsuarioRepository usuarioRepository,
         IEscolaRepository escolaRepository,
-        IUnidadeDeTrabalho unidadeDeTrabalho)
+        IUnidadeDeTrabalho unidadeDeTrabalho,
+        AutorizacaoService autorizacao,
+        ITrilhaAcaoRepository trilha)
     {
         _usuarioRepository = usuarioRepository;
         _escolaRepository = escolaRepository;
         _unidadeDeTrabalho = unidadeDeTrabalho;
+        _autorizacao = autorizacao;
+        _trilha = trilha;
     }
 
     // ------------------------------------------------------------------ autocadastro
@@ -109,9 +116,17 @@ public class UsuarioService
     {
         var papel = dto.Papel!.Value;
 
-        if (!PodeCriar(papel, dto.EscolaId, escopo))
+        var negacao = _autorizacao.Verificar(
+            Recurso.ContaUsuario,
+            escopo,
+            OperacaoDeAcesso.Criar,
+            new AlvoDeEscopo(escopo.UnidadeId, escopo.EscolaId));
+
+        if (negacao is not null)
         {
-            return Resultado<int>.Proibido();
+            return negacao == ResultadoStatus.NaoEncontrado
+                ? Resultado<int>.NaoEncontrado("Unidade não encontrada.")
+                : Resultado<int>.Proibido();
         }
 
         if (_usuarioRepository.ExistsByEmail(dto.Email))
@@ -119,36 +134,17 @@ public class UsuarioService
             return Resultado<int>.Conflito("E-mail já cadastrado.");
         }
 
-        if (dto.EscolaId is not null && _escolaRepository.GetEscola(dto.EscolaId.Value) is null)
+        var resolucao = ResolverEscopoInstitucional(
+            papel, dto.EscolaId, dto.UnidadeId, escopo);
+
+        if (resolucao.Falha is { } falha)
         {
-            return Resultado<int>.NaoEncontrado("Escola não encontrada.");
-        }
-
-        if (dto.EscolaId is not null && _escolaRepository.GetEscola(dto.EscolaId.Value) is { Ativa: false })
-        {
-            return Resultado<int>.Invalido("Escola desativada não pode receber usuário.");
-        }
-
-        if (dto.UnidadeId is not null)
-        {
-            var unidade = _escolaRepository.GetUnidade(dto.UnidadeId.Value);
-
-            if (unidade is null)
+            return falha switch
             {
-                return Resultado<int>.NaoEncontrado("Unidade não encontrada.");
-            }
-
-            if (!unidade.Ativa)
-            {
-                return Resultado<int>.Invalido("Unidade desativada não pode receber usuário.");
-            }
-
-            // Unidade é da rede: a checagem só existe quando a unidade ainda guarda a escola
-            // de origem (dado legado da Spec 009).
-            if (dto.EscolaId is not null && unidade.EscolaId is not null && unidade.EscolaId != dto.EscolaId)
-            {
-                return Resultado<int>.Conflito("A unidade não pertence à escola informada.");
-            }
+                ResultadoStatus.Proibido => Resultado<int>.Proibido(),
+                ResultadoStatus.NaoEncontrado => Resultado<int>.NaoEncontrado(resolucao.Erro!),
+                _ => Resultado<int>.Invalido(resolucao.Erro!)
+            };
         }
 
         Usuario usuario = new(
@@ -157,8 +153,9 @@ public class UsuarioService
             dto.DataNascimento,
             dto.Email,
             papel,
-            dto.EscolaId,
-            dto.UnidadeId
+            resolucao.EscolaId,
+            resolucao.UnidadeId,
+            dto.Crn
         );
 
         usuario.DefinirSenha(dto.Senha);
@@ -170,20 +167,6 @@ public class UsuarioService
         return Resultado<int>.Ok(usuario.Id);
     }
 
-    private static bool PodeCriar(PapelUsuario papel, int? escolaId, EscopoUsuario escopo)
-    {
-        return escopo.Papel switch
-        {
-            PapelUsuario.AdminSecretaria => true,
-
-            PapelUsuario.AdminEscola =>
-                papel is PapelUsuario.Responsavel or PapelUsuario.Merendeira &&
-                escolaId is not null &&
-                escolaId == escopo.EscolaId,
-
-            _ => false
-        };
-    }
 
     /// <summary>
     /// Atualização de usuário (RF4/RF5). O dono altera apenas os próprios dados; papel
@@ -202,12 +185,32 @@ public class UsuarioService
         }
 
         var dono = escopo.UsuarioId == id;
-        var administra = escopo.Administra &&
-            (escopo.Global || alvo.EscolaId == escopo.EscolaId);
+        var mudaPapel = dto.Papel is not null;
 
-        if (!dono && !administra)
+        // RF3: ninguém altera o próprio papel, nem o próprio ADM.
+        if (dono && mudaPapel)
         {
             return Resultado<UsuarioRespostaDTO>.Proibido();
+        }
+
+        var recurso = dono
+            ? Recurso.PerfilProprio
+            : mudaPapel
+                ? Recurso.PapelDoUsuario
+                : Recurso.ContaUsuario;
+
+        var alvoDeEscopo = dono
+            ? AlvoDeEscopo.SemFronteira
+            : new AlvoDeEscopo(alvo.UnidadeId, alvo.EscolaId);
+
+        var negacao = _autorizacao.Verificar(
+            recurso, escopo, OperacaoDeAcesso.Atualizar, alvoDeEscopo);
+
+        if (negacao is not null)
+        {
+            return negacao == ResultadoStatus.NaoEncontrado
+                ? Resultado<UsuarioRespostaDTO>.NaoEncontrado("Usuário não encontrado.")
+                : Resultado<UsuarioRespostaDTO>.Proibido();
         }
 
         var email = dto.Email.Trim().ToLowerInvariant();
@@ -219,20 +222,11 @@ public class UsuarioService
                 "Este e-mail já está cadastrado em outra conta.");
         }
 
-        var mudaPapel = dto.Papel is not null;
-
-        if (mudaPapel && !administra)
-        {
-            return Resultado<UsuarioRespostaDTO>.Proibido();
-        }
-
-        if (mudaPapel && !PodeDefinirPapel(dto.Papel!.Value, dto.EscolaId, escopo))
-        {
-            return Resultado<UsuarioRespostaDTO>.Proibido();
-        }
+        var papelAnterior = alvo.Papel?.ToString();
 
         alvo.AtualizarPerfil(dto.Nome, email);
         alvo.AtualizarTelefone(dto.Telefone);
+        alvo.DefinirCrn(dto.Crn);
 
         if (dto.Foto != null)
         {
@@ -241,15 +235,42 @@ public class UsuarioService
 
         if (mudaPapel)
         {
-            if (ErroDeReferencias(dto.EscolaId, dto.UnidadeId) is { } erro)
+            var resolucao = ResolverEscopoInstitucional(
+                dto.Papel!.Value, dto.EscolaId, dto.UnidadeId, escopo);
+
+            if (resolucao.Falha is { } falha)
             {
-                return Resultado<UsuarioRespostaDTO>.Invalido(erro);
+                return falha switch
+                {
+                    ResultadoStatus.Proibido => Resultado<UsuarioRespostaDTO>.Proibido(),
+                    ResultadoStatus.NaoEncontrado =>
+                        Resultado<UsuarioRespostaDTO>.NaoEncontrado(resolucao.Erro!),
+                    _ => Resultado<UsuarioRespostaDTO>.Invalido(resolucao.Erro!)
+                };
             }
 
-            alvo.DefinirPapel(dto.Papel, dto.EscolaId, dto.UnidadeId);
+            alvo.DefinirPapel(dto.Papel, resolucao.EscolaId, resolucao.UnidadeId);
         }
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarioRepository.Update(alvo));
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            _usuarioRepository.Update(alvo);
+
+            var papelNovo = alvo.Papel?.ToString();
+
+            if (mudaPapel && papelNovo != papelAnterior)
+            {
+                _trilha.Add(new TrilhaAcao(
+                    "PapelAlterado",
+                    escopo.UsuarioId,
+                    NomeDoAutor(escopo),
+                    "Usuario",
+                    alvo.Id,
+                    papelAnterior,
+                    papelNovo,
+                    DateTime.UtcNow));
+            }
+        });
 
         return Resultado<UsuarioRespostaDTO>.Ok(ParaDTO(alvo)!);
     }
@@ -279,22 +300,96 @@ public class UsuarioService
         return null;
     }
 
-    private static bool PodeDefinirPapel(
+    private string NomeDoAutor(EscopoUsuario escopo) =>
+        _usuarioRepository.GetById(escopo.UsuarioId)?.Nome ?? "sistema";
+
+    private sealed record ResolucaoEscopo(
+        int? EscolaId,
+        int? UnidadeId,
+        ResultadoStatus? Falha,
+        string? Erro);
+
+    /// <summary>
+    /// Traduz o pedido administrativo para o vínculo institucional válido (Spec 027):
+    /// papel de escola deriva a unidade da escola; papel de unidade recusa escola.
+    /// </summary>
+    private ResolucaoEscopo ResolverEscopoInstitucional(
         PapelUsuario papel,
         int? escolaId,
+        int? unidadeId,
         EscopoUsuario escopo)
     {
-        return escopo.Papel switch
+        if (papel is PapelUsuario.AdminEscola or PapelUsuario.Merendeira)
         {
-            PapelUsuario.AdminSecretaria => true,
+            if (escolaId is null)
+            {
+                return Falha(ResultadoStatus.Invalido, "Este papel exige escola.");
+            }
 
-            PapelUsuario.AdminEscola =>
-                papel is PapelUsuario.Responsavel or PapelUsuario.Merendeira &&
-                escolaId == escopo.EscolaId,
+            var escola = _escolaRepository.GetEscola(escolaId.Value);
 
-            _ => false
-        };
+            if (escola is null)
+            {
+                return Falha(ResultadoStatus.NaoEncontrado, "Escola não encontrada.");
+            }
+
+            if (!escola.Ativa)
+            {
+                return Falha(ResultadoStatus.Invalido,
+                    "Escola desativada não pode receber usuário.");
+            }
+
+            if (escola.UnidadeId is null)
+            {
+                return Falha(ResultadoStatus.Invalido,
+                    "Escola sem unidade não pode receber usuário.");
+            }
+
+            if (escopo.Papel == PapelUsuario.AdminEscola &&
+                escola.Id != escopo.EscolaId)
+            {
+                return Falha(ResultadoStatus.Proibido, "Escola fora do escopo.");
+            }
+
+            if (escopo.Papel == PapelUsuario.AdminSecretaria &&
+                escola.UnidadeId != escopo.UnidadeId)
+            {
+                return Falha(ResultadoStatus.Proibido, "Unidade fora do escopo.");
+            }
+
+            return new ResolucaoEscopo(escola.Id, escola.UnidadeId, null, null);
+        }
+
+        var unidadeDestino = unidadeId ?? escopo.UnidadeId;
+
+        if (unidadeDestino is null)
+        {
+            return Falha(ResultadoStatus.Invalido, "Este papel exige unidade.");
+        }
+
+        var unidade = _escolaRepository.GetUnidade(unidadeDestino.Value);
+
+        if (unidade is null)
+        {
+            return Falha(ResultadoStatus.NaoEncontrado, "Unidade não encontrada.");
+        }
+
+        if (!unidade.Ativa)
+        {
+            return Falha(ResultadoStatus.Invalido,
+                "Unidade desativada não pode receber usuário.");
+        }
+
+        if (escopo.UnidadeId is { } unidadeDaSessao && unidadeDaSessao != unidade.Id)
+        {
+            return Falha(ResultadoStatus.Proibido, "Unidade fora do escopo.");
+        }
+
+        return new ResolucaoEscopo(null, unidade.Id, null, null);
     }
+
+    private static ResolucaoEscopo Falha(ResultadoStatus status, string erro) =>
+        new(null, null, status, erro);
 
     /// <summary>Ativar/desativar usuário (RF5): exclusivo de administrador do escopo.</summary>
     public Resultado<UsuarioRespostaDTO> DefinirAtivo(
@@ -309,15 +404,20 @@ public class UsuarioService
             return Resultado<UsuarioRespostaDTO>.NaoEncontrado("Usuário não encontrado.");
         }
 
-        if (!escopo.Administra)
+        var negacao = _autorizacao.Verificar(
+            Recurso.ContaUsuario,
+            escopo,
+            OperacaoDeAcesso.Atualizar,
+            new AlvoDeEscopo(alvo.UnidadeId, alvo.EscolaId));
+
+        if (negacao is not null)
         {
-            return Resultado<UsuarioRespostaDTO>.Proibido();
+            return negacao == ResultadoStatus.NaoEncontrado
+                ? Resultado<UsuarioRespostaDTO>.NaoEncontrado("Usuário não encontrado.")
+                : Resultado<UsuarioRespostaDTO>.Proibido();
         }
 
-        if (!escopo.Global && alvo.EscolaId != escopo.EscolaId)
-        {
-            return Resultado<UsuarioRespostaDTO>.Proibido();
-        }
+        var ativoAnterior = alvo.Ativo;
 
         if (ativo)
         {
@@ -328,9 +428,58 @@ public class UsuarioService
             alvo.Desativar();
         }
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarioRepository.Update(alvo));
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            _usuarioRepository.Update(alvo);
+
+            if (ativoAnterior != alvo.Ativo)
+            {
+                _trilha.Add(new TrilhaAcao(
+                    alvo.Ativo ? "UsuarioReativado" : "UsuarioDesativado",
+                    escopo.UsuarioId,
+                    NomeDoAutor(escopo),
+                    "Usuario",
+                    alvo.Id,
+                    ativoAnterior ? "ativo" : "inativo",
+                    alvo.Ativo ? "ativo" : "inativo",
+                    DateTime.UtcNow));
+            }
+        });
 
         return Resultado<UsuarioRespostaDTO>.Ok(ParaDTO(alvo)!);
+    }
+
+    /// <summary>
+    /// Confere filtros de consulta contra o escopo da sessão (Spec 028, RF10). Filtro fora
+    /// do escopo responde 403; não é ignorado nem amplia.
+    /// </summary>
+    public bool FiltroNoEscopo(int? escolaId, int? unidadeId, EscopoUsuario escopo)
+    {
+        if (unidadeId is > 0 && escopo.UnidadeId != unidadeId)
+        {
+            return false;
+        }
+
+        if (escolaId is not > 0)
+        {
+            return true;
+        }
+
+        var escola = _escolaRepository.GetEscola(escolaId.Value);
+
+        if (escola is null)
+        {
+            return false;
+        }
+
+        return escopo.Papel switch
+        {
+            PapelUsuario.AdminSecretaria or PapelUsuario.Nutricionista =>
+                escola.UnidadeId == escopo.UnidadeId,
+            PapelUsuario.AdminEscola or PapelUsuario.Merendeira =>
+                escola.Id == escopo.EscolaId,
+            _ => false
+        };
     }
 
     /// <summary>Listagem filtrada por escopo (RF7).</summary>
@@ -339,6 +488,30 @@ public class UsuarioService
         return _usuarioRepository
             .Listar(FiltrosDeConsulta.ParaUsuario(filtro, escopo))
             .Select(usuario => ParaDTO(usuario)!)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Nutricionistas ativas que podem ser escolhidas como responsáveis por um cardápio
+    /// (Spec 027). Reaproveita a listagem filtrada em vez de abrir uma segunda consulta.
+    /// </summary>
+    public List<NutricionistaDTO> ListarNutricionistas(EscopoUsuario escopo)
+    {
+        return _usuarioRepository
+            .Listar(FiltrosDeConsulta.ParaUsuario(
+                new FiltroUsuarios(
+                    Papel: PapelUsuario.Nutricionista,
+                    EscolaId: null,
+                    UnidadeId: null,
+                    Ativo: true,
+                    Busca: null),
+                escopo))
+            .Select(usuario => new NutricionistaDTO(
+                usuario.Id,
+                usuario.Nome,
+                usuario.Email,
+                usuario.Cpf,
+                usuario.Crn))
             .ToList();
     }
 
@@ -358,6 +531,7 @@ public class UsuarioService
             usuario.Papel,
             usuario.EscolaId,
             usuario.UnidadeId,
-            usuario.Ativo);
+            usuario.Ativo,
+            usuario.Crn);
     }
 }

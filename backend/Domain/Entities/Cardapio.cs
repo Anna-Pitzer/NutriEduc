@@ -50,6 +50,18 @@ public class Cardapio
     /// <summary>Snapshot do nome de quem publicou (Spec 015, RF2).</summary>
     public string PublicadoPor { get; private set; } = string.Empty;
 
+    // ---------- Nutricionista responsável (snapshot, sem FK — ADR-009) ----------
+
+    public int? NutricionistaId { get; private set; }
+
+    public string NutricionistaNome { get; private set; } = string.Empty;
+
+    public string NutricionistaEmail { get; private set; } = string.Empty;
+
+    public string NutricionistaCpf { get; private set; } = string.Empty;
+
+    public string? NutricionistaCrn { get; private set; }
+
     public IReadOnlyList<Refeicao> Refeicoes => _refeicoes.AsReadOnly();
 
     public IReadOnlyList<HistoricoCardapio> Historico => _historico.AsReadOnly();
@@ -66,11 +78,17 @@ public class Cardapio
         IEnumerable<Refeicao>? refeicoes,
         int? duplicadoDeId = null,
         int? revisaoDeId = null,
-        int versao = 1)
+        int versao = 1,
+        NutricionistaResponsavel? nutricionista = null)
     {
         var dados = Validar(nome, unidadeId, periodo, refeicoes);
 
         Aplicar(dados);
+
+        if (nutricionista is not null)
+        {
+            DefinirNutricionista(nutricionista);
+        }
 
         Situacao = SituacaoCardapio.Rascunho;
         CardapioDuplicadoDeId = duplicadoDeId;
@@ -98,6 +116,43 @@ public class Cardapio
         Aplicar(dados);
         AtualizadoEmUtc = DateTime.UtcNow;
     }
+
+    // ---------- Autoria (Spec 027) ----------
+
+    /// <summary>
+    /// Grava o retrato de quem elaborou o cardápio. Nome é obrigatório; e-mail, CPF e CRN
+    /// entram normalizados e podem estar ausentes no cadastro da profissional.
+    /// </summary>
+    public void DefinirNutricionista(NutricionistaResponsavel nutricionista)
+    {
+        var nome = (nutricionista.Nome ?? string.Empty).Trim();
+
+        if (nome.Length < 2 || nome.Length > 100)
+        {
+            throw new ArgumentException(
+                "A nutricionista responsável exige um nome de 2 a 100 caracteres.");
+        }
+
+        NutricionistaId = nutricionista.Id > 0 ? nutricionista.Id : null;
+        NutricionistaNome = nome;
+        NutricionistaEmail = (nutricionista.Email ?? string.Empty).Trim().ToLowerInvariant();
+        NutricionistaCpf = new string(
+            (nutricionista.Cpf ?? string.Empty).Where(char.IsDigit).ToArray());
+
+        var crn = (nutricionista.Crn ?? string.Empty).Trim().ToUpperInvariant();
+        NutricionistaCrn = crn.Length == 0 ? null : crn;
+    }
+
+    /// <summary>Retrato atual da autoria, usado para propagar revisão e duplicação.</summary>
+    private NutricionistaResponsavel? RetratoDaNutricionista() =>
+        NutricionistaId is null && NutricionistaNome.Length == 0
+            ? null
+            : new NutricionistaResponsavel(
+                NutricionistaId ?? 0,
+                NutricionistaNome,
+                NutricionistaEmail,
+                NutricionistaCpf,
+                NutricionistaCrn);
 
     // ---------- Transições (Spec 015) ----------
 
@@ -142,7 +197,8 @@ public class Cardapio
             ClonarRefeicoes(),
             duplicadoDeId: null,
             revisaoDeId: Id,
-            versao: Versao + 1);
+            versao: Versao + 1,
+            nutricionista: RetratoDaNutricionista());
 
         revisao.RegistrarEvento(EventoCardapio.RevisaoCriada, autorNome, $"Revisão de #{Id}", utc);
 
@@ -187,7 +243,13 @@ public class Cardapio
     {
         var refeicoes = origem._refeicoes.Select(Refeicao.Copiar);
 
-        return new Cardapio(nome, origem.UnidadeId, periodo, refeicoes, duplicadoDeId);
+        return new Cardapio(
+            nome,
+            origem.UnidadeId,
+            periodo,
+            refeicoes,
+            duplicadoDeId,
+            nutricionista: origem.RetratoDaNutricionista());
     }
 
     /// <summary>Quantidade total de itens, usada na listagem sem carregar as refeições.</summary>

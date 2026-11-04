@@ -20,7 +20,8 @@ public class CardapioServiceTests
         AlimentoRepositoryFake Alimentos,
         AlunoRepositoryFake Alunos,
         int UnidadeA,
-        int UnidadeB);
+        int UnidadeB,
+        int EscolaA);
 
     private static readonly EscopoUsuario Nutricao =
         new(1, PapelUsuario.Nutricionista, null, null);
@@ -71,14 +72,13 @@ public class CardapioServiceTests
         // O repositório real carrega o alimento de cada item (Include); o fake faz igual.
         cardapios.ResolverAlimento = id => alimentos.Obter(id);
 
-        escolas.Add(new Escola("Escola de teste"));
-
         var unidadeA = escolas.AddUnidade(new UnidadeEscolar("Unidade A")).Id;
         var unidadeB = escolas.AddUnidade(new UnidadeEscolar("Unidade B")).Id;
+        var escolaA = escolas.Add(new Escola("Escola de teste", unidadeA)).Id;
 
         var servico = new CardapioService(cardapios, alimentos, alunos, escolas, usuarios, unidadeDeTrabalho);
 
-        return new Cenario(servico, cardapios, alimentos, alunos, unidadeA, unidadeB);
+        return new Cenario(servico, cardapios, alimentos, alunos, unidadeA, unidadeB, escolaA);
     }
 
     private static Alimento CriarAlimento(AlimentoRepositoryFake alimentos, string nome) =>
@@ -228,7 +228,8 @@ public class CardapioServiceTests
             null,
             new[] { "Lactose" },
             false,
-            new Responsavel("Ana Silva", "11988888888"));
+            new Responsavel("Ana Silva", "11988888888"),
+            cenario.EscolaA);
         aluno.DefinirUnidade(cenario.UnidadeA);
         cenario.Alunos.Add(aluno);
 

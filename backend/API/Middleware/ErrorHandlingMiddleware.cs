@@ -63,6 +63,10 @@ public sealed class ErrorHandlingMiddleware
 
     private static (int Status, string Mensagem, object? Detalhes) Mapear(Exception excecao) => excecao switch
     {
+        AcessoNegadoException negado => (negado.NaoEncontrado
+                ? StatusCodes.Status404NotFound
+                : StatusCodes.Status403Forbidden,
+            negado.Message, null),
         GeracaoImpossivelException geracao => (StatusCodes.Status422UnprocessableEntity,
             geracao.Message, geracao.Motivo),
         PublicacaoBloqueadaException publicacao => (StatusCodes.Status422UnprocessableEntity,

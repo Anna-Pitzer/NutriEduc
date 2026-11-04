@@ -83,7 +83,8 @@ public class UsuarioApiTests : IClassFixture<ApiFactory>
         await client.PostAsJsonAsync("/api/usuario/registrar", Payload(email));
 
         // A conta nasce sem papel (Spec 009): sem esta promoção o login devolve 401.
-        _factory.DefinirPapel(email, PapelUsuario.Nutricionista);
+        _factory.DefinirPapel(
+            email, PapelUsuario.Nutricionista, unidadeId: _factory.UnidadeIdPadrao);
 
         var resposta = await client.PostAsJsonAsync("/api/usuario/login", new { email, senha = "senha12345" });
 

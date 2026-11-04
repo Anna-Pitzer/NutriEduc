@@ -22,6 +22,10 @@ public class AtualizarUsuarioDTO
     public string? Telefone { get; set; }
     public string? Foto { get; set; }
 
+    /// <summary>Registro no conselho de nutrição; identifica a autora do cardápio.</summary>
+    [StringLength(20, ErrorMessage = "O CRN deve ter no máximo 20 caracteres.")]
+    public string? Crn { get; set; }
+
     /// <summary>Quando informado, só um administrador do escopo pode aplicar.</summary>
     public PapelUsuario? Papel { get; set; }
 

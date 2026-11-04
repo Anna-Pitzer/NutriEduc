@@ -93,4 +93,15 @@ public class UsuarioRepository : IUsuarioRepository
 
     public int ContarPorPapel(PapelUsuario papel) =>
         _context.Usuarios.Count(usuario => usuario.Papel == papel);
+
+    public int ContarSemVinculoObrigatorio() =>
+        _context.Usuarios.Count(usuario =>
+            usuario.Papel != null &&
+            (((usuario.Papel == PapelUsuario.AdminSecretaria ||
+               usuario.Papel == PapelUsuario.Nutricionista ||
+               usuario.Papel == PapelUsuario.Responsavel) &&
+              usuario.UnidadeId == null) ||
+             ((usuario.Papel == PapelUsuario.AdminEscola ||
+               usuario.Papel == PapelUsuario.Merendeira) &&
+              usuario.EscolaId == null)));
 }

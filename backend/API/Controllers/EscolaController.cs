@@ -5,8 +5,8 @@ using Ntc.Application;
 namespace Ntc.Controllers;
 
 /// <summary>
-/// Escolas (RF3). Criar, editar, desativar e excluir é exclusivo de AdminSecretaria;
-/// listar exige sessão válida.
+/// Escolas (Spec 027). Criar, editar, desativar e excluir é exclusivo de AdminSecretaria;
+/// listar devolve apenas a própria unidade/escola.
 /// </summary>
 [ApiController]
 [Route("api/escolas")]
@@ -14,26 +14,50 @@ public class EscolaController : RespostaController
 {
     private readonly EscolaService _escolas;
     private readonly ExclusaoService _exclusao;
+    private readonly EscopoService _escopo;
 
-    public EscolaController(EscolaService escolas, ExclusaoService exclusao)
+    public EscolaController(
+        EscolaService escolas,
+        ExclusaoService exclusao,
+        EscopoService escopo)
     {
         _escolas = escolas;
         _exclusao = exclusao;
+        _escopo = escopo;
     }
 
-    [Authorize(Policy = "SessaoValida")]
+    [Authorize(Policy = "HierarquiaLeitura")]
     [HttpGet]
-    public IActionResult Listar()
+    public IActionResult Listar([FromQuery] int? unidadeId)
     {
-        return Ok(_escolas.Listar());
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        if (!_escolas.FiltroNoEscopo(unidadeId, escopo))
+        {
+            return Forbid();
+        }
+
+        return Ok(_escolas.Listar(escopo, unidadeId));
     }
 
     [Authorize(Policy = "AdminSecretaria")]
     [HttpPost]
     public IActionResult Criar([FromBody] EscolaDTO dto)
     {
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
         return Traduzir(
-            _escolas.Criar(dto),
+            _escolas.Criar(dto, escopo),
             escola => Created($"/api/escolas/{escola.Id}", escola));
     }
 
@@ -41,28 +65,56 @@ public class EscolaController : RespostaController
     [HttpPut("{id:int}")]
     public IActionResult Atualizar(int id, [FromBody] EscolaDTO dto)
     {
-        return Traduzir(_escolas.Atualizar(id, dto), escola => Ok(escola));
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(_escolas.Atualizar(id, dto, escopo), escola => Ok(escola));
     }
 
     [Authorize(Policy = "AdminSecretaria")]
     [HttpPost("{id:int}/desativar")]
     public IActionResult Desativar(int id)
     {
-        return Traduzir(_escolas.DefinirAtiva(id, false), escola => Ok(escola));
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(_escolas.DefinirAtiva(id, false, escopo), escola => Ok(escola));
     }
 
     [Authorize(Policy = "AdminSecretaria")]
     [HttpPost("{id:int}/reativar")]
     public IActionResult Reativar(int id)
     {
-        return Traduzir(_escolas.DefinirAtiva(id, true), escola => Ok(escola));
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(_escolas.DefinirAtiva(id, true, escopo), escola => Ok(escola));
     }
 
-    /// <summary>Exclusão definitiva: `409` quando há usuário ou unidade referenciando.</summary>
+    /// <summary>Exclusão definitiva: `409` quando há usuário, aluno ou unidade referenciando.</summary>
     [Authorize(Policy = "AdminSecretaria")]
     [HttpDelete("{id:int}")]
     public IActionResult Excluir(int id)
     {
-        return Traduzir(_exclusao.ExcluirEscola(id), _ => NoContent());
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(_exclusao.ExcluirEscola(id, escopo), _ => NoContent());
     }
 }

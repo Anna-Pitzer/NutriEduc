@@ -22,7 +22,7 @@ public class HistoricoAlunoApiTests : IClassFixture<ApiFactory>
     private static object PayloadAluno(
         string nome,
         string telefone = "11999999999",
-        int? unidadeId = null,
+        int? escolaId = null,
         params string[] restricoes) => new
     {
         nome,
@@ -35,18 +35,18 @@ public class HistoricoAlunoApiTests : IClassFixture<ApiFactory>
         anafilaxia = false,
         nomeResponsavel = "Maria Teste",
         telefoneResponsavel = "11988888888",
-        unidadeId
+        escolaId
     };
 
-    private static async Task<int> CriarAluno(
+    private async Task<int> CriarAluno(
         HttpClient client,
         string nome,
         string telefone = "11999999999",
-        int? unidadeId = null)
+        int? escolaId = null)
     {
         var resposta = await client.PostAsJsonAsync(
             "/api/aluno/registrar",
-            PayloadAluno(nome, telefone, unidadeId, "Lactose"));
+            PayloadAluno(nome, telefone, escolaId ?? _factory.EscolaIdPadrao, "Lactose"));
 
         Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
 
@@ -60,7 +60,7 @@ public class HistoricoAlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Historico_AlunoCriado_RegistraCriacaoERestricao()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var alunoId = await CriarAluno(client, "Aluno Trilha Criacao");
 
         var historia = await client.GetFromJsonAsync<JsonElement>(
@@ -78,12 +78,12 @@ public class HistoricoAlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Historico_AlteracaoDeTelefone_RegistraCampoComValores()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var alunoId = await CriarAluno(client, "Aluno Trilha Telefone");
 
         await client.PutAsJsonAsync(
             $"/api/aluno/{alunoId}",
-            PayloadAluno("Aluno Trilha Telefone", "11888887777", null, "Lactose"));
+            PayloadAluno("Aluno Trilha Telefone", "11888887777", _factory.EscolaIdPadrao, "Lactose"));
 
         var historia = await client.GetFromJsonAsync<JsonElement>(
             $"/api/aluno/{alunoId}/historico");
@@ -100,7 +100,7 @@ public class HistoricoAlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Historico_AtualizacaoSemMudanca_NaoRegistraEvento()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var alunoId = await CriarAluno(client, "Aluno Trilha Sem Mudanca");
 
         var antes = (await client.GetFromJsonAsync<JsonElement>(
@@ -108,7 +108,7 @@ public class HistoricoAlunoApiTests : IClassFixture<ApiFactory>
 
         await client.PutAsJsonAsync(
             $"/api/aluno/{alunoId}",
-            PayloadAluno("Aluno Trilha Sem Mudanca", "11999999999", null, "Lactose"));
+            PayloadAluno("Aluno Trilha Sem Mudanca", "11999999999", _factory.EscolaIdPadrao, "Lactose"));
 
         var depois = (await client.GetFromJsonAsync<JsonElement>(
             $"/api/aluno/{alunoId}/historico")).GetProperty("total").GetInt32();
@@ -119,7 +119,7 @@ public class HistoricoAlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Historico_Paginado_DevolveMetadados()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var alunoId = await CriarAluno(client, "Aluno Trilha Paginada");
 
         var pagina = await client.GetFromJsonAsync<JsonElement>(
@@ -134,12 +134,13 @@ public class HistoricoAlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Historico_MerendeiraDeOutraUnidade_Retorna403()
     {
-        var nutricionista = await _factory.CreateAuthenticatedClientAsync();
-        var (_, unidadeDoAluno) = _factory.CriarEscolaComUnidade();
+        var (escolaDoAluno, unidadeDoAluno) = _factory.CriarEscolaComUnidade();
+        var secretaria = await _factory.CreateAuthenticatedClientAsync(
+            PapelUsuario.AdminSecretaria, unidadeId: unidadeDoAluno);
         var (escolaDaMerendeira, outraUnidade) = _factory.CriarEscolaComUnidade();
 
         var alunoId = await CriarAluno(
-            nutricionista, "Aluno Trilha Unidade", unidadeId: unidadeDoAluno);
+            secretaria, "Aluno Trilha Unidade", escolaId: escolaDoAluno);
 
         var merendeira = await _factory.CreateAuthenticatedClientAsync(
             PapelUsuario.Merendeira,
@@ -164,7 +165,7 @@ public class HistoricoAlunoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task RotaAntiga_ContinuaDevolvendoFormatoDaSpec010()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var alunoId = await CriarAluno(client, "Aluno Trilha Compatibilidade");
 
         var pagina = await client.GetFromJsonAsync<JsonElement>(

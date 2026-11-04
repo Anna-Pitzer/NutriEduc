@@ -1,7 +1,7 @@
 ---
 name: feedback-e-notificacoes
 status: created
-references: V6, ADR-004, L7
+references: V6, V17, ADR-020, ADR-021, ADR-004, L7
 ---
 
 # Design — Feedback e notificações
@@ -39,6 +39,7 @@ public class Feedback
     public string AutorNome { get; private set; } = string.Empty;
     public PapelUsuario PapelAutor { get; private set; }
     public int UnidadeId { get; private set; }
+    public int? EscolaId { get; private set; }
     public StatusFeedback Status { get; private set; }
     public string? Resposta { get; private set; }
     public string? RespondidoPor { get; private set; }
@@ -46,7 +47,8 @@ public class Feedback
     public DateTime AtualizadoEmUtc { get; private set; }
 
     public Feedback(string assunto, string mensagem, int autorId, string autorNome,
-                    PapelUsuario papel, int unidadeId, DateTime utc) { /* valida 5..120 / 5..1000 */ }
+                    PapelUsuario papel, int unidadeId, int? escolaId, DateTime utc)
+    { /* valida 5..120 / 5..1000; EscolaId derivado do autor ou do aluno (Spec 027) */ }
 
     public void Responder(string resposta, string autorNome, DateTime utc)
     {
@@ -112,8 +114,8 @@ Regras de destinatário (RF9) ficam em `NotificacaoService`, não nos chamadores
 
 | Origem | Destinatários |
 |---|---|
-| `CardapioPublicado`/`CardapioAlterado` | merendeiras ativas da unidade do cardápio |
-| `SolicitacaoStatus` | solicitante da solicitação |
+| `CardapioPublicado`/`CardapioAlterado` | merendeiras ativas de todas as escolas da unidade do cardápio |
+| `SolicitacaoStatus` | solicitante da solicitação + decisor do tipo (nutrição ou ADM) |
 | `OcorrenciaStatus` | autor da ocorrência + responsáveis vinculados aos alunos |
 | `AlunoAtualizado` | responsáveis vinculados ao aluno |
 | `FeedbackRespondido` | autor do feedback |
@@ -124,6 +126,7 @@ Chamadas nas specs de origem:
 015 PublicacaoCardapioService  → after Publicar/MarcarSubstituido
 016 OcorrenciaService          → after MudarStatus
 017 SolicitacaoService         → after Aprovar/Recusar/Concluir
+030 DecidirSolicitacaoDeDadosService → after Aprovar/Recusar
 010 AlunoService               → after atualizar aluno com responsáveis
 018 FeedbackService            → after Responder
 ```
@@ -136,9 +139,13 @@ origem. Se a emissão falhar, a operação inteira falha (RNF2).
 | Papel | Feedback visível |
 |---|---|
 | autor | próprios |
-| `AdminEscola` | unidade(s) da escola |
-| `Nutricionista` | todos |
-| `AdminSecretaria` | todos (leitura) |
+| `AdminEscola` | própria escola |
+| `Merendeira` | própria escola |
+| `Nutricionista` | própria unidade |
+| `AdminSecretaria` | própria unidade (leitura) |
+
+Nenhum papel enxerga outra unidade. Filtro de `escolaId`/`unidadeId` fora do escopo
+devolve 403 (Spec 028).
 
 Notificações são sempre por `DestinatarioId == usuarioId` da sessão. Não existe
 endpoint administrativo para ler notificação alheia.
@@ -149,7 +156,7 @@ endpoint administrativo para ler notificação alheia.
 |---|---|---|
 | `GET` | `/api/feedbacks?status=&pagina=&tamanho=` | sessão com escopo |
 | `POST` | `/api/feedbacks` | `Merendeira`, `Responsavel`, `AdminEscola` |
-| `POST` | `/api/feedbacks/{id}/responder` | `Nutricionista`, `AdminEscola` (escola) |
+| `POST` | `/api/feedbacks/{id}/responder` | `Nutricionista` (unidade), `AdminEscola` (escola) |
 | `POST` | `/api/feedbacks/{id}/encerrar` | autor |
 | `GET` | `/api/notificacoes?naoLidas=&pagina=&tamanho=` | sessão |
 | `POST` | `/api/notificacoes/{id}/ler` | dono |
@@ -164,7 +171,8 @@ endpoint administrativo para ler notificação alheia.
 
 ## Persistência
 
-- `Feedbacks`: índices `(UnidadeId, CriadoEmUtc)` e `(AutorId, CriadoEmUtc)`.
+- `Feedbacks`: `EscolaId` anulável (`Restrict`); índices `(UnidadeId, CriadoEmUtc)`,
+  `(EscolaId, CriadoEmUtc)` e `(AutorId, CriadoEmUtc)`.
 - `Notificacoes`: índice `(DestinatarioId, Lida, CriadoEmUtc)`; FK
   `DestinatarioId` (`Cascade` quando usuário é removido — na prática desativado).
 - Migration `FeedbackNotificacoes`.
@@ -176,6 +184,7 @@ endpoint administrativo para ler notificação alheia.
 - `pages/merendeiras/Feedback.tsx`, `pages/pais/Feedback.tsx`,
   `pages/escolas/Feedback.tsx`: criar e acompanhar.
 - `pages/nutricao/feedback/FilaFeedback.tsx`: responder e encerrar.
+- `pages/secretaria/Feedback.tsx`: leitura dos feedbacks da unidade, sem responder.
 
 ## Testes obrigatórios
 
@@ -183,11 +192,12 @@ endpoint administrativo para ler notificação alheia.
 |---|---|
 | Domínio | responder duas vezes e encerrar `Aberto` lançam |
 | Domínio | assunto/mensagem/resposta fora dos limites lançam |
-| Serviço | publicação notifica todas as merendeiras da unidade |
-| Serviço | solicitação notifica apenas o solicitante |
+| Serviço | publicação notifica todas as merendeiras ativas das escolas da unidade |
+| Serviço | solicitação notifica o solicitante e o decisor do tipo |
 | Serviço | ocorrência notifica autor e todos os responsáveis |
 | Serviço | usuário desativado não recebe notificação |
 | HTTP | notificação de outro usuário → 404 |
+| HTTP | feedback de outra unidade → 404; de outra escola → 403 |
 | HTTP | `ler-todas` é idempotente e restrito ao dono |
 
 ## Riscos
@@ -198,3 +208,6 @@ endpoint administrativo para ler notificação alheia.
   da operação; o volume por transição é limitado ao número de usuários da unidade.
 - **Privacidade**: título e mensagem não carregam dado sensível; o link leva ao
   recurso, onde o escopo é aplicado novamente.
+- **Destinatário por unidade**: a notificação de cardápio alcança merendeiras de todas
+  as escolas da unidade, porque o cardápio é da unidade (ADR-022); não há regra por
+  escola nesse tipo.

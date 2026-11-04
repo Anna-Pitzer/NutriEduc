@@ -12,36 +12,82 @@ namespace Ntc.Application;
 /// </summary>
 public static class FiltrosDeConsulta
 {
-    /// <summary>Recorte de alunos permitido ao solicitante, sempre aplicado no banco.</summary>
-    public static FiltroAluno ParaAluno(EscopoUsuario escopo)
+    /// <summary>
+    /// Recorte de alunos permitido ao solicitante, sempre aplicado no banco. Os filtros
+    /// opcionais da requisição apenas estreitam o escopo — nunca ampliam (Spec 027, RF13).
+    /// </summary>
+    public static FiltroAluno ParaAluno(
+        EscopoUsuario escopo,
+        int? escolaId = null,
+        int? unidadeId = null)
     {
-        return escopo.Papel switch
+        var filtro = escopo.Papel switch
         {
-            PapelUsuario.AdminSecretaria or PapelUsuario.Nutricionista => FiltroAluno.Todos,
-            PapelUsuario.AdminEscola => escopo.EscolaId is { } escolaId
-                ? new FiltroAluno(EscolaId: escolaId)
-                : FiltroAluno.Nenhum,
-            PapelUsuario.Merendeira => escopo.UnidadeId is { } unidadeId
-                ? new FiltroAluno(UnidadeId: unidadeId)
-                : FiltroAluno.Nenhum,
+            PapelUsuario.AdminSecretaria or PapelUsuario.Nutricionista =>
+                escopo.UnidadeId is { } unidadeDoEscopo
+                    ? new FiltroAluno(UnidadeId: unidadeDoEscopo)
+                    : FiltroAluno.Nenhum,
+            PapelUsuario.AdminEscola or PapelUsuario.Merendeira =>
+                escopo.EscolaId is { } escolaDoEscopo
+                    ? new FiltroAluno(EscolaId: escolaDoEscopo)
+                    : FiltroAluno.Nenhum,
             PapelUsuario.Responsavel => new FiltroAluno(ResponsavelUsuarioId: escopo.UsuarioId),
             _ => FiltroAluno.Nenhum
         };
+
+        return Restringir(filtro, escolaId, unidadeId);
     }
 
     /// <summary>
-    /// Filtro de usuários com o recorte do solicitante já incorporado: escola para
-    /// <c>AdminEscola</c>, sem restrição para os papéis globais.
+    /// Aplica os filtros da requisição como restrições adicionais. Pedido que contradiz o
+    /// escopo devolve <see cref="FiltroAluno.Nenhum"/> em vez de ampliar o alcance.
+    /// </summary>
+    private static FiltroAluno Restringir(
+        FiltroAluno filtro,
+        int? escolaId,
+        int? unidadeId)
+    {
+        if (unidadeId is > 0)
+        {
+            if (filtro.UnidadeId is { } unidadeFixa && unidadeFixa != unidadeId)
+            {
+                return FiltroAluno.Nenhum;
+            }
+
+            filtro = filtro with { UnidadeId = unidadeId };
+        }
+
+        if (escolaId is > 0)
+        {
+            if (filtro.EscolaId is { } escolaFixa && escolaFixa != escolaId)
+            {
+                return FiltroAluno.Nenhum;
+            }
+
+            filtro = filtro with { EscolaId = escolaId };
+        }
+
+        return filtro;
+    }
+
+    /// <summary>
+    /// Filtro de usuários com o recorte do solicitante já incorporado (Spec 027/028):
+    /// unidade para ADM/nutrição, escola para AdminEscola/Merendeira.
     /// </summary>
     public static FiltroUsuarios ParaUsuario(FiltroUsuarios filtro, EscopoUsuario escopo)
     {
-        if (escopo.Global)
+        if (escopo.Papel is PapelUsuario.AdminSecretaria or PapelUsuario.Nutricionista)
         {
-            return filtro;
+            return escopo.UnidadeId is { } unidadeId
+                ? filtro with { UnidadeId = unidadeId }
+                : filtro with { UnidadeId = -1 };
         }
 
-        // Não global só administra a própria escola; o recorte vence um filtro divergente.
-        // Sem escola definida, nenhum usuário é visível (-1 não casa com id válido).
-        return filtro with { EscolaId = escopo.EscolaId ?? -1 };
+        if (escopo.Papel is PapelUsuario.AdminEscola or PapelUsuario.Merendeira)
+        {
+            return filtro with { EscolaId = escopo.EscolaId ?? -1 };
+        }
+
+        return filtro with { UnidadeId = -1 };
     }
 }

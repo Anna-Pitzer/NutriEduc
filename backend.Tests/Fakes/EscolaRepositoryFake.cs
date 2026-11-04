@@ -27,11 +27,20 @@ public class EscolaRepositoryFake : IEscolaRepository
 
     public List<Escola> Listar() => _escolas.ToList();
 
-    public bool ExisteNome(string nome, int? ignorarId = null)
+    public List<Escola> ListarPorUnidade(int unidadeId) =>
+        _escolas.Where(escola => escola.UnidadeId == unidadeId)
+            .OrderBy(escola => escola.Nome)
+            .ToList();
+
+    public List<Escola> ListarPorEscola(int escolaId) =>
+        _escolas.Where(escola => escola.Id == escolaId).ToList();
+
+    public bool ExisteNome(string nome, int unidadeId, int? ignorarId = null)
     {
         var alvo = (nome ?? string.Empty).Trim();
 
         return _escolas.Any(escola =>
+            escola.UnidadeId == unidadeId &&
             string.Equals(escola.Nome, alvo, StringComparison.OrdinalIgnoreCase) &&
             (ignorarId is null || escola.Id != ignorarId));
     }
@@ -99,6 +108,9 @@ public class EscolaRepositoryFake : IEscolaRepository
 
     public bool ExisteUnidadeDaEscola(int escolaId) =>
         _unidades.Any(unidade => unidade.EscolaId == escolaId);
+
+    public int ContarSemUnidade() =>
+        _escolas.Count(escola => escola.UnidadeId == null);
 
     private static void DefinirId(object entidade, int id)
     {
