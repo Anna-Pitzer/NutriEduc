@@ -374,13 +374,31 @@ CRN válido e snapshot de autor.
 **Regra derivada:** item bloqueante nunca é servido; sem versão publicada para `(escola,
 conjunto)`, o cardápio do aluno é `Indisponivel`; o geral nunca é fallback.
 
-## Spec 030 — solicitacao-alteracao-dados
+## Spec 017 — solicitacoes
 
 **Canonical creation path:** `backend/Domain/Entities/Solicitacao.cs`,
-`backend/Domain/Entities/AlteracaoDeDado.cs`,
-`backend/Application/Solicitacoes/DecidirSolicitacaoDeDadosService.cs`,
-`frontend/src/pages/pais/SolicitacoesDoFilho.tsx`,
-`frontend/src/pages/secretaria/FilaSolicitacoes.tsx`.
+`backend/Domain/Entities/HistoricoSolicitacao.cs`,
+`backend/Domain/Interface/ISolicitacaoRepository.cs`,
+`backend/API/Services/SolicitacaoService.cs`,
+`backend/API/Controllers/SolicitacaoController.cs`,
+`frontend/src/pages/solicitacoes/SolicitacoesPage.tsx`.
+
+**Problema estrutural:** pedidos de cardápio, ingrediente e restrição existiam apenas fora do
+sistema, sem status, responsável ou retorno ao solicitante.
+
+**Decisão:** agregado com seis tipos, ciclo de status explícito e histórico append-only; a
+decisão é separada por tipo (nutrição para cardápio/ingrediente, ADM para restrição e dados
+cadastrais) e o efeito usa os donos existentes, sem escrita paralela.
+
+**Regra derivada:** aprovar não edita cardápio automaticamente; a resposta diz qual spec é
+dona da alteração.
+
+## Spec 030 — solicitacao-alteracao-dados
+
+**Canonical creation path:** `backend/Domain/Entities/CampoDeDadoDoAluno.cs`,
+`backend/Domain/Entities/AlteracaoSolicitada.cs`,
+`backend/Domain/Entities/SolicitacaoAlteracao.cs`, `backend/API/Services/SolicitacaoService.cs`
+(ramo `DadosCadastrais`), `frontend/src/pages/solicitacoes/SolicitacoesPage.tsx`.
 
 **Problema estrutural:** o fluxo de solicitações cobre cardápio, ingrediente, restrição e
 alergia, mas não dados cadastrais; o responsável não tem canal e o ADM edita sem registrar o
@@ -388,7 +406,8 @@ pedido.
 
 **Decisão:** novo tipo `DadosCadastrais` no agregado da Spec 017, com alterações imutáveis e
 snapshot do valor atual; aprovação atômica via `Aluno.AtualizarDados`, com recusa em 409 quando
-o valor divergiu e evento na trilha com a origem da solicitação.
+o valor divergiu e evento na trilha com a origem da solicitação. A emissão de status usa a
+fatia central de `Notificacao` da Spec 018, sem dado clínico.
 
 **Regra derivada:** aprovar não aplica pedido desatualizado; nada é aplicado parcialmente.
 

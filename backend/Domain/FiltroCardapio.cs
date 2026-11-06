@@ -11,8 +11,13 @@ namespace Ntc.Domain;
 /// <param name="Data">Data que o período deve conter; nula não filtra por data.</param>
 /// <param name="Situacao">Situação desejada; nula lista todas.</param>
 /// <param name="Refeicao">Nome da refeição, comparado sem diferenciar caixa (RF10).</param>
+/// <param name="EscolaVisivelId">
+/// Escola do usuário: devolve o geral da unidade e as versões adaptadas dessa escola
+/// (Spec 029, RF16). Nula não restringe.
+/// </param>
 public sealed record FiltroCardapio(
     int? UnidadeId = null,
     DateOnly? Data = null,
     SituacaoCardapio? Situacao = null,
-    string? Refeicao = null);
+    string? Refeicao = null,
+    int? EscolaVisivelId = null);

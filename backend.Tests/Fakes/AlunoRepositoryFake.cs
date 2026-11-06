@@ -18,6 +18,9 @@ public class AlunoRepositoryFake : IAlunoRepository
     private readonly List<Aluno> _alunos = new();
     private int _proximoId = 1;
 
+    /// <summary>Vínculos responsável↔aluno que o fake não modela no agregado (Spec 027).</summary>
+    public HashSet<(int ResponsavelUsuarioId, int AlunoId)> Vinculos { get; } = new();
+
     public void Add(Aluno aluno)
     {
         DefinirId(aluno, _proximoId++);
@@ -72,9 +75,14 @@ public class AlunoRepositoryFake : IAlunoRepository
             consulta = consulta.Where(aluno => aluno.EscolaId == escolaId);
         }
 
-        if (filtro.ResponsavelUsuarioId is not null)
+        if (filtro.ResponsavelUsuarioId is { } responsavelId)
         {
-            return Enumerable.Empty<Aluno>();
+            var vinculados = Vinculos
+                .Where(vinculo => vinculo.ResponsavelUsuarioId == responsavelId)
+                .Select(vinculo => vinculo.AlunoId)
+                .ToHashSet();
+
+            consulta = consulta.Where(aluno => vinculados.Contains(aluno.Id));
         }
 
         return consulta;

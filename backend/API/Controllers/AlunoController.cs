@@ -11,15 +11,18 @@ public class AlunoController : RespostaController
 {
     private readonly AlunoService _alunoService;
     private readonly HistoricoAlunoService _historicoService;
+    private readonly CardapioServidoService _cardapioServido;
     private readonly EscopoService _escopo;
 
     public AlunoController(
         AlunoService alunoService,
         HistoricoAlunoService historicoService,
+        CardapioServidoService cardapioServido,
         EscopoService escopo)
     {
         _alunoService = alunoService;
         _historicoService = historicoService;
+        _cardapioServido = cardapioServido;
         _escopo = escopo;
     }
 
@@ -71,6 +74,25 @@ public class AlunoController : RespostaController
         }
 
         return Traduzir(_alunoService.ObterAlunoPorId(id, escopo), Ok);
+    }
+
+    /// <summary>
+    /// Versão que o aluno realmente recebe na data (Spec 029, RF15): geral para aluno sem
+    /// restrição, adaptado publicado para aluno com restrição, ou <c>Indisponivel</c> com
+    /// alerta quando não existe versão publicada. O geral nunca é fallback.
+    /// </summary>
+    [Authorize(Policy = "LeituraAluno")]
+    [HttpGet("{id:int}/cardapio")]
+    public IActionResult CardapioDoAluno(int id, [FromQuery] DateOnly? data)
+    {
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(_cardapioServido.Obter(id, data, escopo), Ok);
     }
 
     /// <summary>

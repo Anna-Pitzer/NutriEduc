@@ -45,7 +45,10 @@ public class CardapioRepository : ICardapioRepository
         int pagina,
         int tamanho)
     {
-        var consulta = Filtrar(filtro, exigirPublicado: true, exigirUnidade: true);
+        // A rota pública é a vitrine do cardápio geral da unidade; a versão de cada aluno
+        // específico é resolvida em /api/aluno/{id}/cardapio (Spec 029, RF15).
+        var consulta = Filtrar(filtro, exigirPublicado: true, exigirUnidade: true)
+            .Where(cardapio => cardapio.Tipo == TipoCardapio.Geral);
         var total = consulta.Count();
 
         var itens = consulta
@@ -66,7 +69,88 @@ public class CardapioRepository : ICardapioRepository
             .Include(cardapio => cardapio.Refeicoes)
                 .ThenInclude(refeicao => refeicao.Itens)
                     .ThenInclude(item => item.Alimento)
+            .Include(cardapio => cardapio.Substituicoes)
+            .Include(cardapio => cardapio.Pendencias)
+            .Include(cardapio => cardapio.Confirmacoes)
             .FirstOrDefault(cardapio => cardapio.Id == id);
+
+    public Cardapio? ObterAdaptado(int origemId, int escolaId, string conjuntoChave) =>
+        _context.Cardapios
+            .Include(cardapio => cardapio.Refeicoes)
+                .ThenInclude(refeicao => refeicao.Itens)
+                    .ThenInclude(item => item.Alimento)
+            .Include(cardapio => cardapio.Substituicoes)
+            .Include(cardapio => cardapio.Pendencias)
+            .Where(cardapio =>
+                cardapio.OrigemId == origemId &&
+                cardapio.EscolaId == escolaId &&
+                cardapio.ConjuntoRestricoesChave == conjuntoChave &&
+                cardapio.Situacao != SituacaoCardapio.Substituido)
+            .OrderByDescending(cardapio => cardapio.Id)
+            .FirstOrDefault();
+
+    public List<Cardapio> ListarAdaptados(int origemId)
+    {
+        // A ordenacao textual por chave nao e traduzivel para SQL; ela acontece em memoria,
+        // depois de o filtro e os includes rodarem no banco (RNF6).
+        var itens = _context.Cardapios
+            .Include(cardapio => cardapio.Refeicoes)
+                .ThenInclude(refeicao => refeicao.Itens)
+                    .ThenInclude(item => item.Alimento)
+            .Include(cardapio => cardapio.Substituicoes)
+            .Include(cardapio => cardapio.Pendencias)
+            .Where(cardapio =>
+                cardapio.OrigemId == origemId &&
+                cardapio.Situacao != SituacaoCardapio.Substituido)
+            .ToList();
+
+        return itens
+            .OrderBy(cardapio => cardapio.EscolaId)
+            .ThenBy(cardapio => cardapio.ConjuntoRestricoesChave, StringComparer.Ordinal)
+            .ThenBy(cardapio => cardapio.Id)
+            .ToList();
+    }
+
+    public int ContarAdaptados(int origemId) =>
+        _context.Cardapios.Count(cardapio =>
+            cardapio.OrigemId == origemId &&
+            cardapio.Situacao != SituacaoCardapio.Substituido);
+
+    public Cardapio? ObterGeralPublicado(int unidadeId, DateOnly data) =>
+        _context.Cardapios
+            .Include(cardapio => cardapio.Refeicoes)
+                .ThenInclude(refeicao => refeicao.Itens)
+                    .ThenInclude(item => item.Alimento)
+            .Where(cardapio =>
+                cardapio.Tipo == TipoCardapio.Geral &&
+                cardapio.UnidadeId == unidadeId &&
+                cardapio.Situacao == SituacaoCardapio.Publicado &&
+                cardapio.Periodo.Inicio <= data &&
+                cardapio.Periodo.Fim >= data)
+            .OrderByDescending(cardapio => cardapio.PublicadoEmUtc)
+            .ThenByDescending(cardapio => cardapio.Id)
+            .FirstOrDefault();
+
+    public Cardapio? ObterAdaptadoPublicado(
+        int origemId,
+        int escolaId,
+        string conjuntoChave,
+        DateOnly data) =>
+        _context.Cardapios
+            .Include(cardapio => cardapio.Refeicoes)
+                .ThenInclude(refeicao => refeicao.Itens)
+                    .ThenInclude(item => item.Alimento)
+            .Where(cardapio =>
+                cardapio.Tipo == TipoCardapio.Adaptado &&
+                cardapio.OrigemId == origemId &&
+                cardapio.EscolaId == escolaId &&
+                cardapio.ConjuntoRestricoesChave == conjuntoChave &&
+                cardapio.Situacao == SituacaoCardapio.Publicado &&
+                cardapio.Periodo.Inicio <= data &&
+                cardapio.Periodo.Fim >= data)
+            .OrderByDescending(cardapio => cardapio.PublicadoEmUtc)
+            .ThenByDescending(cardapio => cardapio.Id)
+            .FirstOrDefault();
 
     public bool ExisteCardapioDaUnidade(int unidadeId) =>
         _context.Cardapios.Any(cardapio => cardapio.UnidadeId == unidadeId);
@@ -83,16 +167,37 @@ public class CardapioRepository : ICardapioRepository
             .Distinct()
             .ToList();
 
-    public int? ExistePublicadoNoPeriodo(int unidadeId, PeriodoVigencia periodo, int? ignorarId) =>
-        _context.Cardapios
-            .Where(cardapio =>
-                cardapio.UnidadeId == unidadeId &&
-                cardapio.Situacao == SituacaoCardapio.Publicado &&
-                (ignorarId == null || cardapio.Id != ignorarId) &&
-                cardapio.Periodo.Inicio <= periodo.Fim &&
-                cardapio.Periodo.Fim >= periodo.Inicio)
+    public int? ExistePublicadoNoPeriodo(
+        int unidadeId,
+        PeriodoVigencia periodo,
+        int? ignorarId,
+        TipoCardapio? tipo = null,
+        int? escolaId = null,
+        string? conjuntoChave = null)
+    {
+        var consulta = _context.Cardapios.Where(cardapio =>
+            cardapio.UnidadeId == unidadeId &&
+            cardapio.Situacao == SituacaoCardapio.Publicado &&
+            (ignorarId == null || cardapio.Id != ignorarId) &&
+            cardapio.Periodo.Inicio <= periodo.Fim &&
+            cardapio.Periodo.Fim >= periodo.Inicio);
+
+        if (tipo is { } tipoDoCardapio)
+        {
+            consulta = consulta.Where(cardapio => cardapio.Tipo == tipoDoCardapio);
+        }
+
+        if (tipo == TipoCardapio.Adaptado)
+        {
+            consulta = consulta.Where(cardapio =>
+                cardapio.EscolaId == escolaId &&
+                cardapio.ConjuntoRestricoesChave == conjuntoChave);
+        }
+
+        return consulta
             .Select(cardapio => (int?)cardapio.Id)
             .FirstOrDefault();
+    }
 
     public (List<HistoricoCardapio> Itens, int Total) ListarHistorico(
         int cardapioId,
@@ -207,6 +312,14 @@ public class CardapioRepository : ICardapioRepository
         {
             consulta = consulta.Where(cardapio =>
                 cardapio.Periodo.Inicio <= data && cardapio.Periodo.Fim >= data);
+        }
+
+        // AdminEscola e Merendeira enxergam o geral da unidade e o adaptado da própria
+        // escola — nunca o adaptado de outra escola (Spec 029, RF16).
+        if (filtro.EscolaVisivelId is { } escolaVisivel)
+        {
+            consulta = consulta.Where(cardapio =>
+                cardapio.Tipo == TipoCardapio.Geral || cardapio.EscolaId == escolaVisivel);
         }
 
         if (!string.IsNullOrWhiteSpace(filtro.Refeicao))

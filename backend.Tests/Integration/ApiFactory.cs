@@ -130,6 +130,19 @@ public class ApiFactory : WebApplicationFactory<Program>
         return (escola.Id, unidade.Id);
     }
 
+    /// <summary>Cria uma escola dentro de uma unidade já existente, para o escopo de escola.</summary>
+    public int CriarEscolaNaUnidade(int unidadeId)
+    {
+        using var scope = Services.CreateScope();
+        var escolas = scope.ServiceProvider.GetRequiredService<IEscolaRepository>();
+        var unidadeDeTrabalho = scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
+
+        var escola = unidadeDeTrabalho.ExecutarEmTransacao(
+            () => escolas.Add(new Escola($"Escola de teste {Guid.NewGuid():N}", unidadeId)));
+
+        return escola.Id;
+    }
+
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
@@ -161,6 +174,12 @@ public class ApiFactory : WebApplicationFactory<Program>
             ?? throw new InvalidOperationException($"Usuário {email} não existe.");
 
         usuario.DefinirPapel(papel, escolaId, unidadeId);
+
+        if (papel == PapelUsuario.Nutricionista && string.IsNullOrWhiteSpace(usuario.Crn))
+        {
+            usuario.DefinirCrn("CRN-3 12345");
+        }
+
         scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>()
             .ExecutarEmTransacao(() => usuarios.Update(usuario));
     }
@@ -214,6 +233,12 @@ public class ApiFactory : WebApplicationFactory<Program>
                 ?? throw new InvalidOperationException($"Usuário {email} não foi criado.");
 
             usuario.DefinirPapel(papel, escolaId, unidadeId);
+
+            if (papel == PapelUsuario.Nutricionista && string.IsNullOrWhiteSpace(usuario.Crn))
+            {
+                usuario.DefinirCrn("CRN-3 12345");
+            }
+
             usuarioId = usuario.Id;
             scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>()
                 .ExecutarEmTransacao(() => usuarios.Update(usuario));
@@ -227,6 +252,23 @@ public class ApiFactory : WebApplicationFactory<Program>
         login.EnsureSuccessStatusCode();
 
         return (client, usuarioId);
+    }
+
+    /// <summary>
+    /// Cria uma unidade e uma nutricionista autenticada nessa mesma unidade, com CRN válido.
+    /// É o contexto mínimo para criar, adaptar e publicar cardápio (Spec 029, RF9 e RF17):
+    /// a autoria exige que a profissional pertença à unidade do cardápio.
+    /// </summary>
+    public async Task<(HttpClient Client, int UsuarioId, int UnidadeId)>
+        CriarNutricionistaComUnidadeAsync()
+    {
+        var (_, unidadeId) = CriarEscolaComUnidade();
+        var (client, usuarioId) = await CriarClienteAutenticadoAsync(
+            PapelUsuario.Nutricionista,
+            escolaId: null,
+            unidadeId: unidadeId);
+
+        return (client, usuarioId, unidadeId);
     }
 
     /// <summary>

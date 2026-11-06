@@ -104,6 +104,7 @@ public sealed class HistoricoAlunoService
             ValorAnterior = evento.ValorAnterior,
             ValorNovo = evento.ValorNovo,
             Autor = evento.AutorNome,
+            Origem = evento.Origem,
             CriadoEm = DateTime.SpecifyKind(evento.CriadoEmUtc, DateTimeKind.Utc)
         };
     }

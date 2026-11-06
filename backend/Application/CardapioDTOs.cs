@@ -45,6 +45,31 @@ public class CardapioDTO
     public PeriodoCardapioDTO Periodo { get; set; } = new();
     public int? CardapioDuplicadoDeId { get; set; }
 
+    /// <summary>Geral ou adaptado (Spec 029, RF1).</summary>
+    public TipoCardapio Tipo { get; set; }
+
+    /// <summary>Geral de origem do adaptado; nulo no geral.</summary>
+    public int? OrigemId { get; set; }
+
+    /// <summary>Escola da versão adaptada; nulo no geral.</summary>
+    public int? EscolaId { get; set; }
+
+    /// <summary>Chave canônica do conjunto de restrições; nula no geral.</summary>
+    public string? ConjuntoRestricoesChave { get; set; }
+
+    /// <summary>Restrições do conjunto com nome e categoria (RF18).</summary>
+    public List<RestricaoDaVersaoDTO> Restricoes { get; set; } = new();
+
+    /// <summary>Estado da adaptação; nulo no geral (RF7).</summary>
+    public StatusAdaptacao? StatusAdaptacao { get; set; }
+
+    /// <summary>Verdadeiro quando a unidade não tem nenhum conjunto de restrições (RF10, RF21).</summary>
+    public bool SemRestricoes { get; set; }
+
+    public List<SubstituicaoCardapioDTO> Substituicoes { get; set; } = new();
+    public List<PendenciaAdaptacaoDTO> Pendencias { get; set; } = new();
+    public List<ConfirmacaoIncompatibilidadeDTO> Confirmacoes { get; set; } = new();
+
     /// <summary>Nutricionista que elaborou o cardápio; nulo em cardápios legados.</summary>
     public NutricionistaDTO? Nutricionista { get; set; }
 
@@ -64,6 +89,10 @@ public class CardapioResumoDTO
     public int UnidadeId { get; set; }
     public SituacaoCardapio Situacao { get; set; }
     public PeriodoCardapioDTO Periodo { get; set; } = new();
+    public TipoCardapio Tipo { get; set; }
+    public int? OrigemId { get; set; }
+    public int? EscolaId { get; set; }
+    public StatusAdaptacao? StatusAdaptacao { get; set; }
     public int TotalRefeicoes { get; set; }
     public int TotalBloqueantes { get; set; }
     public int TotalAlertas { get; set; }
@@ -94,6 +123,15 @@ public class SalvarCardapioDTO
     public int UnidadeId { get; set; }
     public PeriodoCardapioDTO? Periodo { get; set; }
     public List<SalvarRefeicaoDTO>? Refeicoes { get; set; }
+
+    /// <summary>Nutricionista responsável, obrigatória na criação (Spec 029, RF9).</summary>
+    public int? NutricionistaId { get; set; }
+
+    /// <summary>
+    /// Confirma que a nutricionista manteve um alimento incompatível com substituto seguro
+    /// (Spec 029, RF12). Sem esta confirmação a criação devolve 400.
+    /// </summary>
+    public bool ConfirmarIncompatibilidades { get; set; }
 }
 
 /// <summary>Entrada da duplicação: o novo período é obrigatório (RF6).</summary>

@@ -17,6 +17,10 @@ public static class CardapioMapper
         UnidadeId = cardapio.UnidadeId,
         Situacao = cardapio.Situacao,
         Periodo = new PeriodoCardapioDTO(cardapio.Periodo),
+        Tipo = cardapio.Tipo,
+        OrigemId = cardapio.OrigemId,
+        EscolaId = cardapio.EscolaId,
+        StatusAdaptacao = cardapio.StatusAdaptacao,
         TotalRefeicoes = cardapio.Refeicoes.Count
     };
 
@@ -67,11 +71,51 @@ public static class CardapioMapper
             Situacao = cardapio.Situacao,
             Periodo = new PeriodoCardapioDTO(cardapio.Periodo),
             CardapioDuplicadoDeId = cardapio.CardapioDuplicadoDeId,
+            Tipo = cardapio.Tipo,
+            OrigemId = cardapio.OrigemId,
+            EscolaId = cardapio.EscolaId,
+            ConjuntoRestricoesChave = cardapio.ConjuntoRestricoesChave,
+            StatusAdaptacao = cardapio.StatusAdaptacao,
+            Substituicoes = cardapio.Substituicoes.Select(ParaSubstituicao).ToList(),
+            Pendencias = cardapio.Pendencias.Select(ParaPendencia).ToList(),
+            Confirmacoes = cardapio.Confirmacoes.Select(ParaConfirmacao).ToList(),
             Nutricionista = ParaNutricionista(cardapio),
             Refeicoes = refeicoes,
             Total = new ValoresNutricionaisDTO(CalculoNutricional.Somar(totaisPorRefeicao))
         };
     }
+
+    private static SubstituicaoCardapioDTO ParaSubstituicao(SubstituicaoDeItem substituicao) => new()
+    {
+        RefeicaoOrdem = substituicao.RefeicaoOrdem,
+        RefeicaoNome = substituicao.RefeicaoNome,
+        AlimentoOriginalId = substituicao.AlimentoOriginalId,
+        AlimentoOriginal = substituicao.AlimentoOriginalNome,
+        AlimentoSubstitutoId = substituicao.AlimentoSubstitutoId,
+        AlimentoSubstituto = substituicao.AlimentoSubstitutoNome,
+        Gramas = substituicao.QuantidadeGramas,
+        RestricoesBloqueantes = substituicao.RestricoesBloqueantes
+    };
+
+    private static PendenciaAdaptacaoDTO ParaPendencia(PendenciaAdaptacao pendencia) => new()
+    {
+        RefeicaoOrdem = pendencia.RefeicaoOrdem,
+        RefeicaoNome = pendencia.RefeicaoNome,
+        AlimentoId = pendencia.AlimentoId,
+        Alimento = pendencia.AlimentoNome,
+        Motivo = pendencia.Motivo
+    };
+
+    private static ConfirmacaoIncompatibilidadeDTO ParaConfirmacao(
+        ConfirmacaoDeIncompatibilidade confirmacao) => new()
+    {
+        Autor = confirmacao.AutorNome,
+        CriadoEm = confirmacao.CriadoEmUtc,
+        AlimentoId = confirmacao.AlimentoId,
+        Alimento = confirmacao.AlimentoNome,
+        Escolas = confirmacao.Escolas,
+        Conjuntos = confirmacao.Conjuntos
+    };
 
     /// <summary>
     /// Retrato da autoria (Spec 027). Cardápio sem responsável informado — anterior à regra —

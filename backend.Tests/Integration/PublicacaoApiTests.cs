@@ -53,6 +53,12 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
         return corpo.GetProperty("id").GetInt32();
     }
 
+    private static async Task<int> NutricionistaId(HttpClient client)
+    {
+        var lista = await client.GetFromJsonAsync<JsonElement>("/api/nutricionistas");
+        return lista[0].GetProperty("id").GetInt32();
+    }
+
     private static async Task<int> CriarCardapio(
         HttpClient client,
         int unidadeId,
@@ -63,6 +69,8 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
         {
             nome,
             unidadeId,
+            nutricionistaId = await NutricionistaId(client),
+            confirmarIncompatibilidades = true,
             periodo = new { inicio = "2026-11-02", fim = "2026-11-06" },
             refeicoes = new[]
             {
@@ -106,6 +114,27 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
         resposta.EnsureSuccessStatusCode();
 
         var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+
+        // Substituto seguro da mesma categoria: sem ele a montagem manual bloqueia o item
+        // incompatível (Spec 029, RF12), e o teste de publicacao nao chegaria ao 422.
+        var seguro = await client.PostAsJsonAsync("/api/alimentos", new
+        {
+            nome = $"Seguro {Guid.NewGuid():N}",
+            categoriaId,
+            valores = new
+            {
+                caloriasKcal = 130m,
+                proteinasG = 2.7m,
+                carboidratosG = 28.2m,
+                gordurasG = 0.3m,
+                fibrasG = 0.4m,
+                sodioMg = 1m
+            },
+            restricaoIds = Array.Empty<int>()
+        });
+
+        seguro.EnsureSuccessStatusCode();
+
         return corpo.GetProperty("id").GetInt32();
     }
 
@@ -146,8 +175,7 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Publicar_Rascunho_RetornaPublicado()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
         var arroz = await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}");
 
@@ -164,8 +192,7 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Publicar_JaPublicado_Retorna409()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
         var arroz = await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}");
 
@@ -178,8 +205,7 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Revisao_CriaNovaVersao()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
         var arroz = await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}");
 
@@ -199,8 +225,7 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Cancelar_SemMotivo_Retorna400()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
         var arroz = await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}");
 
@@ -214,8 +239,7 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Historico_ListaEventos()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
         var arroz = await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}");
 
@@ -232,11 +256,10 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Publicar_ComBloqueante_Retorna422ComDetalhes()
+    public async Task Publicar_ComAlergenicoEAdaptadoAtualizado_PublicaGeralEAdaptado()
     {
         _factory.GarantirCatalogo();
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var lactoseId = ObterRestricaoId("Lactose");
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
         var iogurte = await CriarAlimentoComRestricao(client, categoriaId, lactoseId, $"Iogurte {Guid.NewGuid():N}");
@@ -245,23 +268,31 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
 
         var cardapioId = await CriarCardapio(client, unidadeId, iogurte);
 
+        // Spec 029, RF4 e RF15: o geral serve apenas aluno sem restrição; o aluno com
+        // alergia é servido pela versão adaptada. O alergênico não bloqueia o geral.
         var resposta = await client.PostAsync($"/api/cardapios/{cardapioId}/publicar", null);
 
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, resposta.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
 
-        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Contains("compatível", corpo.GetProperty("erro").GetString());
-        Assert.Contains(
-            corpo.GetProperty("detalhes").EnumerateArray(),
-            detalhe => detalhe.GetProperty("restricao").GetString() == "Lactose" &&
-                       detalhe.GetProperty("alimento").GetString() != null);
+        var adaptados = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/cardapios/{cardapioId}/adaptados");
+
+        var adaptado = Assert.Single(adaptados.EnumerateArray());
+
+        Assert.Equal("Atualizado", adaptado.GetProperty("statusAdaptacao").GetString());
+        Assert.Equal(0, adaptado.GetProperty("totalPendencias").GetInt32());
+
+        var publicacaoAdaptada = await client.PostAsync(
+            $"/api/cardapios/{adaptado.GetProperty("id").GetInt32()}/publicar",
+            null);
+
+        Assert.Equal(HttpStatusCode.OK, publicacaoAdaptada.StatusCode);
     }
 
     [Fact]
     public async Task Publicar_PeriodoSobreposto_Retorna409ComCardapioId()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
         var arroz = await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}");
 
@@ -282,8 +313,7 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Put_Publicado_Retorna409()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
         var arroz = await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}");
 
@@ -313,8 +343,7 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task PublicarRevisao_MarcaOriginalComoSubstituido()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
         var arroz = await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}");
 
@@ -340,19 +369,28 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Alteracoes_MerendeiraVeApenasPropriaUnidade()
     {
-        var nutricionista = await _factory.CreateAuthenticatedClientAsync();
-        var (escolaA, unidadeA) = _factory.CriarEscolaComUnidade();
+        var (_, unidadeA) = _factory.CriarEscolaComUnidade();
+        var escolaA = _factory.CriarEscolaNaUnidade(unidadeA);
+        var (nutricionista, nutricionistaId) = await _factory.CriarClienteAutenticadoAsync(
+            PapelUsuario.Nutricionista,
+            escolaId: null,
+            unidadeId: unidadeA);
         var (_, unidadeB) = _factory.CriarEscolaComUnidade();
         var categoriaId = await CriarCategoria(nutricionista, $"Categoria {Guid.NewGuid():N}");
         var arroz = await CriarAlimento(nutricionista, categoriaId, $"Arroz {Guid.NewGuid():N}");
 
+        var (nutricionistaB, _) = await _factory.CriarClienteAutenticadoAsync(
+            PapelUsuario.Nutricionista,
+            escolaId: null,
+            unidadeId: unidadeB);
+
         var cardapioA = await CriarCardapio(nutricionista, unidadeA, arroz, "Cardápio da Unidade A");
-        var cardapioB = await CriarCardapio(nutricionista, unidadeB, arroz, "Cardápio da Unidade B");
+        var cardapioB = await CriarCardapio(nutricionistaB, unidadeB, arroz, "Cardápio da Unidade B");
 
         Assert.Equal(HttpStatusCode.OK,
             (await nutricionista.PostAsync($"/api/cardapios/{cardapioA}/publicar", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK,
-            (await nutricionista.PostAsync($"/api/cardapios/{cardapioB}/publicar", null)).StatusCode);
+            (await nutricionistaB.PostAsync($"/api/cardapios/{cardapioB}/publicar", null)).StatusCode);
 
         var merendeira = await _factory.CreateAuthenticatedClientAsync(
             PapelUsuario.Merendeira, escolaA, unidadeA);

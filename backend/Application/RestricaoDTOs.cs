@@ -48,6 +48,7 @@ public class HistoricoAlunoDTO
     public string? ValorAnterior { get; set; }
     public string? ValorNovo { get; set; }
     public string Autor { get; set; } = string.Empty;
+    public string? Origem { get; set; }
     public DateTime CriadoEm { get; set; }
 }
 

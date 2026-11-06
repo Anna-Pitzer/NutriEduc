@@ -19,25 +19,33 @@ public class CardapioServiceTests
         CardapioRepositoryFake Cardapios,
         AlimentoRepositoryFake Alimentos,
         AlunoRepositoryFake Alunos,
+        RestricaoRepositoryFake Restricoes,
+        UnidadeDeTrabalhoFake UnidadeDeTrabalho,
         int UnidadeA,
         int UnidadeB,
         int EscolaA);
 
+    // A unidade A é sempre a primeira criada no fake e a nutricionista responsável tem id 1.
     private static readonly EscopoUsuario Nutricao =
-        new(1, PapelUsuario.Nutricionista, null, null);
+        new(1, PapelUsuario.Nutricionista, null, 1);
 
-    private static EscopoUsuario Merendeira(int unidadeId) =>
-        new(2, PapelUsuario.Merendeira, null, unidadeId);
+    private static readonly EscopoUsuario NutricaoDaUnidadeB =
+        new(2, PapelUsuario.Nutricionista, null, 2);
+
+    private static EscopoUsuario Merendeira(int unidadeId, int escolaId) =>
+        new(2, PapelUsuario.Merendeira, escolaId, unidadeId);
 
     private static SalvarCardapioDTO Entrada(
         int unidadeId,
         string nome = "Semana 12",
         string inicio = "2026-11-02",
         string fim = "2026-11-06",
+        int nutricionistaId = 1,
         params (string Nome, int Ordem, int AlimentoId, decimal Gramas)[] itensDaRefeicao) => new()
         {
             Nome = nome,
             UnidadeId = unidadeId,
+            NutricionistaId = nutricionistaId,
             Periodo = new PeriodoCardapioDTO
             {
                 Inicio = DateOnly.Parse(inicio),
@@ -67,6 +75,7 @@ public class CardapioServiceTests
         var alunos = new AlunoRepositoryFake();
         var escolas = new EscolaRepositoryFake();
         var usuarios = new UsuarioRepositoryFake();
+        var restricoes = new RestricaoRepositoryFake();
         var unidadeDeTrabalho = new UnidadeDeTrabalhoFake();
 
         // O repositório real carrega o alimento de cada item (Include); o fake faz igual.
@@ -76,9 +85,48 @@ public class CardapioServiceTests
         var unidadeB = escolas.AddUnidade(new UnidadeEscolar("Unidade B")).Id;
         var escolaA = escolas.Add(new Escola("Escola de teste", unidadeA)).Id;
 
-        var servico = new CardapioService(cardapios, alimentos, alunos, escolas, usuarios, unidadeDeTrabalho);
+        var nutricionistaA = new Usuario(
+            "Nutricionista A",
+            "11111111111",
+            new DateOnly(1990, 1, 1),
+            "nutri.a@teste.com",
+            PapelUsuario.Nutricionista,
+            null,
+            unidadeA,
+            "CRN-3 12345");
+        usuarios.Add(nutricionistaA);
 
-        return new Cenario(servico, cardapios, alimentos, alunos, unidadeA, unidadeB, escolaA);
+        var nutricionistaB = new Usuario(
+            "Nutricionista B",
+            "22222222222",
+            new DateOnly(1990, 1, 1),
+            "nutri.b@teste.com",
+            PapelUsuario.Nutricionista,
+            null,
+            unidadeB,
+            "CRN-3 54321");
+        usuarios.Add(nutricionistaB);
+
+        var servico = new CardapioService(
+            cardapios,
+            alimentos,
+            alunos,
+            escolas,
+            usuarios,
+            restricoes,
+            unidadeDeTrabalho,
+            new Ntc.Application.Seguranca.AutorizacaoService());
+
+        return new Cenario(
+            servico,
+            cardapios,
+            alimentos,
+            alunos,
+            restricoes,
+            unidadeDeTrabalho,
+            unidadeA,
+            unidadeB,
+            escolaA);
     }
 
     private static Alimento CriarAlimento(AlimentoRepositoryFake alimentos, string nome) =>
@@ -191,7 +239,7 @@ public class CardapioServiceTests
         var cenario = Montar();
 
         var resultado = cenario.Servico.Listar(
-            cenario.UnidadeA, null, null, null, null, Merendeira(cenario.UnidadeB));
+            cenario.UnidadeA, null, null, null, null, Merendeira(cenario.UnidadeB, cenario.EscolaA));
 
         Assert.Equal(ResultadoStatus.Proibido, resultado.Status);
     }
@@ -203,10 +251,12 @@ public class CardapioServiceTests
         var arroz = CriarAlimento(cenario.Alimentos, "Arroz");
 
         cenario.Servico.Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao);
-        cenario.Servico.Criar(Entrada(cenario.UnidadeB, itensDaRefeicao: ("Jantar", 1, arroz.Id, 100m)), Nutricao);
+        cenario.Servico.Criar(
+            Entrada(cenario.UnidadeB, nutricionistaId: 2, itensDaRefeicao: ("Jantar", 1, arroz.Id, 100m)),
+            NutricaoDaUnidadeB);
 
         var resultado = cenario.Servico.Listar(
-            null, null, null, null, null, Merendeira(cenario.UnidadeA));
+            null, null, null, null, null, Merendeira(cenario.UnidadeA, cenario.EscolaA));
 
         Assert.Equal(ResultadoStatus.Ok, resultado.Status);
         Assert.Equal(1, resultado.Valor!.Total);
@@ -266,9 +316,9 @@ public class CardapioServiceTests
             .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao)
             .Valor!;
 
-        var resultado = cenario.Servico.Obter(criado.Id, Merendeira(cenario.UnidadeB));
+        var resultado = cenario.Servico.Obter(criado.Id, Merendeira(cenario.UnidadeB, cenario.EscolaA));
 
-        Assert.Equal(ResultadoStatus.Proibido, resultado.Status);
+        Assert.Equal(ResultadoStatus.NaoEncontrado, resultado.Status);
     }
 
     [Fact]
@@ -280,7 +330,7 @@ public class CardapioServiceTests
             .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao)
             .Valor!;
 
-        var resultado = cenario.Servico.Obter(criado.Id, Merendeira(cenario.UnidadeA));
+        var resultado = cenario.Servico.Obter(criado.Id, Merendeira(cenario.UnidadeA, cenario.EscolaA));
 
         Assert.Equal(ResultadoStatus.Ok, resultado.Status);
         Assert.Equal("Arroz", resultado.Valor!.Refeicoes[0].Itens[0].Alimento);
@@ -341,7 +391,7 @@ public class CardapioServiceTests
         PropriedadesPrivadas.Definir(
             armazenado, nameof(Cardapio.Situacao), SituacaoCardapio.Publicado);
 
-        var resultado = cenario.Servico.Excluir(criado.Id);
+        var resultado = cenario.Servico.Excluir(criado.Id, Nutricao);
 
         Assert.Equal(ResultadoStatus.Conflito, resultado.Status);
         Assert.Single(cenario.Cardapios.GetCardapios());
@@ -356,7 +406,7 @@ public class CardapioServiceTests
             .Criar(Entrada(cenario.UnidadeA, itensDaRefeicao: ("Almoço", 1, arroz.Id, 100m)), Nutricao)
             .Valor!;
 
-        var resultado = cenario.Servico.Excluir(criado.Id);
+        var resultado = cenario.Servico.Excluir(criado.Id, Nutricao);
 
         Assert.Equal(ResultadoStatus.Ok, resultado.Status);
         Assert.Empty(cenario.Cardapios.GetCardapios());

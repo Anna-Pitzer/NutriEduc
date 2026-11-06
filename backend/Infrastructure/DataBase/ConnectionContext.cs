@@ -31,6 +31,13 @@ public class ConnectionContext : DbContext
     public DbSet<ItemRefeicao> ItensRefeicao {get;set;}
     public DbSet<ParametroGeracao> ParametrosGeracao {get;set;}
     public DbSet<HistoricoCardapio> HistoricosCardapios {get;set;}
+    public DbSet<SubstituicaoDeItem> SubstituicoesDeItem {get;set;}
+    public DbSet<PendenciaAdaptacao> PendenciasAdaptacao {get;set;}
+    public DbSet<ConfirmacaoDeIncompatibilidade> ConfirmacoesDeIncompatibilidade {get;set;}
+    public DbSet<Solicitacao> Solicitacoes {get;set;}
+    public DbSet<HistoricoSolicitacao> HistoricoSolicitacoes {get;set;}
+    public DbSet<SolicitacaoAlteracao> SolicitacaoAlteracoes {get;set;}
+    public DbSet<Notificacao> Notificacoes {get;set;}
     public DbSet<TrilhaAcao> TrilhaAcoes {get;set;}
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
@@ -178,6 +185,10 @@ public class ConnectionContext : DbContext
         // Leitura paginada sempre por aluno e data decrescente (Spec 023, RF6, ADR-009).
         modelBuilder.Entity<HistoricoAluno>()
             .HasIndex(h => new { h.AlunoId, h.CriadoEmUtc });
+
+        modelBuilder.Entity<HistoricoAluno>()
+            .Property(historico => historico.Origem)
+            .HasMaxLength(100);
 
         modelBuilder.Entity<VinculoResponsavelAluno>()
             .HasKey(v => new { v.AlunoId, v.ResponsavelUsuarioId });
@@ -350,6 +361,48 @@ public class ConnectionContext : DbContext
             .Property(cardapio => cardapio.NutricionistaCrn)
             .HasMaxLength(20);
 
+        // ---------- Cardápio geral e adaptado (Spec 029) ----------
+
+        modelBuilder.Entity<Cardapio>()
+            .Property(cardapio => cardapio.Tipo)
+            .HasDefaultValue(TipoCardapio.Geral)
+            .IsRequired();
+
+        modelBuilder.Entity<Cardapio>()
+            .Property(cardapio => cardapio.ConjuntoRestricoesChave)
+            .HasMaxLength(ConjuntoDeRestricoes.TamanhoMaximoChave);
+
+        // Origem sempre aponta para um geral; a exclusão do geral é barrada enquanto houver
+        // versões adaptadas (Restrict).
+        modelBuilder.Entity<Cardapio>()
+            .HasOne<Cardapio>()
+            .WithMany()
+            .HasForeignKey(cardapio => cardapio.OrigemId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Cardapio>()
+            .HasOne<Escola>()
+            .WithMany()
+            .HasForeignKey(cardapio => cardapio.EscolaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Cardapio>()
+            .HasIndex(cardapio => cardapio.OrigemId);
+
+        // Uma versão adaptada vigente por (origem, escola, conjunto); versões substituídas
+        // não bloqueiam a readaptação (Spec 029, RF3). O filtro usa os valores numéricos dos
+        // enums porque é SQL gerado no model. Índices filtrados são suportados pelo SQLite.
+        modelBuilder.Entity<Cardapio>()
+            .HasIndex(cardapio => new
+            {
+                cardapio.OrigemId,
+                cardapio.EscolaId,
+                cardapio.ConjuntoRestricoesChave
+            })
+            .IsUnique()
+            .HasFilter($"\"Tipo\" = {(int)TipoCardapio.Adaptado} AND \"Situacao\" <> {(int)SituacaoCardapio.Substituido}");
+
         // Ordem única por cardápio: duas refeições não podem ocupar o mesmo lugar (RF2).
         modelBuilder.Entity<Refeicao>()
             .HasIndex(refeicao => new { refeicao.CardapioId, refeicao.Ordem })
@@ -445,6 +498,231 @@ public class ConnectionContext : DbContext
 
         modelBuilder.Entity<HistoricoCardapio>()
             .HasIndex(historico => new { historico.CardapioId, historico.CriadoEmUtc });
+
+        // ---------- Substituições, pendências e confirmações (Spec 029) ----------
+
+        // Registros filhos do agregado: sobem e descem com o cardápio (Cascade), e as
+        // propriedades somente leitura são populadas pelo campo de apoio.
+        modelBuilder.Entity<Cardapio>()
+            .HasMany(cardapio => cardapio.Substituicoes)
+            .WithOne()
+            .HasForeignKey(substituicao => substituicao.CardapioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Cardapio>()
+            .Navigation(cardapio => cardapio.Substituicoes)
+            .HasField("_substituicoes")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<SubstituicaoDeItem>()
+            .Property(substituicao => substituicao.RefeicaoNome)
+            .HasMaxLength(60)
+            .IsRequired();
+
+        modelBuilder.Entity<SubstituicaoDeItem>()
+            .Property(substituicao => substituicao.AlimentoOriginalNome)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        modelBuilder.Entity<SubstituicaoDeItem>()
+            .Property(substituicao => substituicao.AlimentoSubstitutoNome)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        modelBuilder.Entity<SubstituicaoDeItem>()
+            .Property(substituicao => substituicao.RestricoesBloqueantes)
+            .HasMaxLength(300)
+            .IsRequired();
+
+        modelBuilder.Entity<SubstituicaoDeItem>()
+            .Property(substituicao => substituicao.QuantidadeGramas)
+            .HasColumnType("decimal(10,2)")
+            .IsRequired();
+
+        modelBuilder.Entity<Cardapio>()
+            .HasMany(cardapio => cardapio.Pendencias)
+            .WithOne()
+            .HasForeignKey(pendencia => pendencia.CardapioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Cardapio>()
+            .Navigation(cardapio => cardapio.Pendencias)
+            .HasField("_pendencias")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<PendenciaAdaptacao>()
+            .Property(pendencia => pendencia.RefeicaoNome)
+            .HasMaxLength(60)
+            .IsRequired();
+
+        modelBuilder.Entity<PendenciaAdaptacao>()
+            .Property(pendencia => pendencia.AlimentoNome)
+            .HasMaxLength(100);
+
+        modelBuilder.Entity<PendenciaAdaptacao>()
+            .Property(pendencia => pendencia.Motivo)
+            .HasMaxLength(500)
+            .IsRequired();
+
+        modelBuilder.Entity<Cardapio>()
+            .HasMany(cardapio => cardapio.Confirmacoes)
+            .WithOne()
+            .HasForeignKey(confirmacao => confirmacao.CardapioId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Cardapio>()
+            .Navigation(cardapio => cardapio.Confirmacoes)
+            .HasField("_confirmacoes")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<ConfirmacaoDeIncompatibilidade>()
+            .Property(confirmacao => confirmacao.AutorNome)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        modelBuilder.Entity<ConfirmacaoDeIncompatibilidade>()
+            .Property(confirmacao => confirmacao.AlimentoNome)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        modelBuilder.Entity<ConfirmacaoDeIncompatibilidade>()
+            .Property(confirmacao => confirmacao.Escolas)
+            .HasMaxLength(500)
+            .IsRequired();
+
+        modelBuilder.Entity<ConfirmacaoDeIncompatibilidade>()
+            .Property(confirmacao => confirmacao.Conjuntos)
+            .HasMaxLength(500)
+            .IsRequired();
+
+        modelBuilder.Entity<ConfirmacaoDeIncompatibilidade>()
+            .Property(confirmacao => confirmacao.CriadoEmUtc)
+            .HasConversion(
+                valor => valor,
+                valor => DateTime.SpecifyKind(valor, DateTimeKind.Utc));
+
+        // ---------- Solicitações (Spec 017) ----------
+
+        modelBuilder.Entity<Solicitacao>(entity =>
+        {
+            entity.Property(solicitacao => solicitacao.Descricao)
+                .HasMaxLength(Solicitacao.DescricaoMax)
+                .IsRequired();
+
+            entity.Property(solicitacao => solicitacao.SolicitanteNome)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(solicitacao => solicitacao.RestricaoNome)
+                .HasMaxLength(60);
+
+            entity.Property(solicitacao => solicitacao.Ingrediente)
+                .HasMaxLength(120);
+
+            entity.Property(solicitacao => solicitacao.Resposta)
+                .HasMaxLength(Solicitacao.RespostaMax);
+
+            entity.Property(solicitacao => solicitacao.RespondidoPor)
+                .HasMaxLength(100);
+
+            entity.Property(solicitacao => solicitacao.Status)
+                .IsConcurrencyToken();
+
+            entity.HasIndex(solicitacao => new { solicitacao.UnidadeId, solicitacao.CriadoEmUtc });
+            entity.HasIndex(solicitacao => new { solicitacao.EscolaId, solicitacao.CriadoEmUtc });
+            entity.HasIndex(solicitacao => new { solicitacao.Status, solicitacao.Tipo });
+
+            entity.HasOne<UnidadeEscolar>()
+                .WithMany()
+                .HasForeignKey(solicitacao => solicitacao.UnidadeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
+
+            entity.HasOne<Escola>()
+                .WithMany()
+                .HasForeignKey(solicitacao => solicitacao.EscolaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Aluno>()
+                .WithMany()
+                .HasForeignKey(solicitacao => solicitacao.AlunoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<Cardapio>()
+                .WithMany()
+                .HasForeignKey(solicitacao => solicitacao.CardapioId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(solicitacao => solicitacao.Historico)
+                .WithOne()
+                .HasForeignKey(historico => historico.SolicitacaoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Navigation(solicitacao => solicitacao.Historico)
+                .HasField("_historico")
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+            entity.HasMany(solicitacao => solicitacao.Alteracoes)
+                .WithOne()
+                .HasForeignKey(alteracao => alteracao.SolicitacaoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Navigation(solicitacao => solicitacao.Alteracoes)
+                .HasField("_alteracoes")
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        modelBuilder.Entity<HistoricoSolicitacao>(entity =>
+        {
+            entity.Property(historico => historico.AutorNome)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(historico => historico.Resposta)
+                .HasMaxLength(Solicitacao.RespostaMax);
+
+            entity.HasIndex(historico => new { historico.SolicitacaoId, historico.CriadoEmUtc });
+        });
+
+        modelBuilder.Entity<SolicitacaoAlteracao>(entity =>
+        {
+            entity.Property(alteracao => alteracao.ValorSolicitado)
+                .HasMaxLength(SolicitacaoAlteracao.ValorMaximo)
+                .IsRequired();
+
+            entity.Property(alteracao => alteracao.ValorNoPedido)
+                .HasMaxLength(SolicitacaoAlteracao.ValorMaximo)
+                .IsRequired();
+
+            entity.HasIndex(alteracao => alteracao.SolicitacaoId);
+        });
+
+        modelBuilder.Entity<Notificacao>(entity =>
+        {
+            entity.Property(notificacao => notificacao.Titulo)
+                .HasMaxLength(Notificacao.TituloMax)
+                .IsRequired();
+
+            entity.Property(notificacao => notificacao.Mensagem)
+                .HasMaxLength(Notificacao.MensagemMax)
+                .IsRequired();
+
+            entity.Property(notificacao => notificacao.ReferenciaTipo)
+                .HasMaxLength(Notificacao.ReferenciaTipoMax);
+
+            entity.HasIndex(notificacao => new
+            {
+                notificacao.DestinatarioId,
+                notificacao.Lida,
+                notificacao.CriadoEmUtc
+            });
+
+            entity.HasOne<Usuario>()
+                .WithMany()
+                .HasForeignKey(notificacao => notificacao.DestinatarioId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
+        });
 
         // ---------- Trilha de ação privilegiada (Spec 028) ----------
         modelBuilder.Entity<TrilhaAcao>(entity =>

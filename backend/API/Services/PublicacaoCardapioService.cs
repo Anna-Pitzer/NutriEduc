@@ -42,15 +42,64 @@ public sealed class PublicacaoCardapioService
         if (cardapio.Situacao != SituacaoCardapio.Rascunho)
             return Resultado<CardapioDTO>.Conflito("Somente rascunho pode ser publicado.");
 
-        // Compatibilidade (passo 4): bloqueante impede, alerta não (Spec 014/ADR-011).
-        var bloqueantes = CalcularBloqueantes(cardapio);
+        // CRN válido é pré-condição para publicar (Spec 029, RF17).
+        var motivoDaNutricionista = ValidacaoDeNutricionista.Motivo(
+            _usuarios.GetById(escopo.UsuarioId), cardapio.UnidadeId);
+
+        if (motivoDaNutricionista is not null)
+            return Resultado<CardapioDTO>.Invalido(motivoDaNutricionista);
+
+        if (cardapio.Tipo == TipoCardapio.Geral)
+        {
+            // RF14: o geral não pode ser publicado com versão adaptada pendente ou
+            // desatualizada de escola que tem alunos.
+            var bloqueios = AdaptadosQueBloqueiam(cardapio.Id);
+
+            if (bloqueios.Count > 0)
+            {
+                return Resultado<CardapioDTO>.Conflito(
+                    "Há versão adaptada pendente ou desatualizada que impede a publicação: " +
+                    string.Join(", ", bloqueios) + ".");
+            }
+        }
+        else
+        {
+            if (cardapio.StatusAdaptacao != StatusAdaptacao.Atualizado || cardapio.Pendencias.Count > 0)
+            {
+                return Resultado<CardapioDTO>.Conflito(
+                    "Versão adaptada pendente de revisão não pode ser publicada. " +
+                    "Readapte o geral antes de publicar.");
+            }
+
+            var origem = cardapio.OrigemId is { } origemId
+                ? _cardapios.ObterComRefeicoes(origemId)
+                : null;
+
+            if (origem is null || origem.Situacao != SituacaoCardapio.Publicado)
+            {
+                return Resultado<CardapioDTO>.Conflito(
+                    "Publique o cardápio geral antes da versão adaptada.");
+            }
+        }
+
+        // Compatibilidade (passo 4): no geral, bloqueante impede e alerta não (Spec 014).
+        // No adaptado, a prova é o próprio status Atualizado — a versão nunca contém item
+        // bloqueante para o conjunto (Spec 029, RF22).
+        var bloqueantes = cardapio.Tipo == TipoCardapio.Adaptado
+            ? new List<IncompatibilidadeDetalhe>()
+            : CalcularBloqueantes(cardapio);
 
         if (bloqueantes.Count > 0)
             throw new PublicacaoBloqueadaException(bloqueantes);
 
         // Sobreposição de publicado (passo 5); a revisão ignora o original que será substituído.
         var conflitante = _cardapios.ExistePublicadoNoPeriodo(
-            cardapio.UnidadeId, cardapio.Periodo, cardapio.RevisaoDeId);
+            cardapio.UnidadeId,
+            cardapio.Periodo,
+            cardapio.RevisaoDeId,
+            cardapio.Tipo,
+            cardapio.EscolaId,
+            cardapio.ConjuntoRestricoesChave);
 
         if (conflitante is { } idConflitante)
             throw new PublicacaoSobrepostaException(idConflitante);
@@ -167,6 +216,39 @@ public sealed class PublicacaoCardapioService
         });
     }
 
+    /// <summary>
+    /// Versões que impedem publicar o geral: pendente ou desatualizada e de escola com
+    /// alunos (Spec 029, RF14). A lista nomeia o id e o status para a tela mostrar o
+    /// caminho de correção.
+    /// </summary>
+    private List<string> AdaptadosQueBloqueiam(int origemId)
+    {
+        var bloqueios = new List<string>();
+
+        foreach (var adaptado in _cardapios.ListarAdaptados(origemId))
+        {
+            if (adaptado.StatusAdaptacao is not (
+                    StatusAdaptacao.PendenteDeRevisao or StatusAdaptacao.Desatualizado))
+            {
+                continue;
+            }
+
+            if (adaptado.EscolaId is not { } escolaId)
+            {
+                continue;
+            }
+
+            if (_alunos.Listar(new FiltroAluno(EscolaId: escolaId)).Count == 0)
+            {
+                continue;
+            }
+
+            bloqueios.Add($"#{adaptado.Id} ({adaptado.StatusAdaptacao})");
+        }
+
+        return bloqueios;
+    }
+
     private List<IncompatibilidadeDetalhe> CalcularBloqueantes(Cardapio cardapio)
     {
         var itens = cardapio.Refeicoes
@@ -190,7 +272,11 @@ public sealed class PublicacaoCardapioService
                     vinculo.Restricao.Categoria))
                 .ToList());
 
+        // O geral é servido apenas a aluno sem restrição (Spec 029, RF4 e RF15). Aluno com
+        // restrição é servido pela versão adaptada do próprio conjunto — a análise de
+        // incompatibilidade do geral não pode bloquear a publicação por causa dele.
         var alunos = _alunos.Listar(new FiltroAluno(UnidadeId: cardapio.UnidadeId))
+            .Where(aluno => aluno.Restricoes.Count == 0)
             .Select(aluno => new AlunoAnalisado(aluno.Id, aluno.Nome, aluno.Restricoes))
             .ToList();
 

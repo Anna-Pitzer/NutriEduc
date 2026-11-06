@@ -43,4 +43,6 @@ public sealed class UnidadeDeTrabalho : IUnidadeDeTrabalho
             operacao();
             return true;
         });
+
+    public void Salvar() => _context.SaveChanges();
 }
