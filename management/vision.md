@@ -218,7 +218,7 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 
 **Regra derivada:** item bloqueante nunca é servido; aluno cujo conjunto não tem versão publicada recebe `Indisponivel`, não o cardápio geral.
 
-**Canonical creation path:** `backend/Domain/Entities/Cardapio.cs`, `backend/Domain/Services/AdaptacaoDeCardapio.cs`, `backend/Application/Cardapios/AdaptarCardapioService.cs`, `backend/Application/Cardapios/CardapioServidoService.cs`, `frontend/src/pages/nutricao/cardapios/MontarCardapio.tsx`
+**Canonical creation path:** `backend/Domain/Entities/Cardapio.cs`, `backend/Domain/Services/AdaptacaoDeCardapio.cs`, `backend/API/Services/AdaptarCardapioService.cs`, `backend/API/Services/CardapioServidoService.cs`, `backend/API/Services/ContextoDeRestricoesService.cs` (UI de montagem, detalhe e servir pendente — Spec 029, T12–T13)
 
 **Delivered by:** Spec 029 (cardapio-geral-e-adaptado)
 
@@ -229,7 +229,7 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 
 **Regra derivada:** aprovar não aplica o que foi pedido se o dado mudou; nada é aplicado parcialmente.
 
-**Canonical creation path:** `backend/Domain/Entities/Solicitacao.cs`, `backend/Domain/Entities/AlteracaoDeDado.cs`, `backend/Application/Solicitacoes/DecidirSolicitacaoDeDadosService.cs`, `frontend/src/pages/pais/SolicitacoesDoFilho.tsx`, `frontend/src/pages/secretaria/FilaSolicitacoes.tsx`
+**Canonical creation path:** `backend/Domain/Entities/Solicitacao.cs`, `backend/Domain/Entities/AlteracaoSolicitada.cs`, `backend/Domain/Entities/SolicitacaoAlteracao.cs`, `backend/API/Services/SolicitacaoService.cs` (ramo `DadosCadastrais`), `frontend/src/pages/solicitacoes/SolicitacoesPage.tsx`
 
 **Delivered by:** Spec 030 (solicitacao-alteracao-dados)
 

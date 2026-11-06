@@ -225,6 +225,19 @@ public class ContratoRotasTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task PerfilDeAluno_ComIdNaoNumerico_NaoAlcancaOServico()
+    {
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
+
+        var resposta = await client.GetAsync("/api/aluno/perfil/abc");
+
+        Assert.Equal(HttpStatusCode.NotFound, resposta.StatusCode);
+
+        var corpo = await LerCorpo(resposta);
+        Assert.Equal("Recurso não encontrado.", corpo.GetProperty("erro").GetString());
+    }
+
+    [Fact]
     public async Task Delete_AlunoExistente_Retorna204SemCorpo()
     {
         var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);

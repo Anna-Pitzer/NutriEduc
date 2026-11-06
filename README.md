@@ -389,7 +389,7 @@ Erros seguem um contrato único: corpo `{ "erro": "mensagem" }` em `400` (valida
 
 As rotas de criação (`POST /api/usuario/registrar` e `POST /api/aluno/registrar`) respondem `201 Created` com o cabeçalho `Location` apontando para o recurso criado e o recurso no corpo. `DELETE` e `logout` respondem `204 No Content`. Toda rota com `id` usa a constraint `{id:int}`.
 
-O perfil de usuário devolve apenas `id`, `nome`, `email`, `telefone` e `foto`; `cpf` e `senha` nunca aparecem no corpo.
+O perfil de usuário devolve `id`, `nome`, `email`, `telefone`, `foto`, `papel`, `escolaId`, `unidadeId`, `ativo` e `crn`; `cpf` e `senha` nunca aparecem no corpo.
 
 ## Testes
 

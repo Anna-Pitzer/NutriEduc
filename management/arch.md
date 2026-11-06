@@ -106,10 +106,20 @@ Formato único de erro:
 | Origem | Status |
 | --- | --- |
 | `ArgumentException` no domínio | 400 |
+| modelo inválido ou JSON malformado (`ContratoDeErro`) | 400 |
 | não autenticado | 401 |
 | autenticado sem o papel exigido | 403 |
 | recurso inexistente | 404 |
+| rota inexistente (`ContratoDeErro`) | 404 |
+| verbo não permitido (`ContratoDeErro`) | 405 |
+| conflito de estado | 409 |
+| content-type não suportado (`ContratoDeErro`) | 415 |
 | exceção não tratada | 500, sem stack trace no corpo |
+
+Duas autoridades, nenhuma fora delas: `API/Middleware/ErrorHandlingMiddleware.cs` traduz
+exceções e `API/Middleware/ContratoDeErro.cs` cobre o que não é exceção (modelo inválido, JSON
+malformado, `404` de rota, `405` e `415`). `401` e `403` saem dos eventos do cookie em
+`Program.cs`. Nenhum controller monta erro fora do formato `{ erro }` (Spec 020).
 
 ## 7. Persistência
 
@@ -355,10 +365,9 @@ teste puro, mas não têm teste HTTP até a spec dona existir.
 **Canonical creation path:** `backend/Domain/Entities/Cardapio.cs`,
 `backend/Domain/Entities/ConjuntoDeRestricoes.cs`,
 `backend/Domain/Services/AdaptacaoDeCardapio.cs`,
-`backend/Application/Cardapios/AdaptarCardapioService.cs`,
-`backend/Application/Cardapios/CardapioServidoService.cs`,
-`backend/Application/Cardapios/ContextoDeRestricoesService.cs`,
-`frontend/src/pages/nutricao/cardapios/FormularioCardapio.tsx`.
+`backend/API/Services/AdaptarCardapioService.cs`,
+`backend/API/Services/CardapioServidoService.cs`,
+`backend/API/Services/ContextoDeRestricoesService.cs`.
 
 **Problema estrutural:** o cardápio é único, a compatibilidade apenas detecta conflito e não
 existe a refeição que o aluno com restrição recebe; a substituição é manual e sem vínculo com a
@@ -366,10 +375,11 @@ origem. A criação manual não mostra alunos nem restrições e não associa au
 
 **Decisão:** `Cardapio.Tipo` (`Geral` | `Adaptado`), `OrigemId` e `EscolaId`; uma versão
 adaptada por `(escola, conjunto distinto de restrições)`, gerada por função determinística com
-tolerância nutricional e `PendenteDeRevisao` quando não há substituto válido. A montagem manual
-carrega alunos e restrições por escola, bloqueia alimento sem substituto seguro e exige
-confirmação registrada para incompatibilidade com substituto. Criação exige nutricionista com
-CRN válido e snapshot de autor.
+tolerância nutricional e `PendenteDeRevisao` quando não há substituto válido. A API expõe o
+contexto de restrições por escola, bloqueia alimento sem substituto seguro e exige confirmação
+registrada para incompatibilidade com substituto; a tela de montagem correspondente segue
+pendente (Spec 029, T12–T13; PEND-042). Criação exige nutricionista com CRN válido e snapshot de
+autor.
 
 **Regra derivada:** item bloqueante nunca é servido; sem versão publicada para `(escola,
 conjunto)`, o cardápio do aluno é `Indisponivel`; o geral nunca é fallback.

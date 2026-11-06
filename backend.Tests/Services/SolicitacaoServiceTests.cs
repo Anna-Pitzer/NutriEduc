@@ -414,6 +414,28 @@ public class SolicitacaoServiceTests
         Assert.Empty(pagina.Valor!.Itens);
     }
 
+    [Fact]
+    public void Listar_MerendeiraNaoVeDadosCadastrais()
+    {
+        var cenario = Montar();
+
+        cenario.Servico.Criar(
+            Dados(cenario.AlunoId, ("nome", "Ana Maria")),
+            Responsavel(cenario.UnidadeId));
+
+        cenario.Servico.Criar(
+            Restricao(cenario.AlunoId),
+            Responsavel(cenario.UnidadeId));
+
+        var pagina = cenario.Servico.Listar(
+            null, null, null, null, null, null, null, null, null, null,
+            Merendeira(cenario.UnidadeId, cenario.EscolaId));
+
+        Assert.Equal(ResultadoStatus.Ok, pagina.Status);
+        Assert.Single(pagina.Valor!.Itens);
+        Assert.Equal(TipoSolicitacao.InclusaoAlergia, pagina.Valor.Itens[0].Tipo);
+    }
+
     private static CriarSolicitacaoDTO Dados(
         int alunoId,
         params (string Campo, string Valor)[] alteracoes) => new()
@@ -485,6 +507,20 @@ public class SolicitacaoServiceTests
         Assert.Equal(ResultadoStatus.Conflito, segundo.Status);
         Assert.Contains($"#{primeiro.Id}", segundo.Erro!);
         Assert.Single(cenario.Solicitacoes.GetItens());
+    }
+
+    [Fact]
+    public void Criar_DadosCadastrais_SemVinculo_Proibido()
+    {
+        var cenario = Montar();
+        cenario.Alunos.Vinculos.Clear();
+
+        var resultado = cenario.Servico.Criar(
+            Dados(cenario.AlunoId, ("nome", "Ana Maria")),
+            Responsavel(cenario.UnidadeId));
+
+        Assert.Equal(ResultadoStatus.Proibido, resultado.Status);
+        Assert.Empty(cenario.Solicitacoes.GetItens());
     }
 
     [Fact]
@@ -569,6 +605,51 @@ public class SolicitacaoServiceTests
         Assert.Contains("Nome", resultado.Erro!);
         Assert.Equal(StatusSolicitacao.EmAnalise, cenario.Solicitacoes.GetItens().Single().Status);
         Assert.Equal("Ana Alterada", cenario.Alunos.GetAluno(cenario.AlunoId)!.Nome);
+    }
+
+    [Fact]
+    public void Recusar_DadosCadastrais_MotivoCurto_Invalido()
+    {
+        var cenario = Montar();
+        var criada = cenario.Servico.Criar(
+            Dados(cenario.AlunoId, ("nome", "Ana Maria")),
+            Responsavel(cenario.UnidadeId)).Valor!;
+
+        cenario.Servico.Analisar(criada.Id, Admin(cenario.UnidadeId));
+
+        var resultado = cenario.Servico.Recusar(
+            criada.Id,
+            new DecidirSolicitacaoDTO { Resposta = "Não." },
+            Admin(cenario.UnidadeId));
+
+        Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
+        Assert.Equal(StatusSolicitacao.EmAnalise, cenario.Solicitacoes.GetItens().Single().Status);
+        Assert.Equal("Ana", cenario.Alunos.GetAluno(cenario.AlunoId)!.Nome);
+    }
+
+    [Fact]
+    public void Aprovar_DadosCadastrais_NotificaSemValorSolicitado()
+    {
+        var cenario = Montar();
+        var criada = cenario.Servico.Criar(
+            Dados(cenario.AlunoId, ("nome", "Ana Maria")),
+            Responsavel(cenario.UnidadeId)).Valor!;
+
+        cenario.Servico.Analisar(criada.Id, Admin(cenario.UnidadeId));
+        cenario.Servico.Aprovar(
+            criada.Id,
+            new DecidirSolicitacaoDTO { Resposta = "Confirmado." },
+            Admin(cenario.UnidadeId));
+
+        var notificacoes = cenario.Notificacoes.GetItens();
+
+        Assert.NotEmpty(notificacoes);
+        Assert.All(notificacoes, notificacao =>
+        {
+            Assert.Equal(TipoNotificacao.SolicitacaoStatus, notificacao.Tipo);
+            Assert.DoesNotContain("Ana Maria", notificacao.Mensagem);
+            Assert.DoesNotContain("11988888888", notificacao.Mensagem);
+        });
     }
 
     [Fact]

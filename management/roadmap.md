@@ -38,7 +38,7 @@
 | 017 | solicitacoes | created | V6; V17; V19; ADR-020; ADR-021; ADR-004; L7 |
 | 018 | feedback-e-notificacoes | created | V6; V17; ADR-020; ADR-021; ADR-004; L7 |
 | 019 | relatorios-e-exportacao | created | V6; V16; V17; V18; ADR-020; ADR-021; ADR-022; ADR-004; L6 |
-| 020 | padronizacao-contrato-rotas | implemented | V9; V8; ADR-005; L6; L7 |
+| 020 | padronizacao-contrato-rotas | audited | V9; V8; ADR-005; L6; L7 |
 | 021 | telas-secretaria-e-escola | audited | V10; V6; ADR-002 |
 | 022 | bootstrap-admin-por-token | audited | V11; V6; ADR-002 |
 | 023 | historico-alteracoes-aluno | implemented | V12; ADR-004; ADR-009 |
@@ -47,8 +47,8 @@
 | 026 | substituicao-assistida-ia | planned | V15; ADR-011; ADR-004 |
 | 027 | hierarquia-unidade-escola-aluno | audited | V16; ADR-020; ADR-021; L11 |
 | 028 | matriz-permissoes-e-isolamento | audited | V17; ADR-021; ADR-020; L5; L12 |
-| 029 | cardapio-geral-e-adaptado | created | V18; V20; ADR-022; ADR-011; ADR-009; L7 |
-| 030 | solicitacao-alteracao-dados | created | V19; ADR-016; ADR-004; L9 |
+| 029 | cardapio-geral-e-adaptado | in-progress | V18; V20; ADR-022; ADR-011; ADR-009; L7 |
+| 030 | solicitacao-alteracao-dados | audited | V19; ADR-016; ADR-004; L9 |
 | 031 | perfil-crn-nutricionista | created | V20; ADR-021; ADR-004; ADR-009; PEND-038 |
 | 032 | correcao-geracao-automatica-cardapios | created | V21; V18; ADR-022; ADR-011; ADR-004 |
 | 033 | cadastro-e-autorizacao-de-acesso | created | V22; V17; ADR-021; ADR-020; ADR-004; ADR-019 |
