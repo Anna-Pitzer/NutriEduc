@@ -255,6 +255,47 @@ public class AlunoService
         return ParaResposta(aluno);
     }
 
+    /// <summary>
+    /// Aplica uma restrição aprovada por solicitação (Spec 017, RF6) sem criar uma segunda
+    /// porta de escrita: valida o catálogo ativo, chama o agregado e grava o evento na
+    /// trilha. O chamador persiste o aluno na mesma transação da solicitação.
+    /// </summary>
+    public Resultado<Aluno> AplicarRestricaoAprovada(
+        Aluno aluno,
+        string restricao,
+        string autor)
+    {
+        IReadOnlyList<string> resolvidas;
+
+        try
+        {
+            resolvidas = ResolverRestricoes(new[] { restricao });
+        }
+        catch (ArgumentException excecao)
+        {
+            return Resultado<Aluno>.Invalido(excecao.Message);
+        }
+
+        var nome = resolvidas.Single();
+
+        try
+        {
+            aluno.AdicionarRestricao(nome);
+        }
+        catch (ArgumentException excecao)
+        {
+            return Resultado<Aluno>.Invalido(excecao.Message);
+        }
+
+        aluno.RegistrarHistorico(
+            Array.Empty<AlteracaoDeDado>(),
+            new[] { nome },
+            Array.Empty<string>(),
+            autor);
+
+        return Resultado<Aluno>.Ok(aluno);
+    }
+
     public bool ExcluirAluno(int id, EscopoUsuario escopo)
     {
         Aluno? aluno = _alunoRepository.Obter(id, FiltrosDeConsulta.ParaAluno(escopo));

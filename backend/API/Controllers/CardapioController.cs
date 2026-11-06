@@ -16,17 +16,23 @@ public class CardapioController : RespostaController
     private readonly CardapioService _cardapios;
     private readonly CompatibilidadeService _compatibilidade;
     private readonly PublicacaoCardapioService _publicacao;
+    private readonly AdaptarCardapioService _adaptacao;
+    private readonly ContextoDeRestricoesService _contexto;
     private readonly EscopoService _escopo;
 
     public CardapioController(
         CardapioService cardapios,
         CompatibilidadeService compatibilidade,
         PublicacaoCardapioService publicacao,
+        AdaptarCardapioService adaptacao,
+        ContextoDeRestricoesService contexto,
         EscopoService escopo)
     {
         _cardapios = cardapios;
         _compatibilidade = compatibilidade;
         _publicacao = publicacao;
+        _adaptacao = adaptacao;
+        _contexto = contexto;
         _escopo = escopo;
     }
 
@@ -111,6 +117,41 @@ public class CardapioController : RespostaController
         return Traduzir(_publicacao.ListarHistorico(id, pagina, tamanho, escopo), Ok);
     }
 
+    /// <summary>
+    /// Contexto de restrições por escola para a montagem manual (Spec 029, RF11): alunos
+    /// e restrições da unidade, opcionalmente filtrados por escola.
+    /// </summary>
+    [Authorize(Policy = "SessaoValida")]
+    [HttpGet("contexto-restricoes")]
+    public IActionResult ContextoDeRestricoes(
+        [FromQuery] int unidadeId,
+        [FromQuery] int? escolaId)
+    {
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(_contexto.Obter(unidadeId, escolaId, escopo), Ok);
+    }
+
+    /// <summary>Versões adaptadas de um geral, com escola, conjunto e status (Spec 029, RF18).</summary>
+    [Authorize(Policy = "SessaoValida")]
+    [HttpGet("{id:int}/adaptados")]
+    public IActionResult Adaptados(int id)
+    {
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(_cardapios.ListarAdaptados(id, escopo), Ok);
+    }
+
     /// <summary>Feed de alterações no escopo do usuário (Spec 015, RF11).</summary>
     [Authorize(Policy = "SessaoValida")]
     [HttpGet("alteracoes")]
@@ -144,7 +185,7 @@ public class CardapioController : RespostaController
     [Authorize(Policy = "Nutricionista")]
     [HttpDelete("{id:int}")]
     public IActionResult Excluir(int id)
-        => Traduzir(_cardapios.Excluir(id), _ => NoContent());
+        => Traduzir(_cardapios.Excluir(id, ObterEscopo(_escopo)!), _ => NoContent());
 
     [Authorize(Policy = "Nutricionista")]
     [HttpPost("{id:int}/duplicar")]
@@ -152,6 +193,12 @@ public class CardapioController : RespostaController
         => Traduzir(
             _cardapios.Duplicar(id, dto, ObterEscopo(_escopo)!),
             criado => Created($"/api/cardapios/{criado.Id}", criado));
+
+    /// <summary>Adaptação manual, idempotente por (origem, escola, conjunto) (Spec 029, T6).</summary>
+    [Authorize(Policy = "Nutricionista")]
+    [HttpPost("{id:int}/adaptar")]
+    public IActionResult Adaptar(int id, [FromBody] AdaptarCardapioDTO dto)
+        => Traduzir(_adaptacao.Adaptar(id, dto, ObterEscopo(_escopo)!), Ok);
 
     [Authorize(Policy = "Nutricionista")]
     [HttpPost("{id:int}/publicar")]

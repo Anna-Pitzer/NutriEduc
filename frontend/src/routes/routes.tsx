@@ -37,6 +37,9 @@ import { Usuarios } from "../pages/secretaria/Usuarios"
 // Administração Escolar
 import { HomeEscolas } from "../pages/escolas/HomeEscolas"
 
+// Solicitações
+import { SolicitacoesPage } from "../pages/solicitacoes/SolicitacoesPage"
+
 export function Rotas() {
   return (
     <Routes>
@@ -101,6 +104,17 @@ export function Rotas() {
 
         <Route element={<ProtegidaPorPapel papeis={["AdminEscola"]} />}>
           <Route path="/escolas" element={<HomeEscolas />} />
+        </Route>
+
+        {/* Solicitações — todos os papéis com fluxo de pedido/decisão (Spec 017) */}
+        <Route
+          element={
+            <ProtegidaPorPapel
+              papeis={["Nutricionista", "AdminSecretaria", "AdminEscola", "Merendeira", "Responsavel"]}
+            />
+          }
+        >
+          <Route path="/solicitacoes" element={<SolicitacoesPage />} />
         </Route>
 
         {/* Comum */}

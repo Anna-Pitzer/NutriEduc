@@ -21,12 +21,20 @@ public class CompatibilidadeApiTests : IClassFixture<ApiFactory>
         _factory = factory;
     }
 
+    private static async Task<int> NutricionistaId(HttpClient client)
+    {
+        var lista = await client.GetFromJsonAsync<JsonElement>("/api/nutricionistas");
+        return lista[0].GetProperty("id").GetInt32();
+    }
+
     private static async Task<int> CriarCardapio(HttpClient client, int unidadeId, int alimentoId)
     {
         var resposta = await client.PostAsJsonAsync("/api/cardapios", new
         {
             nome = "Semana 12",
             unidadeId,
+            nutricionistaId = await NutricionistaId(client),
+            confirmarIncompatibilidades = true,
             periodo = new { inicio = "2026-11-02", fim = "2026-11-06" },
             refeicoes = new[]
             {
@@ -69,6 +77,27 @@ public class CompatibilidadeApiTests : IClassFixture<ApiFactory>
         resposta.EnsureSuccessStatusCode();
 
         var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+
+        // Substituto seguro da mesma categoria: sem ele a montagem manual bloqueia o item
+        // incompatível (Spec 029, RF12), e o teste nao chegaria a analise de compatibilidade.
+        var seguro = await client.PostAsJsonAsync("/api/alimentos", new
+        {
+            nome = $"Seguro {Guid.NewGuid():N}",
+            categoriaId,
+            valores = new
+            {
+                caloriasKcal = 130m,
+                proteinasG = 2.7m,
+                carboidratosG = 28.2m,
+                gordurasG = 0.3m,
+                fibrasG = 0.4m,
+                sodioMg = 1m
+            },
+            restricaoIds = Array.Empty<int>()
+        });
+
+        seguro.EnsureSuccessStatusCode();
+
         return corpo.GetProperty("id").GetInt32();
     }
 
@@ -110,8 +139,7 @@ public class CompatibilidadeApiTests : IClassFixture<ApiFactory>
     public async Task Get_Compatibilidade_ComAlergenico_DevolveBloqueante()
     {
         _factory.GarantirCatalogo();
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var lactoseId = ObterRestricaoId("Lactose");
         var nomeIogurte = $"Iogurte {Guid.NewGuid():N}";
         var iogurte = await CriarAlimentoComVinculo(client, lactoseId, nomeIogurte);
@@ -139,8 +167,7 @@ public class CompatibilidadeApiTests : IClassFixture<ApiFactory>
     public async Task Get_Compatibilidade_ComRestricao_DevolveAlertaNaoBloqueante()
     {
         _factory.GarantirCatalogo();
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var glutenId = ObterRestricaoId("Gluten");
         var pao = await CriarAlimentoComVinculo(client, glutenId, $"Pão {Guid.NewGuid():N}");
 
@@ -173,8 +200,7 @@ public class CompatibilidadeApiTests : IClassFixture<ApiFactory>
     public async Task Get_Compatibilidade_PorResponsavel_Retorna403()
     {
         _factory.GarantirCatalogo();
-        var nutricionista = await _factory.CreateAuthenticatedClientAsync();
-        var (_, unidadeId) = _factory.CriarEscolaComUnidade();
+        var (nutricionista, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var iogurte = await CriarAlimentoComVinculo(
             nutricionista, ObterRestricaoId("Lactose"), $"Iogurte {Guid.NewGuid():N}");
 

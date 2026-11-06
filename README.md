@@ -179,6 +179,7 @@ Registros gravados antes dessa mudança ainda têm a senha em claro: no primeiro
 | `DELETE` | `/api/aluno/{id}` | Exclui um aluno | `AdminSecretaria` |
 | `GET` | `/api/aluno/{id}/historico` | Trilha de alterações do aluno (criação, campos e restrições), paginada e em ordem decrescente | Sim; `Nutricionista`, `AdminEscola`, `Merendeira` da unidade e `Responsavel` vinculado |
 | `GET` | `/api/aluno/{id}/restricoes/historico` | Histórico de restrições do aluno, paginado e em ordem decrescente (derivado da trilha; rota mantida por compatibilidade) | Sim; `Nutricionista`, `AdminEscola`, `Merendeira` da unidade e `Responsavel` vinculado |
+| `GET` | `/api/aluno/{id}/cardapio` | Versão servida ao aluno na data: geral para aluno sem restrição, adaptado publicado para aluno com restrição ou `Indisponivel` com alerta | Sim; mesmo escopo de leitura do aluno |
 
 O campo de nascimento do DTO é `DateOnly`; envie uma data no formato `yyyy-MM-dd`. `anafilaxia` deve ser um booleano JSON (`true` ou `false`). As restrições alimentares são armazenadas como uma coleção JSON na tabela `Alunos`.
 
@@ -224,19 +225,41 @@ O cardápio vive em `Cardapios`, `Refeicoes` e `ItensRefeicao`. O período é um
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `GET` | `/api/cardapios` | Lista paginada; aceita `unidadeId`, `data`, `situacao`, `pagina` e `tamanho` | Sim; `Nutricionista` ou `Merendeira` da própria unidade |
+| `GET` | `/api/cardapios` | Lista paginada do par geral/adaptado; aceita `unidadeId`, `data`, `situacao`, `pagina` e `tamanho` | Sim; `AdminSecretaria`/`Nutricionista` da unidade e `AdminEscola`/`Merendeira` da própria escola |
 | `GET` | `/api/cardapios/publicados` | Publicados cujo período inclui a data (padrão: hoje); exige `unidadeId`; aceita `data`, `refeicao`, `pagina` e `tamanho` | Não |
-| `GET` | `/api/cardapios/{id}` | Detalhe com refeições ordenadas, valores por item e totais | Sim; `Nutricionista` ou `Merendeira` da unidade |
+| `GET` | `/api/cardapios/{id}` | Detalhe com tipo, origem, escola, conjunto, status de adaptação, refeições, totais, substituições, pendências e confirmações | Sim; escopo da unidade ou da própria escola |
+| `GET` | `/api/cardapios/contexto-restricoes` | Alunos ativos e restrições por escola da unidade; aceita `escolaId` | Sim; `Nutricionista` da unidade e `AdminSecretaria`/`AdminEscola` no escopo |
+| `GET` | `/api/cardapios/{id}/adaptados` | Versões adaptadas da origem, com escola, conjunto, status, substituições e pendências | Sim; escopo da unidade ou da própria escola |
 | `GET` | `/api/cardapios/{id}/compatibilidade` | Análise de compatibilidade com as restrições dos alunos (bloqueantes e alertas) | Sim; `Nutricionista` ou `Merendeira` da unidade |
-| `POST` | `/api/cardapios` | Cria rascunho com período (até 366 dias), refeições e itens | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios` | Cria o rascunho geral e, na mesma transação, uma versão adaptada por `(escola, conjunto)`; exige `nutricionistaId` com CRN válido e aceita `confirmarIncompatibilidades` | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios/{id}/adaptar` | Adapta o geral para uma escola; idempotente por `(origem, escola, conjunto)` e limitada a 50 versões (`422`) | Sim; só `Nutricionista` com CRN |
 | `PUT` | `/api/cardapios/{id}` | Substitui nome, período e refeições de um rascunho de forma atômica | Sim; só `Nutricionista` |
 | `POST` | `/api/cardapios/{id}/duplicar` | Copia a composição para um novo período como rascunho | Sim; só `Nutricionista` |
 | `DELETE` | `/api/cardapios/{id}` | Exclui um rascunho com refeições e itens | Sim; só `Nutricionista` |
-| `POST` | `/api/cardapios/{id}/publicar` | Publica um rascunho; bloqueia por incompatibilidade (`422`) ou sobreposição (`409`) | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios/{id}/publicar` | Publica um rascunho; exige CRN válido; bloqueia por incompatibilidade (`422`), sobreposição (`409`) e adaptado pendente/desatualizado (`409`) | Sim; só `Nutricionista` |
 | `POST` | `/api/cardapios/{id}/cancelar` | Cancela com `motivo` obrigatório (2–500) | Sim; só `Nutricionista` |
 | `POST` | `/api/cardapios/{id}/revisao` | Cria uma revisão (`Versao + 1`) de um cardápio publicado | Sim; só `Nutricionista` |
 | `GET` | `/api/cardapios/{id}/historico` | Linha do tempo de eventos do cardápio, decrescente e paginada | Sim; `Nutricionista` ou `Merendeira` da unidade |
 | `GET` | `/api/cardapios/alteracoes` | Feed de alterações no escopo a partir de `desde`, paginado | Sim; `Nutricionista` ou `Merendeira` da própria unidade |
+
+### Solicitações
+
+O fluxo vive em `Solicitacoes` e `HistoricoSolicitacoes`. A solicitação é imutável no conteúdo; o status segue `Aberta → EmAnalise → Aprovada | Recusada`, com `Aprovada → Concluida` após a aplicação do efeito. A decisão é separada por tipo: nutrição decide cardápio/ingrediente; ADM decide restrição e dados cadastrais. O histórico é append-only, com autor e data UTC.
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/solicitacoes` | Lista paginada com filtros `tipo`, `status`, `unidadeId`, `escolaId`, `alunoId`, `cardapioId`, `de`, `ate`, `pagina` e `tamanho` | Sessão; escopo por papel e vínculo |
+| `GET` | `/api/solicitacoes/{id}` | Detalhe com alvo, resposta e trilha de status | Sessão; escopo por papel e vínculo |
+| `POST` | `/api/solicitacoes` | Cria `MudancaCardapio`, `Ingrediente`, `FaltaIngrediente`, `InclusaoAlergia` ou `AlteracaoRestricao` conforme o papel | `Merendeira`, `AdminEscola`, `Nutricionista` ou `Responsavel` vinculado |
+| `POST` | `/api/solicitacoes/{id}/analise` | `Aberta → EmAnalise` | Dono do tipo: `Nutricionista` ou `AdminSecretaria` |
+| `POST` | `/api/solicitacoes/{id}/aprovar` | Aprova com `resposta`; restrição é aplicada ao aluno na mesma transação | Dono do tipo |
+| `POST` | `/api/solicitacoes/{id}/recusar` | Recusa com `resposta` (2–500) | Dono do tipo |
+| `POST` | `/api/solicitacoes/{id}/concluir` | `Aprovada → Concluida` | Dono do tipo |
+| `POST` | `/api/solicitacoes/{id}/cancelar` | `Aberta → Cancelada` | Somente o solicitante |
+
+A aprovação de `MudancaCardapio`, `Ingrediente` e `FaltaIngrediente` não altera dados automaticamente; a resposta informa que a edição do cardápio pertence à Spec 015. Aprovar uma restrição inexistente no catálogo devolve `400` e mantém `EmAnalise`.
+
+O tipo `DadosCadastrais` é criado apenas por `Responsavel` vinculado ao aluno, com `justificativa` (10–500) e `alteracoes[]` nos campos `nome`, `dataNascimento`, `nomeResponsavel`, `telefoneResponsavel` e `observacao`. O servidor lê o valor atual e grava o snapshot; a aprovação do ADM aplica todos os campos de uma vez por `Aluno.AtualizarDados`, devolve `409` quando o valor mudou desde o pedido e registra na trilha do aluno a origem `Solicitacao:<id>`. Um segundo pedido aberto para o mesmo campo devolve `409` com o id existente. Cada mudança de status emite uma notificação `SolicitacaoStatus` ao solicitante e ao decisor, sem dado clínico.
 
 ### Geração automática de cardápios
 

@@ -131,6 +131,12 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
         unidadeDeTrabalho.ExecutarEmTransacao(() => alunos.Add(aluno));
     }
 
+    private static async Task<int> NutricionistaId(HttpClient client)
+    {
+        var lista = await client.GetFromJsonAsync<JsonElement>("/api/nutricionistas");
+        return lista[0].GetProperty("id").GetInt32();
+    }
+
     private static async Task<int> CriarCardapio(
         HttpClient client,
         int unidadeId,
@@ -142,6 +148,7 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
         {
             nome = "Semana 12",
             unidadeId,
+            nutricionistaId = await NutricionistaId(client),
             periodo = new { inicio, fim },
             refeicoes = new[]
             {
@@ -163,8 +170,7 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Gerar_ComParametrosValidos_RetornaCardapioDeterministico()
     {
-        var (client, nutricionistaId) = await _factory.CriarClienteAutenticadoAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
 
         await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}", 130m);
@@ -196,8 +202,7 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Gerar_SemParametros_Retorna400()
     {
-        var (client, nutricionistaId) = await _factory.CriarClienteAutenticadoAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
 
         var resposta = await client.PostAsJsonAsync("/api/cardapios/gerar", new
         {

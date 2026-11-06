@@ -11,6 +11,8 @@ public class UnidadeDeTrabalhoFake : IUnidadeDeTrabalho
 {
     public int Transacoes { get; private set; }
 
+    public int Salvamentos { get; private set; }
+
     public T ExecutarEmTransacao<T>(Func<T> operacao)
     {
         Transacoes++;
@@ -24,4 +26,6 @@ public class UnidadeDeTrabalhoFake : IUnidadeDeTrabalho
 
         operacao();
     }
+
+    public void Salvar() => Salvamentos++;
 }

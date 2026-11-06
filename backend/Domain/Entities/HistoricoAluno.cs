@@ -41,6 +41,12 @@ public class HistoricoAluno
 
     public DateTime CriadoEmUtc { get; private set; }
 
+    /// <summary>
+    /// Origem do evento quando ele não nasce de edição direta; por exemplo,
+    /// <c>Solicitacao:12</c> para a aplicação da Spec 030 (RF6). Nulo em edições diretas.
+    /// </summary>
+    public string? Origem { get; private set; }
+
     public HistoricoAluno(
         int alunoId,
         TipoEventoAluno tipo,
@@ -48,7 +54,8 @@ public class HistoricoAluno
         string? valorAnterior,
         string? valorNovo,
         string? autorNome,
-        DateTime criadoEmUtc)
+        DateTime criadoEmUtc,
+        string? origem = null)
     {
         AlunoId = alunoId;
         Tipo = tipo;
@@ -56,6 +63,7 @@ public class HistoricoAluno
         ValorAnterior = Normalizar(valorAnterior);
         ValorNovo = Normalizar(valorNovo);
         AutorNome = string.IsNullOrWhiteSpace(autorNome) ? "sistema" : autorNome.Trim();
+        Origem = string.IsNullOrWhiteSpace(origem) ? null : origem.Trim();
         CriadoEmUtc = criadoEmUtc.Kind == DateTimeKind.Utc
             ? criadoEmUtc
             : criadoEmUtc.ToUniversalTime();

@@ -16,4 +16,12 @@ public interface IUnidadeDeTrabalho
 
     /// <summary>Versão sem retorno de <see cref="ExecutarEmTransacao{T}"/>.</summary>
     void ExecutarEmTransacao(Action operacao);
+
+    /// <summary>
+    /// Persiste as mudanças pendentes mantendo a transação corrente aberta. Existe para
+    /// fluxos que precisam do identificador gerado antes de continuar a mesma operação
+    /// atômica — por exemplo, o cardápio geral seguido das versões adaptadas (Spec 029,
+    /// RF10). Fora de uma transação, comporta-se como um <c>SaveChanges</c> comum.
+    /// </summary>
+    void Salvar();
 }

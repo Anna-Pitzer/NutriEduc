@@ -73,6 +73,8 @@ public sealed class ErrorHandlingMiddleware
             publicacao.Message, publicacao.Detalhes),
         PublicacaoSobrepostaException sobreposta => (StatusCodes.Status409Conflict,
             sobreposta.Message, new { cardapioId = sobreposta.CardapioId }),
+        LimiteDeAdaptacoesException limite => (StatusCodes.Status422UnprocessableEntity,
+            limite.Message, new { limite = limite.Limite, solicitadas = limite.Solicitadas }),
         ArgumentException => (StatusCodes.Status400BadRequest,
             string.IsNullOrWhiteSpace(excecao.Message) ? "Dados inválidos." : excecao.Message, null),
         KeyNotFoundException => (StatusCodes.Status404NotFound, excecao.Message, null),

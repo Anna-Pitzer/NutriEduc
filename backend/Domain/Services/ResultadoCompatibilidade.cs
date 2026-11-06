@@ -1,3 +1,5 @@
+using Ntc.Domain.Entity;
+
 namespace Ntc.Domain.Services;
 
 /// <summary>Severidade de um achado (Spec 014, RF2): alergia bloqueia, restrição alerta.</summary>
@@ -30,3 +32,16 @@ public sealed record ResultadoCompatibilidade(
     IReadOnlyList<string> AlimentosNaoPermitidos,
     int TotalAlunosAnalisados,
     IReadOnlyList<string> Avisos);
+
+/// <summary>
+/// Regra única de severidade (Spec 014, ADR-011): alergia bloqueia, restrição alerta.
+/// Reutilizada pela adaptação (Spec 029, RNF3), para que a classificação não seja
+/// reimplementada em outro ponto do código.
+/// </summary>
+public static class SeveridadeDeRestricao
+{
+    public static SeveridadeCompatibilidade De(CategoriaRestricao categoria) =>
+        categoria == CategoriaRestricao.Alergia
+            ? SeveridadeCompatibilidade.Bloqueante
+            : SeveridadeCompatibilidade.Alerta;
+}

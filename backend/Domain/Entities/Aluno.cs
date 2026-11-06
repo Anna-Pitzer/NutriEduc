@@ -190,7 +190,8 @@ public class Aluno
         IEnumerable<AlteracaoDeDado> alteracoes,
         IEnumerable<string> adicionadas,
         IEnumerable<string> removidas,
-        string? autorNome)
+        string? autorNome,
+        string? origem = null)
     {
         var agora = DateTime.UtcNow;
 
@@ -198,21 +199,21 @@ public class Aluno
         {
             _historico.Add(new HistoricoAluno(
                 Id, TipoEventoAluno.Alterado, alteracao.Campo,
-                alteracao.ValorAnterior, alteracao.ValorNovo, autorNome, agora));
+                alteracao.ValorAnterior, alteracao.ValorNovo, autorNome, agora, origem));
         }
 
         foreach (var nome in adicionadas ?? Enumerable.Empty<string>())
         {
             _historico.Add(new HistoricoAluno(
                 Id, TipoEventoAluno.RestricaoAdicionada, CampoRestricoes,
-                string.Empty, nome, autorNome, agora));
+                string.Empty, nome, autorNome, agora, origem));
         }
 
         foreach (var nome in removidas ?? Enumerable.Empty<string>())
         {
             _historico.Add(new HistoricoAluno(
                 Id, TipoEventoAluno.RestricaoRemovida, CampoRestricoes,
-                nome, string.Empty, autorNome, agora));
+                nome, string.Empty, autorNome, agora, origem));
         }
     }
 

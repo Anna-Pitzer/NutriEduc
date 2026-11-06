@@ -1,4 +1,4 @@
-import { Users, UserRound, Utensils, ChevronRight, CircleUserRound, Building2, School, Apple, HeartHandshake, Salad } from "lucide-react"
+import { Users, UserRound, Utensils, ChevronRight, CircleUserRound, Building2, School, Apple, HeartHandshake, Salad, ClipboardList } from "lucide-react"
 import { Link } from "react-router-dom";
 import { useAuth, type PapelUsuario } from "../context/authContext";
 
@@ -36,6 +36,12 @@ export default function Navbar() {
             caminho: "/aluno/vizualizar",
             icone: CircleUserRound,
             papeis: ["Nutricionista", "AdminSecretaria"],
+        },
+        {
+            nome: "Solicitações",
+            caminho: "/solicitacoes",
+            icone: ClipboardList,
+            papeis: ["Nutricionista", "AdminSecretaria", "AdminEscola", "Merendeira", "Responsavel"],
         },
         {
             nome: "Merendeiras",

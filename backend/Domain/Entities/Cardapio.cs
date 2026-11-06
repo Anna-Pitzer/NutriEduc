@@ -1,4 +1,5 @@
 using Ntc.Domain.Services;
+using StatusDeAdaptacao = Ntc.Domain.Entity.StatusAdaptacao;
 
 namespace Ntc.Domain.Entity;
 
@@ -20,6 +21,9 @@ public class Cardapio
 
     private readonly List<Refeicao> _refeicoes = new();
     private readonly List<HistoricoCardapio> _historico = new();
+    private readonly List<SubstituicaoDeItem> _substituicoes = new();
+    private readonly List<PendenciaAdaptacao> _pendencias = new();
+    private readonly List<ConfirmacaoDeIncompatibilidade> _confirmacoes = new();
 
     public int Id { get; private set; }
 
@@ -30,6 +34,23 @@ public class Cardapio
     public PeriodoVigencia Periodo { get; private set; } = null!;
 
     public SituacaoCardapio Situacao { get; private set; }
+
+    // ---------- Versão geral e adaptada (Spec 029) ----------
+
+    /// <summary>Geral ou Adaptado; todo cardápio tem um tipo (RF1).</summary>
+    public TipoCardapio Tipo { get; private set; } = TipoCardapio.Geral;
+
+    /// <summary>Geral de origem da versão adaptada; nulo no geral (RF1).</summary>
+    public int? OrigemId { get; private set; }
+
+    /// <summary>Escola da versão adaptada; nulo no geral (RF1).</summary>
+    public int? EscolaId { get; private set; }
+
+    /// <summary>Chave canônica do conjunto de restrições; nula no geral (RF2).</summary>
+    public string? ConjuntoRestricoesChave { get; private set; }
+
+    /// <summary>Estado da adaptação; nulo no geral (RF1 e RF7).</summary>
+    public StatusAdaptacao? StatusAdaptacao { get; private set; }
 
     /// <summary>Origem da duplicação (Spec 012, RF6).</summary>
     public int? CardapioDuplicadoDeId { get; private set; }
@@ -66,6 +87,15 @@ public class Cardapio
 
     public IReadOnlyList<HistoricoCardapio> Historico => _historico.AsReadOnly();
 
+    /// <summary>Substituições aplicadas na versão adaptada (RF5 e T5).</summary>
+    public IReadOnlyList<SubstituicaoDeItem> Substituicoes => _substituicoes.AsReadOnly();
+
+    /// <summary>Motivos que impedem a publicação da versão adaptada (RF7 e RF8).</summary>
+    public IReadOnlyList<PendenciaAdaptacao> Pendencias => _pendencias.AsReadOnly();
+
+    /// <summary>Confirmações append-only de incompatibilidade mantida no geral (RF12 e RF13).</summary>
+    public IReadOnlyList<ConfirmacaoDeIncompatibilidade> Confirmacoes => _confirmacoes.AsReadOnly();
+
     /// <summary>Somente para o EF Core materializar a entidade. Não valida.</summary>
     private Cardapio()
     {
@@ -79,11 +109,23 @@ public class Cardapio
         int? duplicadoDeId = null,
         int? revisaoDeId = null,
         int versao = 1,
-        NutricionistaResponsavel? nutricionista = null)
+        NutricionistaResponsavel? nutricionista = null,
+        TipoCardapio tipo = TipoCardapio.Geral,
+        int? origemId = null,
+        int? escolaId = null,
+        ConjuntoDeRestricoes? conjunto = null,
+        StatusAdaptacao? statusAdaptacao = null)
     {
         var dados = Validar(nome, unidadeId, periodo, refeicoes);
+        var adaptacao = ValidarAdaptacao(tipo, origemId, escolaId, conjunto, statusAdaptacao);
 
         Aplicar(dados);
+
+        Tipo = adaptacao.Tipo;
+        OrigemId = adaptacao.OrigemId;
+        EscolaId = adaptacao.EscolaId;
+        ConjuntoRestricoesChave = adaptacao.ConjuntoRestricoesChave;
+        StatusAdaptacao = adaptacao.StatusAdaptacao;
 
         if (nutricionista is not null)
         {
@@ -98,6 +140,165 @@ public class Cardapio
     }
 
     /// <summary>
+    /// Cria a versão adaptada de um geral para uma escola e um conjunto (RF1 a RF3 e RF5).
+    /// A origem precisa ser um geral já persistido: adaptado de adaptado não existe.
+    /// </summary>
+    public static Cardapio CriarAdaptado(
+        Cardapio origem,
+        int escolaId,
+        ConjuntoDeRestricoes conjunto,
+        IEnumerable<Refeicao>? refeicoes,
+        IEnumerable<ItemSubstituido>? substituicoes,
+        IEnumerable<PendenciaDeAdaptacao>? pendencias,
+        StatusAdaptacao status)
+    {
+        ArgumentNullException.ThrowIfNull(origem);
+        ArgumentNullException.ThrowIfNull(conjunto);
+
+        if (origem.Tipo != TipoCardapio.Geral)
+        {
+            throw new ArgumentException(
+                "Uma versão adaptada só pode ser criada a partir de um cardápio geral.");
+        }
+
+        if (origem.Id <= 0)
+        {
+            throw new ArgumentException(
+                "O cardápio geral precisa estar persistido antes de ser adaptado.");
+        }
+
+        var adaptado = new Cardapio(
+            origem.Nome,
+            origem.UnidadeId,
+            origem.Periodo,
+            refeicoes,
+            tipo: TipoCardapio.Adaptado,
+            origemId: origem.Id,
+            escolaId: escolaId,
+            conjunto: conjunto,
+            statusAdaptacao: status,
+            nutricionista: origem.RetratoDaNutricionista());
+
+        adaptado.SubstituirRegistrosDaAdaptacao(substituicoes, pendencias);
+
+        return adaptado;
+    }
+
+    /// <summary>
+    /// Substitui o resultado de uma readaptação no rascunho existente (RF3 e RNF5):
+    /// refeições, substituições e pendências antigas são descartadas juntas, para que não
+    /// sobre registro de uma versão que não existe mais.
+    /// </summary>
+    public void AplicarAdaptacao(
+        IEnumerable<Refeicao>? refeicoes,
+        IEnumerable<ItemSubstituido>? substituicoes,
+        IEnumerable<PendenciaDeAdaptacao>? pendencias,
+        StatusAdaptacao status,
+        string? autorNome,
+        DateTime utc)
+    {
+        if (Tipo != TipoCardapio.Adaptado)
+        {
+            throw new InvalidOperationException(
+                "Somente uma versão adaptada pode receber o resultado da adaptação.");
+        }
+
+        if (Situacao != SituacaoCardapio.Rascunho)
+        {
+            throw new TransicaoInvalidaException(
+                "Somente versão adaptada em rascunho pode ser readaptada.");
+        }
+
+        if (status is not (StatusDeAdaptacao.Atualizado or StatusDeAdaptacao.PendenteDeRevisao))
+        {
+            throw new ArgumentException(
+                "O resultado de uma adaptação só pode ser Atualizado ou PendenteDeRevisao.");
+        }
+
+        var dados = Validar(Nome, UnidadeId, Periodo, refeicoes);
+        var novasPendencias = (pendencias ?? Array.Empty<PendenciaDeAdaptacao>()).ToList();
+
+        if (status == StatusDeAdaptacao.Atualizado && novasPendencias.Count > 0)
+        {
+            throw new ArgumentException("Versão atualizada não pode carregar pendências.");
+        }
+
+        if (status == StatusDeAdaptacao.PendenteDeRevisao && novasPendencias.Count == 0)
+        {
+            throw new ArgumentException("Versão pendente precisa registrar ao menos um motivo.");
+        }
+
+        _refeicoes.Clear();
+        _refeicoes.AddRange(dados.Refeicoes);
+
+        SubstituirRegistrosDaAdaptacao(substituicoes, novasPendencias);
+
+        StatusAdaptacao = status;
+        AtualizadoEmUtc = utc;
+        RegistrarEvento(EventoCardapio.Editado, autorNome ?? "sistema", "Readaptação", utc);
+    }
+
+    /// <summary>
+    /// Marca a versão como desatualizada quando o geral muda (RF20). Só sai de
+    /// <c>Atualizado</c>: uma versão pendente continua pendente, porque o problema dela não
+    /// foi resolvido. Repetir a chamada não altera a data.
+    /// </summary>
+    public void MarcarDesatualizado(string? autorNome, DateTime utc)
+    {
+        if (Tipo != TipoCardapio.Adaptado)
+        {
+            throw new InvalidOperationException(
+                "Somente versão adaptada pode ser desatualizada.");
+        }
+
+        if (StatusAdaptacao != StatusDeAdaptacao.Atualizado)
+        {
+            return;
+        }
+
+        StatusAdaptacao = StatusDeAdaptacao.Desatualizado;
+        AtualizadoEmUtc = utc;
+        RegistrarEvento(
+            EventoCardapio.Editado,
+            autorNome ?? "sistema",
+            "Geral alterado: versão desatualizada",
+            utc);
+    }
+
+    /// <summary>
+    /// Registra a confirmação explícita de uma incompatibilidade mantida no geral (RF12 e
+    /// RF13). É append-only e exclusiva de rascunho do tipo geral.
+    /// </summary>
+    public void RegistrarConfirmacaoDeIncompatibilidade(
+        string autorNome,
+        int alimentoId,
+        string alimentoNome,
+        IEnumerable<string> escolas,
+        IEnumerable<string> conjuntos,
+        DateTime utc)
+    {
+        if (Tipo != TipoCardapio.Geral)
+        {
+            throw new InvalidOperationException(
+                "A confirmação de incompatibilidade pertence ao cardápio geral.");
+        }
+
+        if (Situacao != SituacaoCardapio.Rascunho)
+        {
+            throw new TransicaoInvalidaException(
+                "A confirmação só é registrada na montagem de um rascunho.");
+        }
+
+        _confirmacoes.Add(new ConfirmacaoDeIncompatibilidade(
+            autorNome,
+            alimentoId,
+            alimentoNome,
+            string.Join(", ", escolas.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct(StringComparer.Ordinal)),
+            string.Join(", ", conjuntos.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.Ordinal)),
+            utc));
+    }
+
+    /// <summary>
     /// Substitui nome, período e refeições de um rascunho (Spec 012, RF12). Valida tudo antes
     /// de alterar qualquer campo; cardápio que não é rascunho não é editável.
     /// </summary>
@@ -106,6 +307,12 @@ public class Cardapio
         PeriodoVigencia? periodo,
         IEnumerable<Refeicao>? refeicoes)
     {
+        if (Tipo != TipoCardapio.Geral)
+        {
+            throw new InvalidOperationException(
+                "O conteúdo de uma versão adaptada é derivado; use a readaptação.");
+        }
+
         if (Situacao != SituacaoCardapio.Rascunho)
         {
             throw new InvalidOperationException("Só é possível editar cardápio em rascunho.");
@@ -187,6 +394,12 @@ public class Cardapio
 
     public Cardapio CriarRevisao(string autorNome, DateTime utc)
     {
+        if (Tipo != TipoCardapio.Geral)
+        {
+            throw new TransicaoInvalidaException(
+                "Versão adaptada é derivada do geral e não é revisada diretamente.");
+        }
+
         if (Situacao != SituacaoCardapio.Publicado)
             throw new TransicaoInvalidaException("Somente cardápio publicado pode ser revisado.");
 
@@ -265,6 +478,100 @@ public class Cardapio
 
         _refeicoes.Clear();
         _refeicoes.AddRange(dados.Refeicoes);
+    }
+
+    private void SubstituirRegistrosDaAdaptacao(
+        IEnumerable<ItemSubstituido>? substituicoes,
+        IEnumerable<PendenciaDeAdaptacao>? pendencias)
+    {
+        _substituicoes.Clear();
+        _pendencias.Clear();
+
+        foreach (var substituicao in substituicoes ?? Array.Empty<ItemSubstituido>())
+        {
+            _substituicoes.Add(new SubstituicaoDeItem(
+                substituicao.RefeicaoOrdem,
+                substituicao.RefeicaoNome,
+                substituicao.AlimentoOriginalId,
+                substituicao.AlimentoOriginalNome,
+                substituicao.AlimentoSubstitutoId,
+                substituicao.AlimentoSubstitutoNome,
+                substituicao.QuantidadeGramas,
+                string.Join(", ", substituicao.RestricoesBloqueantes)));
+        }
+
+        foreach (var pendencia in pendencias ?? Array.Empty<PendenciaDeAdaptacao>())
+        {
+            _pendencias.Add(new PendenciaAdaptacao(
+                pendencia.RefeicaoOrdem,
+                pendencia.RefeicaoNome,
+                pendencia.AlimentoId,
+                pendencia.AlimentoNome,
+                pendencia.Motivo));
+        }
+    }
+
+    private readonly record struct DadosDaAdaptacao(
+        TipoCardapio Tipo,
+        int? OrigemId,
+        int? EscolaId,
+        string? ConjuntoRestricoesChave,
+        StatusAdaptacao? StatusAdaptacao);
+
+    /// <summary>
+    /// Regra única de RF1: o geral não tem origem, escola, conjunto nem status de adaptação;
+    /// o adaptado exige os quatro e nunca aceita conjunto vazio (RF2).
+    /// </summary>
+    private static DadosDaAdaptacao ValidarAdaptacao(
+        TipoCardapio tipo,
+        int? origemId,
+        int? escolaId,
+        ConjuntoDeRestricoes? conjunto,
+        StatusAdaptacao? statusAdaptacao)
+    {
+        if (!Enum.IsDefined(tipo))
+        {
+            throw new ArgumentException("Tipo de cardápio inválido.");
+        }
+
+        if (tipo == TipoCardapio.Geral)
+        {
+            if (origemId is not null || escolaId is not null || conjunto is not null || statusAdaptacao is not null)
+            {
+                throw new ArgumentException(
+                    "Cardápio geral não possui origem, escola, conjunto nem status de adaptação.");
+            }
+
+            return new DadosDaAdaptacao(TipoCardapio.Geral, null, null, null, null);
+        }
+
+        if (origemId is null or <= 0)
+        {
+            throw new ArgumentException("A versão adaptada exige um cardápio de origem.");
+        }
+
+        if (escolaId is null or <= 0)
+        {
+            throw new ArgumentException("A versão adaptada exige uma escola.");
+        }
+
+        if (conjunto is null || conjunto.EstaVazio)
+        {
+            throw new ArgumentException(
+                "A versão adaptada exige um conjunto de restrições não vazio.");
+        }
+
+        if (statusAdaptacao is null || !Enum.IsDefined(statusAdaptacao.Value))
+        {
+            throw new ArgumentException("A versão adaptada exige o status de adaptação.");
+        }
+
+        return new DadosDaAdaptacao(
+            TipoCardapio.Adaptado,
+            origemId,
+            escolaId,
+            conjunto.Chave,
+            statusAdaptacao);
     }
 
     private static (string Nome, int UnidadeId, PeriodoVigencia Periodo, List<Refeicao> Refeicoes) Validar(

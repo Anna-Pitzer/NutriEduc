@@ -69,9 +69,7 @@ public static class AnaliseCompatibilidade
                     item.AlimentoId,
                     item.AlimentoNome,
                     vinculo.RestricaoNome,
-                    vinculo.Categoria == CategoriaRestricao.Alergia
-                        ? SeveridadeCompatibilidade.Bloqueante
-                        : SeveridadeCompatibilidade.Alerta,
+                    SeveridadeDeRestricao.De(vinculo.Categoria),
                     afetados.OrderBy(aluno => aluno.Nome, StringComparer.Ordinal).ToList()));
             }
         }

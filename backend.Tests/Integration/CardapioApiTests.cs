@@ -25,12 +25,14 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     private static object Payload(
         string nome,
         int unidadeId,
+        int nutricionistaId,
         string inicio,
         string fim,
         params (string Nome, int Ordem, (int AlimentoId, decimal Gramas)[] Itens)[] refeicoes) => new
         {
             nome,
             unidadeId,
+            nutricionistaId,
             periodo = new { inicio, fim },
             refeicoes = refeicoes.Select(refeicao => new
             {
@@ -43,6 +45,12 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
                 })
             })
         };
+
+    private static async Task<int> NutricionistaId(HttpClient client)
+    {
+        var lista = await client.GetFromJsonAsync<JsonElement>("/api/nutricionistas");
+        return lista[0].GetProperty("id").GetInt32();
+    }
 
     /// <summary>Cria um alimento com 130 kcal por 100 g e devolve o id.</summary>
     private static async Task<int> CriarAlimento(HttpClient client, string nome)
@@ -80,9 +88,11 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
         string fim,
         params (string Nome, int Ordem, (int AlimentoId, decimal Gramas)[] Itens)[] refeicoes)
     {
+        var nutricionistaId = await NutricionistaId(client);
+
         var resposta = await client.PostAsJsonAsync(
             "/api/cardapios",
-            Payload(nome, unidadeId, inicio, fim, refeicoes));
+            Payload(nome, unidadeId, nutricionistaId, inicio, fim, refeicoes));
 
         Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
 
@@ -110,14 +120,14 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Post_Cardapio_Retorna201ComTotaisCalculados()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var arroz = await CriarAlimento(client, $"Arroz {Guid.NewGuid():N}");
         var feijao = await CriarAlimento(client, $"Feijão {Guid.NewGuid():N}");
 
         var resposta = await client.PostAsJsonAsync("/api/cardapios", Payload(
             "Semana 12",
             unidadeId,
+            nutricionistaId,
             "2026-11-02",
             "2026-11-06",
             ("Almoço", 1, new[] { (arroz, 100m), (feijao, 50m) })));
@@ -146,9 +156,12 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
         var client = await _factory.CreateAuthenticatedClientAsync();
         var arroz = await CriarAlimento(client, $"Arroz {Guid.NewGuid():N}");
 
+        var nutricionistaId = await NutricionistaId(client);
+
         var resposta = await client.PostAsJsonAsync("/api/cardapios", Payload(
             "Semana 12",
             999999,
+            nutricionistaId,
             "2026-11-02",
             "2026-11-06",
             ("Almoço", 1, new[] { (arroz, 100m) })));
@@ -163,7 +176,10 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     public async Task Post_Cardapio_PorMerendeira_Retorna403()
     {
         var (escolaId, unidadeId) = _factory.CriarEscolaComUnidade();
-        var nutricionista = await _factory.CreateAuthenticatedClientAsync();
+        var (nutricionista, nutricionistaId) = await _factory.CriarClienteAutenticadoAsync(
+            PapelUsuario.Nutricionista,
+            escolaId: null,
+            unidadeId: unidadeId);
         var arroz = await CriarAlimento(nutricionista, $"Arroz {Guid.NewGuid():N}");
         var merendeira = await _factory.CreateAuthenticatedClientAsync(
             PapelUsuario.Merendeira,
@@ -173,6 +189,7 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
         var resposta = await merendeira.PostAsJsonAsync("/api/cardapios", Payload(
             "Semana 12",
             unidadeId,
+            nutricionistaId,
             "2026-11-02",
             "2026-11-06",
             ("Almoço", 1, new[] { (arroz, 100m) })));
@@ -193,8 +210,7 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Put_ComQuantidadeInvalida_NaoAlteraOCardapio()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var arroz = await CriarAlimento(client, $"Arroz {Guid.NewGuid():N}");
 
         var cardapioId = await CriarCardapio(
@@ -204,6 +220,7 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
         var invalido = await client.PutAsJsonAsync($"/api/cardapios/{cardapioId}", Payload(
             "Semana alterada",
             unidadeId,
+            nutricionistaId,
             "2026-11-02",
             "2026-11-06",
             ("Almoço", 1, new[] { (arroz, 0m) })));
@@ -219,8 +236,7 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Post_Duplicar_CopiaComposicaoComNovoPeriodo()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var arroz = await CriarAlimento(client, $"Arroz {Guid.NewGuid():N}");
 
         var origemId = await CriarCardapio(
@@ -245,8 +261,7 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Delete_Rascunho_Retorna204EDepoisNaoExiste()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var arroz = await CriarAlimento(client, $"Arroz {Guid.NewGuid():N}");
 
         var cardapioId = await CriarCardapio(
@@ -262,8 +277,7 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Delete_Publicado_Retorna409()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var arroz = await CriarAlimento(client, $"Arroz {Guid.NewGuid():N}");
 
         var cardapioId = await CriarCardapio(
@@ -283,8 +297,7 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Get_Publicados_SemSessao_DevolveApenasPublicados()
     {
-        var nutricionista = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (nutricionista, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var arroz = await CriarAlimento(nutricionista, $"Arroz {Guid.NewGuid():N}");
 
         var rascunho = await CriarCardapio(
@@ -325,8 +338,7 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Get_Publicados_FiltraPorRefeicaoSemDiferenciarCaixa()
     {
-        var nutricionista = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (nutricionista, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var arroz = await CriarAlimento(nutricionista, $"Arroz {Guid.NewGuid():N}");
 
         var almoco = await CriarCardapio(
@@ -353,8 +365,7 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Get_Publicados_FiltroPorRefeicaoSemAcento_NaoEncontra()
     {
-        var nutricionista = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (nutricionista, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var arroz = await CriarAlimento(nutricionista, $"Arroz {Guid.NewGuid():N}");
 
         var cardapio = await CriarCardapio(
@@ -380,8 +391,7 @@ public class CardapioApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Get_Cardapios_FiltraPorDataESituacaoNaListagemInterna()
     {
-        var client = await _factory.CreateAuthenticatedClientAsync();
-        var unidadeId = _factory.CriarEscolaComUnidade().UnidadeId;
+        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var arroz = await CriarAlimento(client, $"Arroz {Guid.NewGuid():N}");
 
         var daSemana = await CriarCardapio(
