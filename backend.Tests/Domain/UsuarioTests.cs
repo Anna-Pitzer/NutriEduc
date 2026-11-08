@@ -305,4 +305,64 @@ public class UsuarioTests
 
         Assert.Equal(nascimento, usuario.DataNascimento);
     }
+
+    [Fact]
+    public void Construtor_NutricionistaSemCrn_Lanca()
+    {
+        Assert.Throws<ArgumentException>(() => new Usuario(
+            "Maria Silva", "12345678901", new DateOnly(2000, 1, 1),
+            "maria@exemplo.com", PapelUsuario.Nutricionista, unidadeId: 1));
+    }
+
+    [Fact]
+    public void Construtor_OutroPapelComCrn_Lanca()
+    {
+        Assert.Throws<ArgumentException>(() => new Usuario(
+            "Maria Silva", "12345678901", new DateOnly(2000, 1, 1),
+            "maria@exemplo.com", PapelUsuario.Merendeira, escolaId: 1, unidadeId: 2,
+            crn: "CRN-3 12345"));
+    }
+
+    [Fact]
+    public void DefinirCrn_ComVariacoes_NormalizaECalculaValidade()
+    {
+        var usuario = Criar();
+
+        usuario.DefinirCrn("crn 3.12345");
+
+        Assert.Equal("CRN-3-12345", usuario.Crn);
+        Assert.True(usuario.CrnValido);
+    }
+
+    [Fact]
+    public void DefinirCrn_ComFormatoInvalido_Lanca()
+    {
+        var usuario = Criar();
+
+        Assert.Throws<ArgumentException>(() => usuario.DefinirCrn("CRN-12-12345"));
+    }
+
+    [Fact]
+    public void DefinirPapel_ParaNutricionistaSemCrn_Lanca()
+    {
+        var usuario = Criar();
+
+        Assert.Throws<ArgumentException>(() =>
+            usuario.DefinirPapel(PapelUsuario.Nutricionista, null, 1));
+    }
+
+    [Fact]
+    public void DefinirPapel_ParaOutroPapel_LimpaCrn()
+    {
+        var usuario = new Usuario(
+            "Maria Silva", "12345678901", new DateOnly(2000, 1, 1),
+            "maria@exemplo.com", PapelUsuario.Nutricionista, unidadeId: 1, crn: "CRN-3 12345");
+
+        Assert.NotNull(usuario.Crn);
+
+        usuario.DefinirPapel(PapelUsuario.Merendeira, escolaId: 1, unidadeId: null);
+
+        Assert.Null(usuario.Crn);
+        Assert.Equal(PapelUsuario.Merendeira, usuario.Papel);
+    }
 }

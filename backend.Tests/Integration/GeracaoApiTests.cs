@@ -188,11 +188,11 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
 
         Assert.Equal(corpoGerado.GetProperty("seed").GetInt32(), novamente.GetProperty("seed").GetInt32());
         Assert.Equal(
-            corpoGerado.GetProperty("totais").GetRawText(),
-            novamente.GetProperty("totais").GetRawText());
+            corpoGerado.GetProperty("totaisPorRefeicao").GetRawText(),
+            novamente.GetProperty("totaisPorRefeicao").GetRawText());
 
         // Regra: o cardápio gerado registra a nutricionista autora (snapshot da criação).
-        var cardapioId = corpoGerado.GetProperty("cardapioId").GetInt32();
+        var cardapioId = corpoGerado.GetProperty("cardapioGeralId").GetInt32();
         var detalhe = await client.GetFromJsonAsync<JsonElement>($"/api/cardapios/{cardapioId}");
 
         Assert.False(string.IsNullOrWhiteSpace(

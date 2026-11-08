@@ -21,6 +21,7 @@ export function Perfil() {
 
     const [foto, setFoto] = useState<string | null>(null);
     const [fotoOriginal, setFotoOriginal] = useState<string | null>(null);
+    const [crn, setCrn] = useState<string | null>(null);
 
     const [form, setForm] = useState<DadosPerfil>({
         nome: "",
@@ -107,6 +108,7 @@ export function Perfil() {
 
                 setFoto(dados.foto || null);
                 setFotoOriginal(dados.foto || null);
+                setCrn(dados.crn || null);
             } catch (error) {
                 console.error("Erro ao carregar perfil:", error);
                 setErro("Não foi possível carregar o perfil.");
@@ -307,6 +309,12 @@ export function Perfil() {
                                         ? "Carregando perfil..."
                                         : form.nome || "—"}
                                 </p>
+
+                                {userLogin?.papel === "Nutricionista" && (
+                                    <p className="text-xs text-gray-500">
+                                        CRN: {crn || "—"}
+                                    </p>
+                                )}
 
                                 <label
                                     htmlFor="fotoPerfil"

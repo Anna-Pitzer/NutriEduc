@@ -134,6 +134,13 @@ public class UsuarioService
             return Resultado<int>.Conflito("E-mail já cadastrado.");
         }
 
+        // RF5/RNF3: unicidade do CRN normalizado, verificada antes de construir a entidade.
+        if (!string.IsNullOrWhiteSpace(dto.Crn) &&
+            _usuarioRepository.GetByCrn(CrnDeNutricionista.Normalizar(dto.Crn)) is not null)
+        {
+            return Resultado<int>.Conflito("Este CRN já está vinculado a outro usuário.");
+        }
+
         var resolucao = ResolverEscopoInstitucional(
             papel, dto.EscolaId, dto.UnidadeId, escopo);
 
@@ -223,10 +230,38 @@ public class UsuarioService
         }
 
         var papelAnterior = alvo.Papel?.ToString();
+        var crnAnterior = alvo.Crn;
 
         alvo.AtualizarPerfil(dto.Nome, email);
         alvo.AtualizarTelefone(dto.Telefone);
-        alvo.DefinirCrn(dto.Crn);
+
+        // RF16: CRN é campo administrativo — o dono do perfil nunca altera o próprio CRN.
+        // O valor enviado pelo dono é ignorado, nunca gravado.
+        if (!dono)
+        {
+            var papelFinal = dto.Papel ?? alvo.Papel;
+            var recebeCrn = !string.IsNullOrWhiteSpace(dto.Crn);
+
+            // RF6: CRN é exclusivo de Nutricionista. Quem sai de Nutricionista (RF4) tem o
+            // CRN descartado pela troca de papel; os demais papéis não podem receber CRN.
+            if (recebeCrn && papelFinal != PapelUsuario.Nutricionista &&
+                alvo.Papel != PapelUsuario.Nutricionista)
+            {
+                return Resultado<UsuarioRespostaDTO>.Invalido(
+                    CrnDeNutricionista.MensagemSomenteNutricionista);
+            }
+
+            // RF5/RNF3: unicidade do CRN normalizado, verificada antes de mutar a entidade.
+            if (recebeCrn &&
+                _usuarioRepository.GetByCrn(CrnDeNutricionista.Normalizar(dto.Crn)) is { } porCrn &&
+                porCrn.Id != id)
+            {
+                return Resultado<UsuarioRespostaDTO>.Conflito(
+                    "Este CRN já está vinculado a outro usuário.");
+            }
+
+            alvo.DefinirCrn(dto.Crn);
+        }
 
         if (dto.Foto != null)
         {
@@ -268,6 +303,20 @@ public class UsuarioService
                     alvo.Id,
                     papelAnterior,
                     papelNovo,
+                    DateTime.UtcNow));
+            }
+
+            // RF11: toda alteração de CRN entra na trilha append-only com valor anterior e novo.
+            if (alvo.Crn != crnAnterior)
+            {
+                _trilha.Add(new TrilhaAcao(
+                    "CrnAlterado",
+                    escopo.UsuarioId,
+                    NomeDoAutor(escopo),
+                    "Usuario",
+                    alvo.Id,
+                    crnAnterior,
+                    alvo.Crn,
                     DateTime.UtcNow));
             }
         });
@@ -506,12 +555,39 @@ public class UsuarioService
                     Ativo: true,
                     Busca: null),
                 escopo))
+            // RF8: a seleção devolve apenas nutricionistas com CRN válido.
+            .Where(usuario => CrnDeNutricionista.EhValido(usuario.Crn))
             .Select(usuario => new NutricionistaDTO(
                 usuario.Id,
                 usuario.Nome,
                 usuario.Email,
                 usuario.Cpf,
-                usuario.Crn))
+                usuario.Crn,
+                true))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Diagnóstico de legado (RF10): nutricionistas ativos, da unidade do solicitante, sem
+    /// CRN ou com CRN em formato inválido. Não corrige dados nem inventa registro.
+    /// </summary>
+    public List<DiagnosticoCrnDTO> DiagnosticarCrn(EscopoUsuario escopo)
+    {
+        return _usuarioRepository
+            .Listar(FiltrosDeConsulta.ParaUsuario(
+                new FiltroUsuarios(
+                    Papel: PapelUsuario.Nutricionista,
+                    EscolaId: null,
+                    UnidadeId: null,
+                    Ativo: true,
+                    Busca: null),
+                escopo))
+            .Where(usuario => !CrnDeNutricionista.EhValido(usuario.Crn))
+            .Select(usuario => new DiagnosticoCrnDTO(
+                usuario.Id,
+                usuario.Nome,
+                usuario.UnidadeId,
+                string.IsNullOrWhiteSpace(usuario.Crn) ? "Sem CRN" : "CRN inválido"))
             .ToList();
     }
 
@@ -532,6 +608,7 @@ public class UsuarioService
             usuario.EscolaId,
             usuario.UnidadeId,
             usuario.Ativo,
-            usuario.Crn);
+            usuario.Crn,
+            usuario.CrnValido);
     }
 }

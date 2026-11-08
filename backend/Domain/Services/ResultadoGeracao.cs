@@ -19,8 +19,12 @@ public sealed record EntradaGeracao(
     IReadOnlyCollection<int> AlimentosBloqueados,
     int Seed);
 
-/// <summary>Resultado da geração: refeições com itens, a semente usada e os avisos (RF10).</summary>
+/// <summary>
+/// Resultado da geração: refeições com itens, a semente usada, os avisos e as tentativas
+/// consumidas por refeição (Spec 013, RF10; Spec 032, RF12).
+/// </summary>
 public sealed record ResultadoGeracao(
     IReadOnlyList<(RefeicaoPadrao Refeicao, IReadOnlyList<ItemGerado> Itens)> Refeicoes,
     int Seed,
-    IReadOnlyList<string> Avisos);
+    IReadOnlyList<string> Avisos,
+    IReadOnlyList<TentativaRefeicao> TentativasPorRefeicao);

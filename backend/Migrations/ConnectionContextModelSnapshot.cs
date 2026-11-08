@@ -986,6 +986,10 @@ namespace backend.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
+                    b.HasIndex("Crn")
+                        .IsUnique()
+                        .HasFilter("\"Crn\" IS NOT NULL");
+
                     b.HasIndex("EscolaId");
 
                     b.HasIndex("UnidadeId");

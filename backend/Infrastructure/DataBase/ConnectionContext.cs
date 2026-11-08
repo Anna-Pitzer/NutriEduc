@@ -103,6 +103,13 @@ public class ConnectionContext : DbContext
             .Property(usuario => usuario.Crn)
             .HasMaxLength(20);
 
+        // CRN único entre usuários (Spec 031, RNF3). O índice filtrado permite vários
+        // valores nulos, mas nunca dois registros com o mesmo CRN normalizado.
+        modelBuilder.Entity<Usuario>()
+            .HasIndex(usuario => usuario.Crn)
+            .IsUnique()
+            .HasFilter("\"Crn\" IS NOT NULL");
+
         modelBuilder.Entity<Usuario>()
             .HasOne<Escola>()
             .WithMany()

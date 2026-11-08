@@ -264,20 +264,24 @@ O tipo `DadosCadastrais` é criado apenas por `Responsavel` vinculado ao aluno, 
 ### Geração automática de cardápios
 
 Os parâmetros vivem em `ParametrosGeracao` (único por unidade) e a seleção é função pura
-`GeradorCardapioAutomatico.Gerar`, determinística pela semente. Cada item gerado corresponde
-a 100 g; o total calórico da refeição é a soma das calorias por 100 g dos itens selecionados.
+`SeletorDeRefeicao`/`GeradorCardapioAutomatico`, determinística pela semente e com até 5
+tentativas por refeição. Cada item gerado corresponde a 100 g; o total calórico da refeição é
+recalculado pelo `CalculoNutricional` da Spec 012 antes de persistir.
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
 | `GET` | `/api/unidades/{unidadeId}/parametros-geracao` | Parâmetros de geração da unidade | `AdminSecretaria` ou `Nutricionista` |
 | `PUT` | `/api/unidades/{unidadeId}/parametros-geracao` | Cria ou altera os parâmetros de geração | Sim; só `Nutricionista` |
 | `GET` | `/api/nutricionistas` | Lista as nutricionistas ativas (nome, e-mail, CPF e CRN) para escolher a autora do cardápio | Sim; só `Nutricionista` |
-| `POST` | `/api/cardapios/gerar` | Gera um cardápio `Rascunho` a partir dos parâmetros, da semente e da nutricionista responsável | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios/gerar` | Gera o geral e as versões adaptadas por escola/conjunto na mesma transação | Sim; só `Nutricionista` |
 
-A geração responde `400` sem parâmetros configurados e `422` (`{ erro, detalhes }`) quando a
-geração é impossível (sem alimento ativo, categoria obrigatória sem candidato, candidatos
-insuficientes ou faixa calórica inatingível) — nenhum cardápio parcial é salvo. `AdminEscola`
-recebe `403` por não ter escopo por unidade.
+A resposta traz `cardapioGeralId`, `seed`, `tentativasPorRefeicao`, `totaisPorRefeicao`,
+`versaoAdaptadaIds` (com `escolaId`, `conjunto`, `status` e `motivo`), `avisos` e
+`diagnostico`. A geração responde `400` sem parâmetros configurados, com categoria obrigatória
+inexistente/inativa ou com nutricionista inválida (outra unidade ou sem CRN), e `422`
+(`{ erro, detalhes }`) quando a geração é impossível — o `detalhes` traz o diagnóstico por
+refeição (faixa alcançável, categoria ausente, candidatos e tentativas). Nenhum cardápio
+parcial é salvo. `AdminEscola` recebe `403` por não ter escopo por unidade.
 
 A rota pública responde `400` sem `unidadeId` e nunca devolve rascunho. Editar ou excluir cardápio que não está em `Rascunho` responde `409` — publicar, cancelar e revisar pertencem à Spec 015. Alimento inexistente responde `400`; alimento desativado só é aceito se já estava no cardápio, o que preserva o histórico de um item que saiu do catálogo. O filtro `refeicao` compara o nome sem diferenciar caixa, mas acento continua significativo. Excluir uma unidade com cardápio responde `409`.
 
@@ -366,8 +370,9 @@ Unidade é da secretaria, **não pertence a escola**: o nome é único na rede. 
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `GET` | `/api/usuarios` | Lista usuários com filtros `papel`, `escolaId`, `unidadeId`, `ativo`, `busca` | `AdminSecretaria` (própria unidade) ou `AdminEscola` (leitura da própria escola) |
-| `POST` | `/api/usuarios` | Cria usuário com papel | `AdminSecretaria` |
+| `GET` | `/api/usuarios` | Lista usuários com filtros `papel`, `escolaId`, `unidadeId`, `ativo`, `busca`; expõe `crn` e `crnValido` | `AdminSecretaria` (própria unidade) ou `AdminEscola` (leitura da própria escola) |
+| `GET` | `/api/usuarios/diagnostico-crn` | Lista nutricionistas ativas sem CRN ou com CRN inválido (diagnóstico de legado) | `AdminSecretaria` |
+| `POST` | `/api/usuarios` | Cria usuário com papel; CRN obrigatório para `Nutricionista` | `AdminSecretaria` |
 | `PUT` | `/api/usuarios/{id}` | Atualiza dados do próprio perfil; papel e escopo só pelo ADM | Dono do perfil (dados próprios) ou `AdminSecretaria` (papel/escopo) |
 | `POST` | `/api/usuarios/{id}/ativar` | Reativa usuário | `AdminSecretaria` |
 | `POST` | `/api/usuarios/{id}/desativar` | Desativa usuário e invalida a sessão na requisição seguinte | `AdminSecretaria` |

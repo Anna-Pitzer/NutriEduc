@@ -55,6 +55,24 @@ public class UsuarioAdminController : RespostaController
         return Ok(_usuarios.Listar(filtro, escopo));
     }
 
+    /// <summary>
+    /// Diagnóstico de legado do CRN (Spec 031, RF10): nutricionistas ativos sem CRN ou com
+    /// CRN em formato inválido, na unidade do solicitante. Não corrige dados.
+    /// </summary>
+    [Authorize(Policy = "AdminSecretaria")]
+    [HttpGet("diagnostico-crn")]
+    public IActionResult DiagnosticoCrn()
+    {
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Ok(_usuarios.DiagnosticarCrn(escopo));
+    }
+
     [Authorize(Policy = "Admin")]
     [HttpPost]
     public IActionResult Criar([FromBody] CriarUsuarioDTO dto)

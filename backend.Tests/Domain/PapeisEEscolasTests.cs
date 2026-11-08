@@ -115,7 +115,7 @@ public class PapeisEEscolasTests
     public void Usuario_NutricionistaComUnidade_Aceita()
     {
         var usuario = new Usuario("Ana", "12345678901", new DateOnly(1990, 1, 1),
-            "ana@exemplo.com", PapelUsuario.Nutricionista, unidadeId: 2);
+            "ana@exemplo.com", PapelUsuario.Nutricionista, unidadeId: 2, crn: "CRN-3 12345");
 
         Assert.Equal(PapelUsuario.Nutricionista, usuario.Papel);
         Assert.Equal(2, usuario.UnidadeId);
@@ -163,7 +163,7 @@ public class PapeisEEscolasTests
     public void Usuario_DesativarEReativar_AlteraAtivo()
     {
         var usuario = new Usuario("Ana", "12345678901", new DateOnly(1990, 1, 1),
-            "ana@exemplo.com", PapelUsuario.Nutricionista, unidadeId: 2);
+            "ana@exemplo.com", PapelUsuario.Nutricionista, unidadeId: 2, crn: "CRN-3 12345");
 
         usuario.Desativar();
         Assert.False(usuario.Ativo);

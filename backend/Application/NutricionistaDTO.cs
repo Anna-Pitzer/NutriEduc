@@ -10,4 +10,5 @@ public sealed record NutricionistaDTO(
     string? Nome,
     string? Email,
     string? Cpf,
-    string? Crn);
+    string? Crn,
+    bool CrnValido);

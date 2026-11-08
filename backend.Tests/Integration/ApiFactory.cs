@@ -173,12 +173,13 @@ public class ApiFactory : WebApplicationFactory<Program>
         var usuario = usuarios.GetByEmail(email)
             ?? throw new InvalidOperationException($"Usuário {email} não existe.");
 
-        usuario.DefinirPapel(papel, escolaId, unidadeId);
-
+        // CRN antes do papel: DefinirPapel(Nutricionista) exige CRN válido (Spec 031).
         if (papel == PapelUsuario.Nutricionista && string.IsNullOrWhiteSpace(usuario.Crn))
         {
             usuario.DefinirCrn("CRN-3 12345");
         }
+
+        usuario.DefinirPapel(papel, escolaId, unidadeId);
 
         scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>()
             .ExecutarEmTransacao(() => usuarios.Update(usuario));
@@ -232,12 +233,13 @@ public class ApiFactory : WebApplicationFactory<Program>
             var usuario = usuarios.GetByEmail(email)
                 ?? throw new InvalidOperationException($"Usuário {email} não foi criado.");
 
-            usuario.DefinirPapel(papel, escolaId, unidadeId);
-
+            // CRN antes do papel: DefinirPapel(Nutricionista) exige CRN válido (Spec 031).
             if (papel == PapelUsuario.Nutricionista && string.IsNullOrWhiteSpace(usuario.Crn))
             {
                 usuario.DefinirCrn("CRN-3 12345");
             }
+
+            usuario.DefinirPapel(papel, escolaId, unidadeId);
 
             usuarioId = usuario.Id;
             scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>()

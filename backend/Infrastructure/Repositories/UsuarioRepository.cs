@@ -34,6 +34,11 @@ public class UsuarioRepository : IUsuarioRepository
         return _context.Usuarios.Any(u => u.Email == email);
     }
 
+    public Usuario? GetByCrn(string crn)
+    {
+        return _context.Usuarios.FirstOrDefault(u => u.Crn == crn);
+    }
+
     public void Update(Usuario usuario)
     {
         _context.Usuarios.Update(usuario);

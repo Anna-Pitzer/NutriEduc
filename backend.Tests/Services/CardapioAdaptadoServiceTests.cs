@@ -261,7 +261,10 @@ public class CardapioAdaptadoServiceTests
             PapelUsuario.Nutricionista,
             null,
             cenario.UnidadeId,
-            null);
+            "CRN-3 12345");
+
+        // Simula um registro legado anterior à Spec 031: nutricionista ativa sem CRN persistido.
+        PropriedadesPrivadas.Definir(semCrn, nameof(Usuario.Crn), null);
         cenario.Usuarios.Add(semCrn);
 
         var resultado = cenario.Servico.Criar(

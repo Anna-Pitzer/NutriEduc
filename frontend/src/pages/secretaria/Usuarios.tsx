@@ -514,6 +514,7 @@ export function Usuarios() {
                                 <th className="py-2">Nome</th>
                                 <th className="py-2">E-mail</th>
                                 <th className="py-2">Papel</th>
+                                <th className="py-2">CRN</th>
                                 <th className="py-2">Escola / Unidade</th>
                                 <th className="py-2">Situação</th>
                                 <th className="py-2 text-right">Ações</th>
@@ -558,6 +559,20 @@ export function Usuarios() {
                                                 </>
                                             ) : (
                                                 usuario.papel ? rotuloPapel[usuario.papel] : "Sem papel"
+                                            )}
+                                        </td>
+                                        <td className="py-3 pr-4 text-gray-600">
+                                            {usuario.papel === "Nutricionista" && usuario.crn ? (
+                                                <>
+                                                    {usuario.crn}
+                                                    {!usuario.crnValido && (
+                                                        <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                                                            inválido
+                                                        </span>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                "—"
                                             )}
                                         </td>
                                         <td className="py-3 pr-4 text-gray-600">

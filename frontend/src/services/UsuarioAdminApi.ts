@@ -13,6 +13,8 @@ export interface UsuarioResposta {
     ativo: boolean;
     /** Registro no conselho de nutrição; nulo quando não informado. */
     crn: string | null;
+    /** `true` quando o CRN está em formato válido (Spec 031). */
+    crnValido: boolean;
 }
 
 export interface FiltroUsuarios {

@@ -13,6 +13,7 @@ import {
 } from "../../../services/GeracaoApi";
 import { listarUnidades, type Unidade } from "../../../services/UnidadeApi";
 import { listarNutricionistas, type Nutricionista } from "../../../services/NutricionistaApi";
+import { listarCategoriasAlimento, type CategoriaAlimento } from "../../../services/AlimentoApi";
 
 /**
  * Tela de parâmetros de geração automática (Spec 013, RF12): a nutrição configura a faixa
@@ -27,6 +28,8 @@ export function ParametrosGeracao() {
     const [nutricionistas, setNutricionistas] = useState<Nutricionista[]>([]);
     const [nutricionistaId, setNutricionistaId] = useState<number | "">("");
     const [, setParametro] = useState<ParametroGeracao | null>(null);
+    const [categorias, setCategorias] = useState<CategoriaAlimento[]>([]);
+    const [categoriasObrigatorias, setCategoriasObrigatorias] = useState<number[]>([]);
 
     const [caloriasMinimas, setCaloriasMinimas] = useState(0);
     const [caloriasMaximas, setCaloriasMaximas] = useState(500);
@@ -53,6 +56,10 @@ export function ParametrosGeracao() {
         listarNutricionistas()
             .then(setNutricionistas)
             .catch(() => setNutricionistas([]));
+
+        listarCategoriasAlimento()
+            .then(setCategorias)
+            .catch(() => setCategorias([]));
     }, []);
 
     useEffect(() => {
@@ -70,6 +77,7 @@ export function ParametrosGeracao() {
                 setJanelaRepeticaoDias(parametro.janelaRepeticaoDias);
                 setExcluirIncompativeis(parametro.excluirAlimentosIncompativeis);
                 setRefeicoesPadrao(parametro.refeicoesPadrao.join(", "));
+                setCategoriasObrigatorias(parametro.categoriasObrigatorias);
             })
             .catch(() => setParametro(null));
     }, [unidadeId]);
@@ -79,6 +87,14 @@ export function ParametrosGeracao() {
             .split(",")
             .map((nome) => nome.trim())
             .filter((nome) => nome.length > 0);
+    }
+
+    function alternarCategoria(categoriaId: number) {
+        setCategoriasObrigatorias((atuais) =>
+            atuais.includes(categoriaId)
+                ? atuais.filter((atual) => atual !== categoriaId)
+                : [...atuais, categoriaId],
+        );
     }
 
     async function salvar() {
@@ -97,7 +113,7 @@ export function ParametrosGeracao() {
                 opcoesPorRefeicao: opcoesPorRefeicao,
                 janelaRepeticaoDias: janelaRepeticaoDias,
                 excluirAlimentosIncompativeis: excluirIncompativeis,
-                categoriasObrigatorias: [],
+                categoriasObrigatorias,
                 refeicoesPadrao: refeicoes(),
             });
 
@@ -138,7 +154,7 @@ export function ParametrosGeracao() {
             });
 
             setResultado(gerado);
-            setMensagem(`Cardápio #${gerado.cardapioId} gerado (semente ${gerado.seed}).`);
+            setMensagem(`Cardápio #${gerado.cardapioGeralId} gerado (semente ${gerado.seed}).`);
         } catch (falha) {
             setErro(falha instanceof Error ? falha.message : "Erro ao gerar o cardápio");
         } finally {
@@ -246,6 +262,42 @@ export function ParametrosGeracao() {
                                 onChange={(evento) => setRefeicoesPadrao(evento.target.value)}
                                 className="h-12 rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-600 outline-none focus:border-roxo focus:ring-4 focus:ring-roxo/10"
                             />
+                        </div>
+
+                        <div className="flex flex-col">
+                            <label className="text-sm font-semibold text-gray-700">
+                                Categorias obrigatórias
+                            </label>
+                            <p className="mt-1 text-xs text-gray-500">
+                                Ao menos um alimento de cada categoria selecionada entra no cardápio.
+                            </p>
+                            {categorias.length === 0 ? (
+                                <p className="mt-2 text-xs text-gray-500">
+                                    Nenhuma categoria ativa no catálogo.
+                                </p>
+                            ) : (
+                                <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+                                    {categorias.map((categoria) => {
+                                        const selecionado = categoriasObrigatorias.includes(categoria.id);
+
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={categoria.id}
+                                                onClick={() => alternarCategoria(categoria.id)}
+                                                aria-pressed={selecionado}
+                                                className={`rounded-xl px-3 py-3 text-left text-sm font-semibold transition-all duration-200 ${
+                                                    selecionado
+                                                        ? "bg-roxo text-white shadow-sm"
+                                                        : "text-roxo hover:bg-[rgba(172,178,173,0.07)] hover:text-amarelo hover:shadow-sm"
+                                                }`}
+                                            >
+                                                {categoria.nome}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -360,12 +412,23 @@ export function ParametrosGeracao() {
                             <p className="text-sm text-gray-700">
                                 <button
                                     type="button"
-                                    onClick={() => navigate(`/cardapios/${resultado.cardapioId}`)}
+                                    onClick={() => navigate(`/cardapios/${resultado.cardapioGeralId}`)}
                                     className="text-roxo underline"
                                 >
-                                    Abrir rascunho #{resultado.cardapioId}
+                                    Abrir rascunho #{resultado.cardapioGeralId}
                                 </button>
                             </p>
+                            {resultado.versaoAdaptadaIds.length > 0 && (
+                                <ul className="mt-2 list-disc pl-6 text-sm text-gray-700">
+                                    {resultado.versaoAdaptadaIds.map((versao) => (
+                                        <li key={`${versao.id}-${versao.escolaId}-${versao.conjunto}`}>
+                                            Adaptado #{versao.id} (escola {versao.escolaId}, conjunto {versao.conjunto})
+                                            — {versao.status}
+                                            {versao.motivo ? `: ${versao.motivo}` : ""}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                             {resultado.avisos.length > 0 && (
                                 <ul className="mt-2 list-disc pl-6 text-sm text-amber-700">
                                     {resultado.avisos.map((aviso) => (

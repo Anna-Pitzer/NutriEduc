@@ -129,5 +129,6 @@ public static class CardapioMapper
                 cardapio.NutricionistaNome,
                 cardapio.NutricionistaEmail,
                 cardapio.NutricionistaCpf,
-                cardapio.NutricionistaCrn);
+                cardapio.NutricionistaCrn,
+                CrnDeNutricionista.EhValido(cardapio.NutricionistaCrn));
 }

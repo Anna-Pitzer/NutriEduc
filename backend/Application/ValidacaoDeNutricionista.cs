@@ -1,4 +1,5 @@
 using Ntc.Domain.Entity;
+using Ntc.Domain.Services;
 
 namespace Ntc.Application;
 
@@ -33,9 +34,13 @@ public static class ValidacaoDeNutricionista
             return "A nutricionista responsável pertence a outra unidade.";
         }
 
-        if (string.IsNullOrWhiteSpace(usuario.Crn))
+        // RF9: a mensagem e o predicado de CRN são da política única (Spec 031); nenhum
+        // serviço de cardápio reimplementa a regra.
+        var crnInvalido = PoliticaDeCrn.ExigirParaCardapio(usuario);
+
+        if (crnInvalido is not null)
         {
-            return "A nutricionista responsável não possui CRN cadastrado. Atualize o cadastro antes de criar, adaptar ou publicar cardápio.";
+            return crnInvalido;
         }
 
         return null;

@@ -36,6 +36,11 @@ public class UsuarioRepositoryFake : IUsuarioRepository
         return GetByEmail(email) != null;
     }
 
+    public Usuario? GetByCrn(string crn)
+    {
+        return _usuarios.FirstOrDefault(usuario => usuario.Crn == crn);
+    }
+
     public void Update(Usuario usuario)
     {
         var indice = _usuarios.FindIndex(item => item.Id == usuario.Id);

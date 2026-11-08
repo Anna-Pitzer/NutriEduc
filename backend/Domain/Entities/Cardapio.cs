@@ -346,7 +346,8 @@ public class Cardapio
         NutricionistaCpf = new string(
             (nutricionista.Cpf ?? string.Empty).Where(char.IsDigit).ToArray());
 
-        var crn = (nutricionista.Crn ?? string.Empty).Trim().ToUpperInvariant();
+        // O snapshot grava apenas a forma canônica do CRN (Spec 031, T5).
+        var crn = CrnDeNutricionista.Normalizar(nutricionista.Crn);
         NutricionistaCrn = crn.Length == 0 ? null : crn;
     }
 

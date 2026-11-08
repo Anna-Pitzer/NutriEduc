@@ -7,6 +7,9 @@ public interface IUsuarioRepository
     Usuario? GetById(int id);
     Usuario? GetByEmail(string email);
     bool ExistsByEmail(string email);
+
+    /// <summary>Busca o usuário por CRN normalizado; usado na verificação de unicidade (RF5).</summary>
+    Usuario? GetByCrn(string crn);
     void Update(Usuario usuario);
 
     /// <summary>
