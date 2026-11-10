@@ -51,6 +51,12 @@ public class Solicitacao
 
     public int? CardapioId { get; private set; }
 
+    /// <summary>Snapshot do nome do aluno no momento do pedido (RNF3/ADR-009).</summary>
+    public string? AlunoNome { get; private set; }
+
+    /// <summary>Snapshot do nome do cardápio no momento do pedido (RNF3/ADR-009).</summary>
+    public string? CardapioNome { get; private set; }
+
     public string? RestricaoNome { get; private set; }
 
     public string? Ingrediente { get; private set; }
@@ -91,6 +97,8 @@ public class Solicitacao
         int? cardapioId,
         string? restricaoNome,
         string? ingrediente,
+        string? alunoNome,
+        string? cardapioNome,
         DateTime utc)
     {
         if (!Enum.IsDefined(tipo))
@@ -142,6 +150,9 @@ public class Solicitacao
                 AlunoId = alunoId;
                 break;
         }
+
+        AlunoNome = NormalizarNome(alunoNome);
+        CardapioNome = NormalizarNome(cardapioNome);
 
         Status = StatusSolicitacao.Aberta;
         CriadoEmUtc = AtualizadoEmUtc = NormalizarUtc(utc);
@@ -243,4 +254,7 @@ public class Solicitacao
 
     private static DateTime NormalizarUtc(DateTime utc) =>
         utc.Kind == DateTimeKind.Utc ? utc : utc.ToUniversalTime();
+
+    private static string? NormalizarNome(string? nome) =>
+        string.IsNullOrWhiteSpace(nome) ? null : nome.Trim();
 }
