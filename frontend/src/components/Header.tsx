@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CircleUserRound } from "lucide-react";
 import { useAuth } from "../context/authContext";
+import { SinoNotificacoes } from "./SinoNotificacoes";
 
 export default function Header() {
     const { logout } = useAuth();
@@ -62,6 +63,7 @@ export default function Header() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <SinoNotificacoes />
                     <button
                         type="button"
                         onClick={handleLogout}

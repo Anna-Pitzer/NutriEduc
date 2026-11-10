@@ -113,8 +113,8 @@ public static class MatrizDePermissoes
         [(Recurso.Feedback, PapelUsuario.AdminSecretaria)] = R,
         [(Recurso.Feedback, PapelUsuario.AdminEscola)] = RW,
         [(Recurso.Feedback, PapelUsuario.Nutricionista)] = RW,
-        [(Recurso.Feedback, PapelUsuario.Merendeira)] = RW,
-        [(Recurso.Feedback, PapelUsuario.Responsavel)] = RW,
+        [(Recurso.Feedback, PapelUsuario.Merendeira)] = RC,
+        [(Recurso.Feedback, PapelUsuario.Responsavel)] = RC,
 
         [(Recurso.Notificacao, PapelUsuario.AdminSecretaria)] = R,
         [(Recurso.Notificacao, PapelUsuario.AdminEscola)] = R,
@@ -233,8 +233,8 @@ public static class MatrizDePermissoes
             (Recurso.Feedback, PapelUsuario.AdminSecretaria) => R,
             (Recurso.Feedback, PapelUsuario.AdminEscola) => RW,
             (Recurso.Feedback, PapelUsuario.Nutricionista) => RW,
-            (Recurso.Feedback, PapelUsuario.Merendeira) => RW,
-            (Recurso.Feedback, PapelUsuario.Responsavel) => RW,
+            (Recurso.Feedback, PapelUsuario.Merendeira) => RC,
+            (Recurso.Feedback, PapelUsuario.Responsavel) => RC,
 
             (Recurso.Notificacao, PapelUsuario.AdminSecretaria) => R,
             (Recurso.Notificacao, PapelUsuario.AdminEscola) => R,

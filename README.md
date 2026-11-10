@@ -275,6 +275,29 @@ O fluxo vive em `Ocorrencias` e `HistoricoOcorrencias`. A ocorrência tem um `Ti
 
 A ocorrência não é apagada; o encerramento é `Arquivada`. O "mesmo dia" do cancelamento é o dia civil de `America/Sao_Paulo` (UTC-3), não o dia UTC. Filtro de `escolaId`/`unidadeId` fora do alcance da sessão devolve `403`; recurso de outra unidade devolve `404`. A resposta nunca expõe identificador de autor além do nome (`RF10`).
 
+### Feedback
+
+O feedback fecha o ciclo de comunicação: merendeira, responsável e escola criam; nutrição e escola respondem; o autor encerra o próprio feedback respondido. O status segue `Aberto → Respondido → Encerrado`. A escola é derivada do autor (quando tem escola) ou do aluno referenciado. O escopo de leitura respeita unidade, escola e vínculo (Spec 028).
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/feedbacks` | Lista paginada com filtro `status` | Sessão; escopo por papel e vínculo |
+| `POST` | `/api/feedbacks` | Cria com `assunto` (5–120), `mensagem` (5–1000) e `alunoId` opcional | `Merendeira`, `Responsavel` ou `AdminEscola` |
+| `POST` | `/api/feedbacks/{id}/responder` | `Aberto → Respondido` com `resposta` (5–1000); emite `FeedbackRespondido` ao autor | `Nutricionista` da unidade ou `AdminEscola` da escola |
+| `POST` | `/api/feedbacks/{id}/encerrar` | `Respondido → Encerrado` | Somente o autor |
+
+Feedback de outra unidade devolve `404`; de outra escola da mesma unidade, `403`. Responder feedback já respondido e encerrar feedback aberto devolvem `409`.
+
+### Notificações
+
+As notificações são emitidas por um único serviço, na mesma transação da mudança de origem. A leitura é sempre restrita ao destinatário da sessão; notificação de outro usuário devolve `404`. O conteúdo nunca inclui CPF, e-mail, telefone ou dado clínico além do nome do aluno quando necessário.
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/notificacoes` | Lista paginada do usuário, com filtro `naoLidas` | Sessão |
+| `POST` | `/api/notificacoes/{id}/ler` | Marca uma notificação como lida (idempotente) | Sessão; dono |
+| `POST` | `/api/notificacoes/ler-todas` | Marca todas como lidas (idempotente) | Sessão |
+
 ### Geração automática de cardápios
 
 Os parâmetros vivem em `ParametrosGeracao` (único por unidade) e a seleção é função pura

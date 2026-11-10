@@ -14,6 +14,7 @@ public sealed class ExclusaoService
 {
     private readonly IEscolaRepository _escolas;
     private readonly IUsuarioRepository _usuarios;
+    private readonly INotificacaoRepository _notificacoes;
     private readonly IAlunoRepository _alunos;
     private readonly IVinculoRepository _vinculos;
     private readonly ITokenDeCadastroRepository _tokens;
@@ -26,6 +27,7 @@ public sealed class ExclusaoService
     public ExclusaoService(
         IEscolaRepository escolas,
         IUsuarioRepository usuarios,
+        INotificacaoRepository notificacoes,
         IAlunoRepository alunos,
         IVinculoRepository vinculos,
         ITokenDeCadastroRepository tokens,
@@ -37,6 +39,7 @@ public sealed class ExclusaoService
     {
         _escolas = escolas;
         _usuarios = usuarios;
+        _notificacoes = notificacoes;
         _alunos = alunos;
         _vinculos = vinculos;
         _tokens = tokens;
@@ -146,7 +149,8 @@ public sealed class ExclusaoService
             solicitanteId: escopo.UsuarioId,
             totalAdminSecretaria: _usuarios.ContarPorPapel(PapelUsuario.AdminSecretaria),
             temVinculos: _vinculos.ExistePorResponsavel(id),
-            temTokens: _tokens.ExistePorCriador(id));
+            temTokens: _tokens.ExistePorCriador(id),
+            temNotificacoes: _notificacoes.ExistePorDestinatario(id));
 
         if (impedimento is not null)
         {

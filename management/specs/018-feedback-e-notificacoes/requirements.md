@@ -55,10 +55,11 @@ de notificações.
   `OcorrenciaStatus`, `AlunoAtualizado`, `FeedbackRespondido`.
 - RF8: emissão é síncrona e na mesma transação da mudança de origem, por um único
   serviço (`NotificacaoService.Notificar`). Não existe job, fila ou polling.
-- RF9: destinatários por tipo: cardápio → merendeiras ativas de todas as escolas da
-  unidade do cardápio; solicitação → solicitante e o decisor do tipo (nutrição ou ADM);
-  ocorrência → autor e responsáveis dos alunos envolvidos; aluno atualizado →
-  responsáveis vinculados; feedback respondido → autor do feedback.
+- RF9: destinatários por tipo: cardápio geral → merendeiras ativas de todas as escolas da
+  unidade do cardápio; cardápio adaptado → merendeiras ativas da escola da versão;
+  solicitação → solicitante e o decisor do tipo (nutrição ou ADM); ocorrência → autor e
+  responsáveis dos alunos envolvidos; aluno atualizado → responsáveis vinculados; feedback
+  respondido → autor do feedback.
 - RF10: `GET /api/notificacoes?naoLidas=` devolve apenas as do usuário autenticado,
   ordenadas por data decrescente, paginadas (1–100); `POST /{id}/ler` e
   `POST /ler-todas` marcam como lidas.
@@ -132,3 +133,9 @@ ausência de vazamento entre usuários. Executar os gates: `dotnet build backend
 Conformidade com as Specs 027, 028 e 030: `EscolaId` derivado, escopo de leitura por
 unidade/escola, resposta do ADM apenas em leitura, destinatários calculados pela escola
 e pela unidade e notificação do decisor por tipo de solicitação.
+
+## Revisão — 2026-11-10
+
+PEND-045 (decisão do dono, opção A): o cardápio **geral** notifica merendeiras ativas de
+todas as escolas da unidade; o **adaptado** notifica somente merendeiras ativas da escola
+da versão (ADR-022, Spec 029 RF16). Permissão de leitura inalterada.
