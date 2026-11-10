@@ -382,6 +382,67 @@ namespace backend.Migrations
                     b.ToTable("Escolas");
                 });
 
+            modelBuilder.Entity("Ntc.Domain.Entity.Feedback", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Assunto")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AtualizadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AutorId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AutorNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("EscolaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PapelAutor")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RespondidoPor")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Resposta")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AutorId", "CriadoEmUtc");
+
+                    b.HasIndex("EscolaId", "CriadoEmUtc");
+
+                    b.HasIndex("UnidadeId", "CriadoEmUtc");
+
+                    b.ToTable("Feedbacks");
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.HistoricoAluno", b =>
                 {
                     b.Property<int>("Id")
@@ -1224,6 +1285,20 @@ namespace backend.Migrations
                         .WithMany()
                         .HasForeignKey("UnidadeId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Feedback", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Escola", null)
+                        .WithMany()
+                        .HasForeignKey("EscolaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.HistoricoAluno", b =>

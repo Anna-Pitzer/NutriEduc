@@ -20,6 +20,7 @@ public sealed class OcorrenciaService
     private readonly IUsuarioRepository _usuarios;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
     private readonly TimeProvider _relogio;
+    private readonly NotificacaoService _notificacoes;
 
     public OcorrenciaService(
         IOcorrenciaRepository ocorrencias,
@@ -29,7 +30,8 @@ public sealed class OcorrenciaService
         IVinculoRepository vinculos,
         IUsuarioRepository usuarios,
         IUnidadeDeTrabalho unidadeDeTrabalho,
-        TimeProvider relogio)
+        TimeProvider relogio,
+        NotificacaoService notificacoes)
     {
         _ocorrencias = ocorrencias;
         _alunos = alunos;
@@ -39,6 +41,7 @@ public sealed class OcorrenciaService
         _usuarios = usuarios;
         _unidadeDeTrabalho = unidadeDeTrabalho;
         _relogio = relogio;
+        _notificacoes = notificacoes;
     }
 
     // ---------- Criação ----------
@@ -332,13 +335,15 @@ public sealed class OcorrenciaService
             return Resultado<OcorrenciaDTO>.Invalido("Informe um status válido.");
         }
 
+        var utc = _relogio.GetUtcNow().UtcDateTime;
+
         try
         {
             ocorrencia.MudarStatus(
                 destino,
                 dto.Observacao ?? string.Empty,
                 NomeDoAutor(escopo),
-                _relogio.GetUtcNow().UtcDateTime);
+                utc);
         }
         catch (ArgumentException excecao)
         {
@@ -349,7 +354,18 @@ public sealed class OcorrenciaService
             return Resultado<OcorrenciaDTO>.Conflito(excecao.Message);
         }
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _ocorrencias.Update(ocorrencia));
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            _ocorrencias.Update(ocorrencia);
+            _notificacoes.NotificarVarios(
+                DestinatariosDaOcorrencia(ocorrencia),
+                TipoNotificacao.OcorrenciaStatus,
+                "Ocorrência atualizada",
+                $"A ocorrência #{ocorrencia.Id} mudou para {ocorrencia.Status}.",
+                "ocorrencia",
+                ocorrencia.Id,
+                utc);
+        });
 
         return Carregar(id, escopo);
     }
@@ -497,6 +513,21 @@ public sealed class OcorrenciaService
         return _vinculos.Existe(alunoId, escopo.UsuarioId)
             ? null
             : ResultadoStatus.Proibido;
+    }
+
+    private IEnumerable<int> DestinatariosDaOcorrencia(Ocorrencia ocorrencia)
+    {
+        var destinatarios = new List<int> { ocorrencia.AutorId };
+
+        if (ocorrencia.AlunoId is { } alunoId)
+        {
+            destinatarios.AddRange(
+                _vinculos.ListarPorAluno(alunoId)
+                    .Select(vinculo => vinculo.ResponsavelUsuarioId)
+                    .Where(id => _usuarios.GetById(id)?.Ativo == true));
+        }
+
+        return destinatarios;
     }
 
     private string NomeDoAutor(EscopoUsuario escopo) =>

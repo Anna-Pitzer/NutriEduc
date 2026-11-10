@@ -27,6 +27,8 @@ public class AlunoService
     private readonly AutorizacaoService _autorizacao;
     private readonly ITrilhaAcaoRepository _trilha;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
+    private readonly IVinculoRepository _vinculos;
+    private readonly NotificacaoService _notificacoes;
 
     public AlunoService(
         IAlunoRepository alunoRepository,
@@ -35,7 +37,9 @@ public class AlunoService
         HierarquiaService hierarquia,
         AutorizacaoService autorizacao,
         ITrilhaAcaoRepository trilha,
-        IUnidadeDeTrabalho unidadeDeTrabalho)
+        IUnidadeDeTrabalho unidadeDeTrabalho,
+        IVinculoRepository vinculos,
+        NotificacaoService notificacoes)
     {
         _alunoRepository = alunoRepository;
         _catalogoRepository = catalogoRepository;
@@ -44,6 +48,8 @@ public class AlunoService
         _autorizacao = autorizacao;
         _trilha = trilha;
         _unidadeDeTrabalho = unidadeDeTrabalho;
+        _vinculos = vinculos;
+        _notificacoes = notificacoes;
     }
 
     /// <summary>
@@ -195,7 +201,18 @@ public class AlunoService
         // Campo ou conjunto inalterado devolve lista vazia e não gera evento (RF3).
         aluno.RegistrarHistorico(alteracoes, adicionadas, removidas, NomeDoAutor(escopo));
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _alunoRepository.UpdateAluno(aluno));
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            _alunoRepository.UpdateAluno(aluno);
+            _notificacoes.NotificarVarios(
+                ResponsaveisDoAluno(aluno.Id),
+                TipoNotificacao.AlunoAtualizado,
+                "Cadastro atualizado",
+                $"O cadastro do aluno \"{aluno.Nome}\" foi atualizado.",
+                "aluno",
+                aluno.Id,
+                DateTime.UtcNow);
+        });
 
         return ParaResposta(aluno);
     }
@@ -326,6 +343,11 @@ public class AlunoService
 
         return new CatalogoDeRestricoes(entradas).ResolverNomes(informados);
     }
+
+    private IEnumerable<int> ResponsaveisDoAluno(int alunoId) =>
+        _vinculos.ListarPorAluno(alunoId)
+            .Select(vinculo => vinculo.ResponsavelUsuarioId)
+            .Where(id => _usuarioRepository.GetById(id)?.Ativo == true);
 
     /// <summary>Snapshot do autor do evento: o nome é copiado, nunca referenciado por FK.</summary>
     private string NomeDoAutor(EscopoUsuario? escopo)

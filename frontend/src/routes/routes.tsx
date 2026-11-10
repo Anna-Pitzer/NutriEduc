@@ -43,6 +43,9 @@ import { SolicitacoesPage } from "../pages/solicitacoes/SolicitacoesPage"
 // Ocorrências
 import { OcorrenciasPage } from "../pages/ocorrencias/OcorrenciasPage"
 
+// Feedback
+import { FeedbackPage } from "../pages/feedback/FeedbackPage"
+
 export function Rotas() {
   return (
     <Routes>
@@ -129,6 +132,17 @@ export function Rotas() {
           }
         >
           <Route path="/ocorrencias" element={<OcorrenciasPage />} />
+        </Route>
+
+        {/* Feedback — canal de retorno por papel (Spec 018) */}
+        <Route
+          element={
+            <ProtegidaPorPapel
+              papeis={["Nutricionista", "AdminSecretaria", "AdminEscola", "Merendeira", "Responsavel"]}
+            />
+          }
+        >
+          <Route path="/feedbacks" element={<FeedbackPage />} />
         </Route>
 
         {/* Comum */}

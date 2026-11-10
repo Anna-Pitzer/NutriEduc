@@ -41,6 +41,7 @@ public class ConnectionContext : DbContext
     public DbSet<TrilhaAcao> TrilhaAcoes {get;set;}
     public DbSet<Ocorrencia> Ocorrencias {get;set;}
     public DbSet<HistoricoOcorrencia> HistoricoOcorrencias {get;set;}
+    public DbSet<Feedback> Feedbacks {get;set;}
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -735,6 +736,44 @@ public class ConnectionContext : DbContext
                 .HasForeignKey(notificacao => notificacao.DestinatarioId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .IsRequired();
+        });
+
+        // ---------- Feedback (Spec 018) ----------
+
+        modelBuilder.Entity<Feedback>(entity =>
+        {
+            entity.Property(feedback => feedback.Assunto)
+                .HasMaxLength(Feedback.AssuntoMax)
+                .IsRequired();
+
+            entity.Property(feedback => feedback.Mensagem)
+                .HasMaxLength(Feedback.MensagemMax)
+                .IsRequired();
+
+            entity.Property(feedback => feedback.AutorNome)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(feedback => feedback.Resposta)
+                .HasMaxLength(Feedback.RespostaMax);
+
+            entity.Property(feedback => feedback.RespondidoPor)
+                .HasMaxLength(100);
+
+            entity.HasIndex(feedback => new { feedback.UnidadeId, feedback.CriadoEmUtc });
+            entity.HasIndex(feedback => new { feedback.EscolaId, feedback.CriadoEmUtc });
+            entity.HasIndex(feedback => new { feedback.AutorId, feedback.CriadoEmUtc });
+
+            entity.HasOne<UnidadeEscolar>()
+                .WithMany()
+                .HasForeignKey(feedback => feedback.UnidadeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
+
+            entity.HasOne<Escola>()
+                .WithMany()
+                .HasForeignKey(feedback => feedback.EscolaId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ---------- Ocorrências (Spec 016) ----------

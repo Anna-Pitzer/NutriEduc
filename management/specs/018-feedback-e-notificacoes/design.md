@@ -208,6 +208,7 @@ endpoint administrativo para ler notificação alheia.
   da operação; o volume por transição é limitado ao número de usuários da unidade.
 - **Privacidade**: título e mensagem não carregam dado sensível; o link leva ao
   recurso, onde o escopo é aplicado novamente.
-- **Destinatário por unidade**: a notificação de cardápio alcança merendeiras de todas
-  as escolas da unidade, porque o cardápio é da unidade (ADR-022); não há regra por
-  escola nesse tipo.
+- **Destinatário por unidade/escola**: o cardápio **geral** notifica merendeiras de todas
+  as escolas da unidade (o geral é da unidade — ADR-022); o **adaptado** notifica somente
+  merendeiras da escola da versão (Spec 029 RF16). A permissão de leitura não muda: a
+  escola do adaptado segue sendo a única que o abre.

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Ntc.Database;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
 using Xunit;
@@ -403,5 +404,128 @@ public class PublicacaoApiTests : IClassFixture<ApiFactory>
         Assert.NotEmpty(eventos);
         Assert.All(eventos, evento =>
             Assert.Equal("Cardápio da Unidade A", evento.GetProperty("cardapioNome").GetString()));
+    }
+
+    private async Task<int> CriarMerendeira(int unidadeId, int escolaId, bool ativo = true)
+    {
+        var (_, usuarioId) = await _factory.CriarClienteAutenticadoAsync(
+            PapelUsuario.Merendeira, escolaId, unidadeId);
+
+        if (!ativo)
+        {
+            using var escopo = _factory.Services.CreateScope();
+            var usuarios = escopo.ServiceProvider.GetRequiredService<IUsuarioRepository>();
+            var unidadeDeTrabalho = escopo.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
+
+            var usuario = usuarios.GetById(usuarioId)!;
+            usuario.Desativar();
+            unidadeDeTrabalho.ExecutarEmTransacao(() => usuarios.Update(usuario));
+        }
+
+        return usuarioId;
+    }
+
+    private void CriarAlunoComRestricaoNaEscola(int unidadeId, int escolaId, string restricao)
+    {
+        using var escopo = _factory.Services.CreateScope();
+        var alunos = escopo.ServiceProvider.GetRequiredService<IAlunoRepository>();
+        var unidadeDeTrabalho = escopo.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
+
+        var aluno = new Aluno(
+            $"Aluno {Guid.NewGuid():N}",
+            new DateOnly(2015, 5, 20),
+            new Turma("Escola Municipal", "5 ano"),
+            null,
+            null,
+            new[] { restricao },
+            false,
+            new Responsavel("Ana Silva", "11988888888"),
+            escolaId);
+
+        aluno.DefinirUnidade(unidadeId);
+
+        unidadeDeTrabalho.ExecutarEmTransacao(() => alunos.Add(aluno));
+    }
+
+    private List<int> DestinatariosDoCardapio(int cardapioId, TipoNotificacao tipo)
+    {
+        using var escopo = _factory.Services.CreateScope();
+        var contexto = escopo.ServiceProvider.GetRequiredService<ConnectionContext>();
+
+        return contexto.Notificacoes
+            .Where(notificacao =>
+                notificacao.Tipo == tipo &&
+                notificacao.ReferenciaTipo == "cardapio" &&
+                notificacao.ReferenciaId == cardapioId)
+            .Select(notificacao => notificacao.DestinatarioId)
+            .ToList();
+    }
+
+    [Fact]
+    public async Task PublicarGeral_NotificaMerendeirasAtivasDaUnidade()
+    {
+        var (escolaA0, unidadeA) = _factory.CriarEscolaComUnidade();
+        var escolaA1 = _factory.CriarEscolaNaUnidade(unidadeA);
+        var (escolaB, unidadeB) = _factory.CriarEscolaComUnidade();
+
+        var client = await _factory.CreateAuthenticatedClientAsync(
+            PapelUsuario.Nutricionista, null, unidadeA);
+
+        var merendeiraA0 = await CriarMerendeira(unidadeA, escolaA0);
+        var merendeiraA1 = await CriarMerendeira(unidadeA, escolaA1);
+        var merendeiraB = await CriarMerendeira(unidadeB, escolaB);
+        var desativada = await CriarMerendeira(unidadeA, escolaA0, ativo: false);
+
+        var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
+        var arroz = await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}");
+        var cardapioId = await CriarCardapio(client, unidadeA, arroz);
+
+        var publicacao = await client.PostAsync($"/api/cardapios/{cardapioId}/publicar", null);
+        publicacao.EnsureSuccessStatusCode();
+
+        var destinatarios = DestinatariosDoCardapio(cardapioId, TipoNotificacao.CardapioPublicado);
+
+        Assert.Contains(merendeiraA0, destinatarios);
+        Assert.Contains(merendeiraA1, destinatarios);
+        Assert.DoesNotContain(merendeiraB, destinatarios);
+        Assert.DoesNotContain(desativada, destinatarios);
+    }
+
+    [Fact]
+    public async Task PublicarAdaptado_NotificaMerendeiraDaEscola_NaoDeOutra()
+    {
+        _factory.GarantirCatalogo();
+        var (escolaX, unidadeA) = _factory.CriarEscolaComUnidade();
+        var escolaY = _factory.CriarEscolaNaUnidade(unidadeA);
+
+        var client = await _factory.CreateAuthenticatedClientAsync(
+            PapelUsuario.Nutricionista, null, unidadeA);
+
+        var merendeiraX = await CriarMerendeira(unidadeA, escolaX);
+        var merendeiraY = await CriarMerendeira(unidadeA, escolaY);
+
+        CriarAlunoComRestricaoNaEscola(unidadeA, escolaX, "Lactose");
+
+        var lactoseId = ObterRestricaoId("Lactose");
+        var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
+        var iogurte = await CriarAlimentoComRestricao(client, categoriaId, lactoseId, $"Iogurte {Guid.NewGuid():N}");
+
+        var cardapioId = await CriarCardapio(client, unidadeA, iogurte);
+
+        var publicacaoGeral = await client.PostAsync($"/api/cardapios/{cardapioId}/publicar", null);
+        publicacaoGeral.EnsureSuccessStatusCode();
+
+        var adaptados = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/cardapios/{cardapioId}/adaptados");
+        var adaptadoId = adaptados.EnumerateArray().First().GetProperty("id").GetInt32();
+
+        var publicacaoAdaptada = await client.PostAsync(
+            $"/api/cardapios/{adaptadoId}/publicar", null);
+        publicacaoAdaptada.EnsureSuccessStatusCode();
+
+        var destinatarios = DestinatariosDoCardapio(adaptadoId, TipoNotificacao.CardapioPublicado);
+
+        Assert.Contains(merendeiraX, destinatarios);
+        Assert.DoesNotContain(merendeiraY, destinatarios);
     }
 }

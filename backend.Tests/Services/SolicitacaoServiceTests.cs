@@ -54,6 +54,8 @@ public class SolicitacaoServiceTests
         var unidadeDeTrabalho = new UnidadeDeTrabalhoFake();
         var autorizacao = new AutorizacaoService();
         var trilha = new TrilhaAcaoRepositoryFake();
+        var vinculos = new VinculoRepositoryFake();
+        var notificacaoService = new NotificacaoService(notificacoes, unidadeDeTrabalho);
 
         var unidadeId = escolas.AddUnidade(new UnidadeEscolar("Unidade A")).Id;
         var escolaId = escolas.Add(new Escola("Escola A", unidadeId)).Id;
@@ -114,7 +116,9 @@ public class SolicitacaoServiceTests
             hierarquia,
             autorizacao,
             trilha,
-            unidadeDeTrabalho);
+            unidadeDeTrabalho,
+            vinculos,
+            notificacaoService);
 
         var servico = new SolicitacaoService(
             solicitacoes,
@@ -124,7 +128,7 @@ public class SolicitacaoServiceTests
             usuarios,
             unidadeDeTrabalho,
             alunoService,
-            new NotificacaoService(notificacoes));
+            notificacaoService);
 
         return new Cenario(
             servico,
