@@ -50,6 +50,15 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     private (int EscolaId, int UnidadeId)? _padrao;
 
+    private static int _proximoCrn = 100000;
+
+    /// <summary>
+    /// CRN único por nutricionista de teste. O índice `IX_Usuarios_Crn` (Spec 031) exige
+    /// unicidade; um valor fixo fazia o segundo nutricionista violar a restrição.
+    /// </summary>
+    private static string GerarCrnUnico() =>
+        $"CRN-3-{Interlocked.Increment(ref _proximoCrn)}";
+
     public ApiFactory()
     {
         _connection.Open();
@@ -176,7 +185,7 @@ public class ApiFactory : WebApplicationFactory<Program>
         // CRN antes do papel: DefinirPapel(Nutricionista) exige CRN válido (Spec 031).
         if (papel == PapelUsuario.Nutricionista && string.IsNullOrWhiteSpace(usuario.Crn))
         {
-            usuario.DefinirCrn("CRN-3 12345");
+            usuario.DefinirCrn(GerarCrnUnico());
         }
 
         usuario.DefinirPapel(papel, escolaId, unidadeId);
@@ -236,7 +245,7 @@ public class ApiFactory : WebApplicationFactory<Program>
             // CRN antes do papel: DefinirPapel(Nutricionista) exige CRN válido (Spec 031).
             if (papel == PapelUsuario.Nutricionista && string.IsNullOrWhiteSpace(usuario.Crn))
             {
-                usuario.DefinirCrn("CRN-3 12345");
+                usuario.DefinirCrn(GerarCrnUnico());
             }
 
             usuario.DefinirPapel(papel, escolaId, unidadeId);

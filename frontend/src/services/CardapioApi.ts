@@ -28,6 +28,7 @@ export interface ItemCardapio {
 }
 
 export interface RefeicaoCardapio {
+    id: number;
     nome: string;
     ordem: number;
     itens: ItemCardapio[];

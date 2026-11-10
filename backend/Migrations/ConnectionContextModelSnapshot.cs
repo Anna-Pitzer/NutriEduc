@@ -207,15 +207,15 @@ namespace backend.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("OrigemId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("PublicadoEmUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PublicadoPor")
                         .IsRequired()
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("OrigemId")
-                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("RevisaoDeId")
                         .HasColumnType("INTEGER");
@@ -256,17 +256,42 @@ namespace backend.Migrations
 
                     b.HasIndex("OrigemId");
 
-                    b.HasIndex("OrigemId", "EscolaId", "ConjuntoRestricoesChave")
-                        .IsUnique()
-                        .HasFilter("\"Tipo\" = 1 AND \"Situacao\" <> 3");
-
                     b.HasIndex("RevisaoDeId");
 
                     b.HasIndex("Situacao");
 
                     b.HasIndex("UnidadeId", "Situacao");
 
+                    b.HasIndex("OrigemId", "EscolaId", "ConjuntoRestricoesChave")
+                        .IsUnique()
+                        .HasFilter("\"Tipo\" = 1 AND \"Situacao\" <> 3");
+
                     b.ToTable("Cardapios");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.CategoriaAlimento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Ativa")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NomeNormalizado")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NomeNormalizado")
+                        .IsUnique();
+
+                    b.ToTable("CategoriasAlimento");
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.ConfirmacaoDeIncompatibilidade", b =>
@@ -309,250 +334,6 @@ namespace backend.Migrations
                     b.HasIndex("CardapioId");
 
                     b.ToTable("ConfirmacoesDeIncompatibilidade");
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.PendenciaAdaptacao", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("AlimentoId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("AlimentoNome")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("CardapioId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Motivo")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RefeicaoOrdem")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("RefeicaoNome")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CardapioId");
-
-                    b.ToTable("PendenciasAdaptacao");
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoSolicitacao", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("AutorNome")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CriadoEmUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Resposta")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("SolicitacaoId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SolicitacaoId", "CriadoEmUtc");
-
-                    b.ToTable("HistoricoSolicitacoes");
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.Solicitacao", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("AlunoId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("AtualizadoEmUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("CardapioId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CriadoEmUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Descricao")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("EscolaId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Ingrediente")
-                        .HasMaxLength(120)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Resposta")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RespondidoPor")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RestricaoNome")
-                        .HasMaxLength(60)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("SolicitanteId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("SolicitanteNome")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Status")
-                        .IsConcurrencyToken()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Tipo")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("UnidadeId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AlunoId");
-
-                    b.HasIndex("CardapioId");
-
-                    b.HasIndex("EscolaId", "CriadoEmUtc");
-
-                    b.HasIndex("Status", "Tipo");
-
-                    b.HasIndex("UnidadeId", "CriadoEmUtc");
-
-                    b.ToTable("Solicitacoes");
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.SolicitacaoAlteracao", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Campo")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("SolicitacaoId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ValorNoPedido")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ValorSolicitado")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SolicitacaoId");
-
-                    b.ToTable("SolicitacaoAlteracoes");
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.SubstituicaoDeItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("AlimentoOriginalId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("AlimentoOriginalNome")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("AlimentoSubstitutoId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("AlimentoSubstitutoNome")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("CardapioId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("QuantidadeGramas")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<int>("RefeicaoOrdem")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("RefeicaoNome")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RestricoesBloqueantes")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CardapioId");
-
-                    b.ToTable("SubstituicoesDeItem");
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.CategoriaAlimento", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("Ativa")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("NomeNormalizado")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NomeNormalizado")
-                        .IsUnique();
-
-                    b.ToTable("CategoriasAlimento");
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.ConsumoBootstrap", b =>
@@ -672,6 +453,69 @@ namespace backend.Migrations
                     b.ToTable("HistoricosCardapios");
                 });
 
+            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoOcorrencia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AutorNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Observacao")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OcorrenciaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OcorrenciaId", "CriadoEmUtc");
+
+                    b.ToTable("HistoricoOcorrencias");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoSolicitacao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AutorNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Resposta")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SolicitacaoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolicitacaoId", "CriadoEmUtc");
+
+                    b.ToTable("HistoricoSolicitacoes");
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.ItemRefeicao", b =>
                 {
                     b.Property<int>("RefeicaoId")
@@ -732,6 +576,89 @@ namespace backend.Migrations
                     b.ToTable("Notificacoes");
                 });
 
+            modelBuilder.Entity("Ntc.Domain.Entity.Ocorrencia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AlimentoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AlimentoNome")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("AlunoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AlunoNome")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AtualizadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AutorId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AutorNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CardapioId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CardapioNome")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("EscolaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("RefeicaoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RefeicaoNome")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlimentoId");
+
+                    b.HasIndex("CardapioId");
+
+                    b.HasIndex("RefeicaoId");
+
+                    b.HasIndex("AlunoId", "CriadoEmUtc");
+
+                    b.HasIndex("EscolaId", "CriadoEmUtc");
+
+                    b.HasIndex("UnidadeId", "CriadoEmUtc");
+
+                    b.ToTable("Ocorrencias");
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.ParametroGeracao", b =>
                 {
                     b.Property<int>("Id")
@@ -770,6 +697,42 @@ namespace backend.Migrations
                         .IsUnique();
 
                     b.ToTable("ParametrosGeracao");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.PendenciaAdaptacao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AlimentoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AlimentoNome")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CardapioId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RefeicaoNome")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RefeicaoOrdem")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CardapioId");
+
+                    b.ToTable("PendenciasAdaptacao");
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.Refeicao", b =>
@@ -822,6 +785,158 @@ namespace backend.Migrations
                         .IsUnique();
 
                     b.ToTable("RestricoesAlimentares");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Solicitacao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AlunoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AtualizadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CardapioId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("EscolaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Ingrediente")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RespondidoPor")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Resposta")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RestricaoNome")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SolicitanteId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SolicitanteNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlunoId");
+
+                    b.HasIndex("CardapioId");
+
+                    b.HasIndex("EscolaId", "CriadoEmUtc");
+
+                    b.HasIndex("Status", "Tipo");
+
+                    b.HasIndex("UnidadeId", "CriadoEmUtc");
+
+                    b.ToTable("Solicitacoes");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.SolicitacaoAlteracao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Campo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SolicitacaoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ValorNoPedido")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ValorSolicitado")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolicitacaoId");
+
+                    b.ToTable("SolicitacaoAlteracoes");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.SubstituicaoDeItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AlimentoOriginalId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AlimentoOriginalNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AlimentoSubstitutoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AlimentoSubstitutoNome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CardapioId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("QuantidadeGramas")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("RefeicaoNome")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RefeicaoOrdem")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RestricoesBloqueantes")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CardapioId");
+
+                    b.ToTable("SubstituicoesDeItem");
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.TokenDeCadastro", b =>
@@ -983,12 +1098,12 @@ namespace backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Email")
-                        .IsUnique();
-
                     b.HasIndex("Crn")
                         .IsUnique()
                         .HasFilter("\"Crn\" IS NOT NULL");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
 
                     b.HasIndex("EscolaId");
 
@@ -1055,6 +1170,11 @@ namespace backend.Migrations
 
             modelBuilder.Entity("Ntc.Domain.Entity.Cardapio", b =>
                 {
+                    b.HasOne("Ntc.Domain.Entity.Escola", null)
+                        .WithMany()
+                        .HasForeignKey("EscolaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Ntc.Domain.Entity.Cardapio", null)
                         .WithMany()
                         .HasForeignKey("OrigemId")
@@ -1063,11 +1183,6 @@ namespace backend.Migrations
                     b.HasOne("Ntc.Domain.Entity.Cardapio", null)
                         .WithMany()
                         .HasForeignKey("RevisaoDeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Ntc.Domain.Entity.Escola", null)
-                        .WithMany()
-                        .HasForeignKey("EscolaId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
@@ -1086,11 +1201,46 @@ namespace backend.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Ntc.Domain.Entity.PendenciaAdaptacao", b =>
+            modelBuilder.Entity("Ntc.Domain.Entity.ConsumoBootstrap", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Escola", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoAluno", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Aluno", null)
+                        .WithMany("Historico")
+                        .HasForeignKey("AlunoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoCardapio", b =>
                 {
                     b.HasOne("Ntc.Domain.Entity.Cardapio", null)
-                        .WithMany("Pendencias")
+                        .WithMany("Historico")
                         .HasForeignKey("CardapioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoOcorrencia", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Ocorrencia", null)
+                        .WithMany("Historico")
+                        .HasForeignKey("OcorrenciaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1100,6 +1250,93 @@ namespace backend.Migrations
                     b.HasOne("Ntc.Domain.Entity.Solicitacao", null)
                         .WithMany("Historico")
                         .HasForeignKey("SolicitacaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.ItemRefeicao", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Alimento", "Alimento")
+                        .WithMany()
+                        .HasForeignKey("AlimentoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ntc.Domain.Entity.Refeicao", null)
+                        .WithMany("Itens")
+                        .HasForeignKey("RefeicaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Alimento");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Notificacao", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("DestinatarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Ocorrencia", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Alimento", null)
+                        .WithMany()
+                        .HasForeignKey("AlimentoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Ntc.Domain.Entity.Aluno", null)
+                        .WithMany()
+                        .HasForeignKey("AlunoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Ntc.Domain.Entity.Cardapio", null)
+                        .WithMany()
+                        .HasForeignKey("CardapioId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Ntc.Domain.Entity.Escola", null)
+                        .WithMany()
+                        .HasForeignKey("EscolaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ntc.Domain.Entity.Refeicao", null)
+                        .WithMany()
+                        .HasForeignKey("RefeicaoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.ParametroGeracao", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.PendenciaAdaptacao", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Cardapio", null)
+                        .WithMany("Pendencias")
+                        .HasForeignKey("CardapioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Refeicao", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Cardapio", null)
+                        .WithMany("Refeicoes")
+                        .HasForeignKey("CardapioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1141,85 +1378,6 @@ namespace backend.Migrations
                 {
                     b.HasOne("Ntc.Domain.Entity.Cardapio", null)
                         .WithMany("Substituicoes")
-                        .HasForeignKey("CardapioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.ConsumoBootstrap", b =>
-                {
-                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
-                        .WithMany()
-                        .HasForeignKey("UnidadeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.Escola", b =>
-                {
-                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
-                        .WithMany()
-                        .HasForeignKey("UnidadeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoAluno", b =>
-                {
-                    b.HasOne("Ntc.Domain.Entity.Aluno", null)
-                        .WithMany("Historico")
-                        .HasForeignKey("AlunoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.HistoricoCardapio", b =>
-                {
-                    b.HasOne("Ntc.Domain.Entity.Cardapio", null)
-                        .WithMany("Historico")
-                        .HasForeignKey("CardapioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.ItemRefeicao", b =>
-                {
-                    b.HasOne("Ntc.Domain.Entity.Alimento", "Alimento")
-                        .WithMany()
-                        .HasForeignKey("AlimentoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Ntc.Domain.Entity.Refeicao", null)
-                        .WithMany("Itens")
-                        .HasForeignKey("RefeicaoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Alimento");
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.Notificacao", b =>
-                {
-                    b.HasOne("Ntc.Domain.Entity.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("DestinatarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.ParametroGeracao", b =>
-                {
-                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
-                        .WithMany()
-                        .HasForeignKey("UnidadeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Ntc.Domain.Entity.Refeicao", b =>
-                {
-                    b.HasOne("Ntc.Domain.Entity.Cardapio", null)
-                        .WithMany("Refeicoes")
                         .HasForeignKey("CardapioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1297,6 +1455,11 @@ namespace backend.Migrations
                     b.Navigation("Refeicoes");
 
                     b.Navigation("Substituicoes");
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.Ocorrencia", b =>
+                {
+                    b.Navigation("Historico");
                 });
 
             modelBuilder.Entity("Ntc.Domain.Entity.Refeicao", b =>

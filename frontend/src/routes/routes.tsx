@@ -40,6 +40,9 @@ import { HomeEscolas } from "../pages/escolas/HomeEscolas"
 // Solicitações
 import { SolicitacoesPage } from "../pages/solicitacoes/SolicitacoesPage"
 
+// Ocorrências
+import { OcorrenciasPage } from "../pages/ocorrencias/OcorrenciasPage"
+
 export function Rotas() {
   return (
     <Routes>
@@ -115,6 +118,17 @@ export function Rotas() {
           }
         >
           <Route path="/solicitacoes" element={<SolicitacoesPage />} />
+        </Route>
+
+        {/* Ocorrências — registro e acompanhamento por papel (Spec 016) */}
+        <Route
+          element={
+            <ProtegidaPorPapel
+              papeis={["Nutricionista", "AdminSecretaria", "AdminEscola", "Merendeira", "Responsavel"]}
+            />
+          }
+        >
+          <Route path="/ocorrencias" element={<OcorrenciasPage />} />
         </Route>
 
         {/* Comum */}

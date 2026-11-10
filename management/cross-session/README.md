@@ -74,3 +74,23 @@ conversation history alone is not durable memory.
   porque o cookie de sessão também usa `TimeProvider`.
 - Limitação conhecida: a criação grava usuário e consumo em dois `SaveChanges` (sem
   transação única), registrada no `design.md` da 022.
+
+## Spec 016 — auditoria técnica concluída; validação manual pendente
+
+- Backend + frontend de ocorrências implementados. Gates: `dotnet test` 703/703,
+  `npm run build` OK, `npm run lint` 0 erros (6 avisos de react-hooks pré-existentes).
+- **RNF3 (snapshot de nomes):** `Ocorrencia` grava `AlunoNome`, `CardapioNome`,
+  `RefeicaoNome` e `AlimentoNome` no momento do registro (ADR-009 — "cópia dos nomes
+  relevantes do alvo"). Renomear/excluir aluno, cardápio, refeição ou alimento não
+  reescreve o que a ocorrência exibe; a FK vira `null` e o nome é preservado. O
+  `design.md` da 016 omite esses campos (omissão, não conflito).
+- **Fuso do cancelamento (RF9):** "mesmo dia" = dia civil de `America/Sao_Paulo`
+  (UTC-3), decidido pelo dono. `Ocorrencia.Cancelar` usa `TimeZoneInfo`; `OcorrenciaService`
+  injeta `TimeProvider`. Testes cobrem a fronteira UTC×local.
+- **Status:** permanece `created` no roadmap. **Não promovido a `audited`** porque
+  (1) validação manual no navegador está pendente (delegada a outro integrante) e
+  (2) **PEND-028** bloqueia o motor SDD (`normalizeSpecNumber`/`parseRoadmap` comparam
+  a célula crua `"016"` com `"16"`); a correção é do binário `dscode.exe`, externa ao
+  repositório. Não alterei o status manualmente.
+- **Próximo passo:** validação manual por papel (checklist no relatório de auditoria) e,
+  após a correção do PEND-028, promover via `/spec-implement` → `/spec-test`.

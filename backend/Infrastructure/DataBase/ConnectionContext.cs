@@ -39,6 +39,8 @@ public class ConnectionContext : DbContext
     public DbSet<SolicitacaoAlteracao> SolicitacaoAlteracoes {get;set;}
     public DbSet<Notificacao> Notificacoes {get;set;}
     public DbSet<TrilhaAcao> TrilhaAcoes {get;set;}
+    public DbSet<Ocorrencia> Ocorrencias {get;set;}
+    public DbSet<HistoricoOcorrencia> HistoricoOcorrencias {get;set;}
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -729,6 +731,84 @@ public class ConnectionContext : DbContext
                 .HasForeignKey(notificacao => notificacao.DestinatarioId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .IsRequired();
+        });
+
+        // ---------- Ocorrências (Spec 016) ----------
+
+        modelBuilder.Entity<Ocorrencia>(entity =>
+        {
+            entity.Property(ocorrencia => ocorrencia.Descricao)
+                .HasMaxLength(Ocorrencia.DescricaoMax)
+                .IsRequired();
+
+            entity.Property(ocorrencia => ocorrencia.AutorNome)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            // Snapshots dos nomes do alvo (RNF3/ADR-009), preservados após renomear/excluir.
+            entity.Property(ocorrencia => ocorrencia.AlunoNome).HasMaxLength(100);
+            entity.Property(ocorrencia => ocorrencia.CardapioNome).HasMaxLength(120);
+            entity.Property(ocorrencia => ocorrencia.RefeicaoNome).HasMaxLength(60);
+            entity.Property(ocorrencia => ocorrencia.AlimentoNome).HasMaxLength(100);
+
+            entity.Property(ocorrencia => ocorrencia.Status)
+                .IsConcurrencyToken();
+
+            entity.HasIndex(ocorrencia => new { ocorrencia.UnidadeId, ocorrencia.CriadoEmUtc });
+            entity.HasIndex(ocorrencia => new { ocorrencia.EscolaId, ocorrencia.CriadoEmUtc });
+            entity.HasIndex(ocorrencia => new { ocorrencia.AlunoId, ocorrencia.CriadoEmUtc });
+
+            entity.HasOne<UnidadeEscolar>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.UnidadeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
+
+            entity.HasOne<Escola>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.EscolaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Aluno>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.AlunoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<Cardapio>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.CardapioId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<Refeicao>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.RefeicaoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<Alimento>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.AlimentoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(ocorrencia => ocorrencia.Historico)
+                .WithOne()
+                .HasForeignKey(historico => historico.OcorrenciaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Navigation(ocorrencia => ocorrencia.Historico)
+                .HasField("_historico")
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        modelBuilder.Entity<HistoricoOcorrencia>(entity =>
+        {
+            entity.Property(historico => historico.AutorNome)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(historico => historico.Observacao)
+                .HasMaxLength(Ocorrencia.ObservacaoMax);
+
+            entity.HasIndex(historico => new { historico.OcorrenciaId, historico.CriadoEmUtc });
         });
 
         // ---------- Trilha de ação privilegiada (Spec 028) ----------
