@@ -261,6 +261,20 @@ A aprovação de `MudancaCardapio`, `Ingrediente` e `FaltaIngrediente` não alte
 
 O tipo `DadosCadastrais` é criado apenas por `Responsavel` vinculado ao aluno, com `justificativa` (10–500) e `alteracoes[]` nos campos `nome`, `dataNascimento`, `nomeResponsavel`, `telefoneResponsavel` e `observacao`. O servidor lê o valor atual e grava o snapshot; a aprovação do ADM aplica todos os campos de uma vez por `Aluno.AtualizarDados`, devolve `409` quando o valor mudou desde o pedido e registra na trilha do aluno a origem `Solicitacao:<id>`. Um segundo pedido aberto para o mesmo campo devolve `409` com o id existente. Cada mudança de status emite uma notificação `SolicitacaoStatus` ao solicitante e ao decisor, sem dado clínico.
 
+### Ocorrências
+
+O fluxo vive em `Ocorrencias` e `HistoricoOcorrencias`. A ocorrência tem um `Tipo` (`Aluno`, `Refeicao`, `Alimento` ou `Outro`) com vínculo opcional coerente com o tipo, `Descricao` (5–1000) e ciclo `Aberta → EmAnalise → Resolvida → Arquivada`, com reabertura `EmAnalise → Aberta`. O autor (nome) e os nomes de aluno/cardápio/refeição/alimento são snapshots (RNF3/ADR-009): renomear ou excluir o registro relacionado não reescreve o que a ocorrência exibe. A escola é derivada do aluno, ou do autor, e nula apenas na ocorrência de unidade registrada por `Nutricionista`. O histórico é append-only na mesma transação da mudança de status.
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/ocorrencias` | Lista paginada com filtros `tipo`, `status`, `alunoId`, `unidadeId`, `escolaId`, `de`, `ate`, `pagina` e `tamanho` | Sessão; escopo por papel e vínculo |
+| `GET` | `/api/ocorrencias/{id}` | Detalhe com vínculos resolvidos (aluno, cardápio, refeição e alimento) e histórico | Sessão; escopo por papel e vínculo |
+| `POST` | `/api/ocorrencias` | Cria `Aluno`, `Refeicao`, `Alimento` ou `Outro` conforme o papel | `Merendeira`, `AdminEscola`, `Nutricionista` ou `Responsavel` vinculado |
+| `POST` | `/api/ocorrencias/{id}/status` | Muda o status com `observacao` (2–500); transições inválidas devolvem `409` | `Nutricionista` da unidade ou `AdminEscola` da escola |
+| `POST` | `/api/ocorrencias/{id}/cancelar` | `Aberta → Cancelada` apenas no mesmo dia civil de `America/Sao_Paulo` | Somente o autor |
+
+A ocorrência não é apagada; o encerramento é `Arquivada`. O "mesmo dia" do cancelamento é o dia civil de `America/Sao_Paulo` (UTC-3), não o dia UTC. Filtro de `escolaId`/`unidadeId` fora do alcance da sessão devolve `403`; recurso de outra unidade devolve `404`. A resposta nunca expõe identificador de autor além do nome (`RF10`).
+
 ### Geração automática de cardápios
 
 Os parâmetros vivem em `ParametrosGeracao` (único por unidade) e a seleção é função pura

@@ -29,6 +29,7 @@ public class ItemCardapioDTO
 /// <summary>Refeição com itens e total próprio (RF11).</summary>
 public class RefeicaoCardapioDTO
 {
+    public int Id { get; set; }
     public string Nome { get; set; } = string.Empty;
     public int Ordem { get; set; }
     public List<ItemCardapioDTO> Itens { get; set; } = new();

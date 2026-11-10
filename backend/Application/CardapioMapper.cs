@@ -56,6 +56,7 @@ public static class CardapioMapper
 
             refeicoes.Add(new RefeicaoCardapioDTO
             {
+                Id = refeicao.Id,
                 Nome = refeicao.Nome,
                 Ordem = refeicao.Ordem,
                 Itens = itens,

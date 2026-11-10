@@ -60,6 +60,8 @@ builder.Services.AddScoped<ISolicitacaoRepository, SolicitacaoRepository>();
 builder.Services.AddScoped<INotificacaoRepository, NotificacaoRepository>();
 builder.Services.AddScoped<NotificacaoService>();
 builder.Services.AddScoped<SolicitacaoService>();
+builder.Services.AddScoped<IOcorrenciaRepository, OcorrenciaRepository>();
+builder.Services.AddScoped<OcorrenciaService>();
 builder.Services.AddScoped<CardapioService>();
 builder.Services.AddScoped<ContextoDeRestricoesService>();
 builder.Services.AddScoped<AdaptarCardapioService>();

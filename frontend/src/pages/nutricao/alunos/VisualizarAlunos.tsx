@@ -15,7 +15,8 @@ import { useAuth } from "../../../context/authContext";
 export function VisualizarAlunos() {
   const detalhesRef = useRef<HTMLDetailsElement>(null);
   const navegar = useNavigate();
-  const { logout } = useAuth();
+  const { userLogin, logout } = useAuth();
+  const podeRegistrarOcorrencia = userLogin?.papel === "Nutricionista";
 
 
   // ============ RESPOSTAS DO BACK ============
@@ -421,6 +422,7 @@ export function VisualizarAlunos() {
                 <th className="px-4 text-center font-light">Histórico</th>
                 <th className="px-4 text-center font-light">Editar</th>
                 <th className="px-4 text-center font-light">Excluir</th>
+                {podeRegistrarOcorrencia && (<th className="px-4 text-center font-light">Ocorrência</th>)}
               </tr>
             </thead>
 
@@ -465,11 +467,22 @@ export function VisualizarAlunos() {
                       onClick={() => handleDelete(aluno.id)}
                       className="text-vermelho p-2 hover:cursor-pointer hover:bg-red-100 rounded-full "><Trash /></button>
                   </td>
+                  {podeRegistrarOcorrencia && (
+                  <td className="p-4 text-center">
+                    <button
+                      onClick={() => navegar(`/ocorrencias?alunoId=${aluno.id}`)}
+                      aria-label={`Registrar ocorrência para ${aluno.nome}`}
+                      className="text-roxo p-2 hover:cursor-pointer hover:bg-purple-100 rounded-full text-sm font-medium"
+                    >
+                      Registrar
+                    </button>
+                  </td>
+                  )}
                 </tr>
 
                 {historicoAberto === aluno.id && (
                   <tr className="bg-[#FAF9F5]">
-                    <td colSpan={7} className="p-4">
+                    <td colSpan={podeRegistrarOcorrencia ? 8 : 7} className="p-4">
                       <h3 className="font-bold text-roxo mb-2">Histórico de alterações</h3>
 
                       {!historico[aluno.id] ? (
