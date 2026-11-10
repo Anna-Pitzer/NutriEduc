@@ -66,6 +66,8 @@ public sealed class SolicitacaoService
         int unidadeId;
         int? escolaId;
         int? cardapioId = null;
+        string? alunoNome = null;
+        string? cardapioNome = null;
         Aluno? aluno = null;
 
         switch (tipo)
@@ -87,6 +89,7 @@ public sealed class SolicitacaoService
                 unidadeId = cardapio.UnidadeId;
                 escolaId = escopo.EscolaId;
                 cardapioId = cardapio.Id;
+                cardapioNome = cardapio.Nome;
                 break;
             }
 
@@ -136,6 +139,7 @@ public sealed class SolicitacaoService
 
                 unidadeId = contexto.Value.UnidadeId;
                 escolaId = aluno.EscolaId;
+                alunoNome = aluno.Nome;
                 break;
             }
 
@@ -158,6 +162,8 @@ public sealed class SolicitacaoService
                 cardapioId,
                 dto.RestricaoNome,
                 dto.Ingrediente,
+                alunoNome,
+                cardapioNome,
                 DateTime.UtcNow);
         }
         catch (ArgumentException excecao)
@@ -559,6 +565,8 @@ public sealed class SolicitacaoService
                 null,
                 null,
                 null,
+                aluno.Nome,
+                null,
                 DateTime.UtcNow);
 
             solicitacao.DefinirAlteracoesDeDados(alteracoes);
@@ -929,17 +937,8 @@ public sealed class SolicitacaoService
         return false;
     }
 
-    private SolicitacaoResumoDTO ParaResumo(Solicitacao solicitacao)
-    {
-        var aluno = solicitacao.AlunoId is { } alunoId
-            ? _alunos.ObterPorId(alunoId)
-            : null;
-
-        var cardapio = solicitacao.CardapioId is { } cardapioId
-            ? _cardapios.ObterComRefeicoes(cardapioId)
-            : null;
-
-        return new SolicitacaoResumoDTO
+    private SolicitacaoResumoDTO ParaResumo(Solicitacao solicitacao) =>
+        new()
         {
             Id = solicitacao.Id,
             Tipo = solicitacao.Tipo,
@@ -947,9 +946,9 @@ public sealed class SolicitacaoService
             UnidadeId = solicitacao.UnidadeId,
             EscolaId = solicitacao.EscolaId,
             AlunoId = solicitacao.AlunoId,
-            Aluno = aluno?.Nome,
+            Aluno = solicitacao.AlunoNome,
             CardapioId = solicitacao.CardapioId,
-            Cardapio = cardapio?.Nome,
+            Cardapio = solicitacao.CardapioNome,
             RestricaoNome = solicitacao.RestricaoNome,
             Ingrediente = solicitacao.Ingrediente,
             Descricao = solicitacao.Descricao,
@@ -959,7 +958,6 @@ public sealed class SolicitacaoService
             RespondidoPor = solicitacao.RespondidoPor,
             CriadoEm = solicitacao.CriadoEmUtc
         };
-    }
 
     private SolicitacaoDTO ParaDetalhe(Solicitacao solicitacao)
     {

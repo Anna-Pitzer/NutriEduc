@@ -796,11 +796,19 @@ namespace backend.Migrations
                     b.Property<int?>("AlunoId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AlunoNome")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("AtualizadoEmUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("CardapioId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("CardapioNome")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CriadoEmUtc")
                         .HasColumnType("TEXT");

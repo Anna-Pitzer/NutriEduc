@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Ntc.Database;
 using Ntc.Domain.Entity;
 using Xunit;
 
@@ -247,6 +250,87 @@ public class SolicitacaoApiTests : IClassFixture<ApiFactory>
         Assert.Equal("Cancelada", detalhe.GetProperty("status").GetString());
     }
 
+    [Fact]
+    public async Task Cancelar_PelaMerendeira_Retorna200()
+    {
+        var cenario = await PrepararAsync($"Merendeira Cancel {Guid.NewGuid():N}");
+        var merendeira = await _factory.CreateAuthenticatedClientAsync(
+            PapelUsuario.Merendeira,
+            escolaId: cenario.EscolaId,
+            unidadeId: cenario.UnidadeId);
+
+        var criacao = await merendeira.PostAsJsonAsync("/api/solicitacoes", new
+        {
+            tipo = "FaltaIngrediente",
+            ingrediente = "Arroz",
+            descricao = "Falta arroz no estoque da escola."
+        });
+
+        Assert.Equal(HttpStatusCode.Created, criacao.StatusCode);
+
+        var corpo = await criacao.Content.ReadFromJsonAsync<JsonElement>();
+        var solicitacaoId = corpo.GetProperty("id").GetInt32();
+
+        var cancelamento = await merendeira.PostAsync(
+            $"/api/solicitacoes/{solicitacaoId}/cancelar",
+            null);
+
+        Assert.Equal(HttpStatusCode.OK, cancelamento.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cancelar_PorTerceiro_Retorna403()
+    {
+        var cenario = await PrepararAsync($"Terceiro Cancel {Guid.NewGuid():N}");
+        var solicitacaoId = await CriarSolicitacao(cenario);
+
+        var merendeira = await _factory.CreateAuthenticatedClientAsync(
+            PapelUsuario.Merendeira,
+            escolaId: cenario.EscolaId,
+            unidadeId: cenario.UnidadeId);
+
+        var resposta = await merendeira.PostAsync(
+            $"/api/solicitacoes/{solicitacaoId}/cancelar",
+            null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Aprovar_ComoMerendeira_Retorna403()
+    {
+        var cenario = await PrepararAsync($"Merendeira Decide {Guid.NewGuid():N}");
+        var solicitacaoId = await CriarSolicitacao(cenario);
+
+        await cenario.Admin.PostAsync($"/api/solicitacoes/{solicitacaoId}/analise", null);
+
+        var merendeira = await _factory.CreateAuthenticatedClientAsync(
+            PapelUsuario.Merendeira,
+            escolaId: cenario.EscolaId,
+            unidadeId: cenario.UnidadeId);
+
+        var resposta = await merendeira.PostAsJsonAsync(
+            $"/api/solicitacoes/{solicitacaoId}/aprovar",
+            new { resposta = "Confirmado." });
+
+        Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Aprovar_ComoResponsavel_Retorna403()
+    {
+        var cenario = await PrepararAsync($"Responsável Decide {Guid.NewGuid():N}");
+        var solicitacaoId = await CriarSolicitacao(cenario);
+
+        await cenario.Admin.PostAsync($"/api/solicitacoes/{solicitacaoId}/analise", null);
+
+        var resposta = await cenario.Responsavel.PostAsJsonAsync(
+            $"/api/solicitacoes/{solicitacaoId}/aprovar",
+            new { resposta = "Confirmado." });
+
+        Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+    }
+
     private static object PedidoDados(
         int alunoId,
         params (string Campo, string Valor)[] alteracoes) => new
@@ -349,5 +433,84 @@ public class SolicitacaoApiTests : IClassFixture<ApiFactory>
             "/api/solicitacoes?tipo=DadosCadastrais");
 
         Assert.Equal(1, doAdmin.GetProperty("total").GetInt32());
+    }
+
+    [Fact]
+    public async Task AlunoRenomeado_DetalhePreservaNomeAntigo()
+    {
+        var nomeOriginal = $"Aluno Original {Guid.NewGuid():N}";
+        var cenario = await PrepararAsync(nomeOriginal);
+        var solicitacaoId = await CriarSolicitacao(cenario);
+
+        var renomeacao = await cenario.Admin.PutAsJsonAsync($"/api/aluno/{cenario.AlunoId}", new
+        {
+            nome = $"Aluno Renomeado {Guid.NewGuid():N}",
+            nascimento = "2015-05-10",
+            escola = "Escola Teste",
+            serie = "3o ano",
+            telefone = "11999999999",
+            observacao = string.Empty,
+            restricoes = Array.Empty<string>(),
+            anafilaxia = false,
+            nomeResponsavel = "Maria Teste",
+            telefoneResponsavel = "11988888888",
+            escolaId = cenario.EscolaId
+        });
+
+        Assert.True(renomeacao.IsSuccessStatusCode);
+
+        var detalhe = await cenario.Admin.GetFromJsonAsync<JsonElement>(
+            $"/api/solicitacoes/{solicitacaoId}");
+
+        // Snapshot preserva o nome original; o vínculo continua íntegro.
+        Assert.Equal(nomeOriginal, detalhe.GetProperty("aluno").GetString());
+        Assert.Equal(cenario.AlunoId, detalhe.GetProperty("alunoId").GetInt32());
+    }
+
+    [Fact]
+    public async Task AlunoExcluido_DetalhePreservaNomeEVinculoAusente()
+    {
+        var nomeOriginal = $"Aluno Snapshot {Guid.NewGuid():N}";
+        var cenario = await PrepararAsync(nomeOriginal);
+        var solicitacaoId = await CriarSolicitacao(cenario);
+
+        var exclusao = await cenario.Admin.DeleteAsync($"/api/aluno/{cenario.AlunoId}");
+        Assert.True(exclusao.IsSuccessStatusCode);
+
+        var detalhe = await cenario.Admin.GetFromJsonAsync<JsonElement>(
+            $"/api/solicitacoes/{solicitacaoId}");
+
+        // FK vira nula (vínculo ausente), mas o snapshot preserva o nome (RNF3/ADR-009).
+        Assert.Equal(JsonValueKind.Null, detalhe.GetProperty("alunoId").ValueKind);
+        Assert.Equal(nomeOriginal, detalhe.GetProperty("aluno").GetString());
+    }
+
+    [Fact]
+    public async Task DecisaoConcorrente_UmaPersisteEOutraGeraConflito()
+    {
+        var cenario = await PrepararAsync($"Concorrência {Guid.NewGuid():N}");
+        var solicitacaoId = await CriarSolicitacao(cenario);
+        await cenario.Admin.PostAsync($"/api/solicitacoes/{solicitacaoId}/analise", null);
+
+        // Dois contextos independentes (mesma conexão) leem a MESMA versão EmAnalise.
+        using var scopeA = _factory.Services.CreateScope();
+        var ctxA = scopeA.ServiceProvider.GetRequiredService<ConnectionContext>();
+        using var scopeB = _factory.Services.CreateScope();
+        var ctxB = scopeB.ServiceProvider.GetRequiredService<ConnectionContext>();
+
+        var solA = ctxA.Solicitacoes.First(solicitacao => solicitacao.Id == solicitacaoId);
+        var solB = ctxB.Solicitacoes.First(solicitacao => solicitacao.Id == solicitacaoId);
+
+        Assert.Equal(StatusSolicitacao.EmAnalise, solA.Status);
+        Assert.Equal(StatusSolicitacao.EmAnalise, solB.Status);
+
+        solA.Aprovar("Confirmado.", "Maria", DateTime.UtcNow);
+        solB.Aprovar("Confirmado.", "Maria", DateTime.UtcNow);
+
+        ctxA.SaveChanges();
+
+        // A segunda gravação usa `WHERE Status = 'EmAnalise'` (concurrency token) e não
+        // encontra linha: DbUpdateConcurrencyException → 409 pelo middleware, nunca 500.
+        Assert.Throws<DbUpdateConcurrencyException>(() => ctxB.SaveChanges());
     }
 }

@@ -625,6 +625,10 @@ public class ConnectionContext : DbContext
             entity.Property(solicitacao => solicitacao.RestricaoNome)
                 .HasMaxLength(60);
 
+            // Snapshots dos nomes do alvo (RNF3/ADR-009), preservados após renomear/excluir.
+            entity.Property(solicitacao => solicitacao.AlunoNome).HasMaxLength(100);
+            entity.Property(solicitacao => solicitacao.CardapioNome).HasMaxLength(120);
+
             entity.Property(solicitacao => solicitacao.Ingrediente)
                 .HasMaxLength(120);
 

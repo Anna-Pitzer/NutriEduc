@@ -62,4 +62,23 @@ public class MatrizDePermissoesTests
             MatrizDePermissoes.Documentada,
             celula => Assert.NotEqual(NivelDeAcesso.Nenhum, celula.Value));
     }
+
+    [Fact]
+    public void Matriz_Solicitacao_RespeitaDecisaoSeparadaPorTipo()
+    {
+        // Spec 028 (linha "Solicitações 017/030") e Spec 017 (T10/RF5): a decisão pertence
+        // ao dono do tipo (Nutricionista para cardápio/ingrediente, AdminSecretaria para
+        // restrição/cadastro). Merendeira e Responsável apenas criam e cancelam as próprias,
+        // nunca decidem — portanto LerCriar, não LerEscrever.
+        Assert.Equal(NivelDeAcesso.LerEscrever,
+            MatrizDePermissoes.Nivel(Recurso.Solicitacao, PapelUsuario.AdminSecretaria));
+        Assert.Equal(NivelDeAcesso.LerCriar,
+            MatrizDePermissoes.Nivel(Recurso.Solicitacao, PapelUsuario.AdminEscola));
+        Assert.Equal(NivelDeAcesso.LerEscrever,
+            MatrizDePermissoes.Nivel(Recurso.Solicitacao, PapelUsuario.Nutricionista));
+        Assert.Equal(NivelDeAcesso.LerCriar,
+            MatrizDePermissoes.Nivel(Recurso.Solicitacao, PapelUsuario.Merendeira));
+        Assert.Equal(NivelDeAcesso.LerCriar,
+            MatrizDePermissoes.Nivel(Recurso.Solicitacao, PapelUsuario.Responsavel));
+    }
 }
