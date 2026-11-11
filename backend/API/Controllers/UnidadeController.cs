@@ -26,6 +26,13 @@ public class UnidadeController : RespostaController
         _escopo = escopo;
     }
 
+    /// <summary>
+    /// Consulta pública mínima para o cadastro (Spec 033): unidades ativas, apenas id e
+    /// nome. Anônima de propósito; a listagem administrativa continua em <c>GET /api/unidades</c>.
+    /// </summary>
+    [HttpGet("ativas")]
+    public IActionResult ListarAtivas() => Ok(_escolas.ListarUnidadesAtivas());
+
     [Authorize(Policy = "HierarquiaLeitura")]
     [HttpGet]
     public IActionResult Listar()

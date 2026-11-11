@@ -16,9 +16,6 @@ import {
 } from "../../services/UsuarioAdminApi";
 import { LayoutSecretaria } from "./layoutSecretaria";
 
-/** Papel sugerido para uma conta que ainda não tem papel: menor privilégio. */
-const papelInicial: PapelUsuario = "Merendeira";
-
 const usuarioVazio = {
     nome: "",
     cpf: "",
@@ -53,7 +50,7 @@ export function Usuarios() {
     const [novo, setNovo] = useState(usuarioVazio);
 
     // Linha em edição de papel: existe no máximo uma por vez.
-    const [edicao, setEdicao] = useState<{ id: number; papel: PapelUsuario; escolaId: number | ""; unidadeId: number | "" } | null>(null);
+    const [edicao, setEdicao] = useState<{ id: number; papel: PapelUsuario | ""; escolaId: number | ""; unidadeId: number | "" } | null>(null);
     const [salvandoPapel, setSalvandoPapel] = useState(false);
 
     useEffect(() => {
@@ -196,7 +193,8 @@ export function Usuarios() {
     function iniciarEdicao(usuario: UsuarioResposta) {
         setErroLista("");
 
-        const papel = usuario.papel ?? papelInicial;
+        // Conta sem papel não recebe sugestão de papel: aparece na fila de acesso (Spec 033).
+        const papel = usuario.papel ?? "";
 
         setEdicao({
             id: usuario.id,
@@ -232,6 +230,11 @@ export function Usuarios() {
 
     async function salvarPapel(usuario: UsuarioResposta) {
         if (edicao === null) {
+            return;
+        }
+
+        if (edicao.papel === "") {
+            setErroLista("Selecione um papel antes de salvar.");
             return;
         }
 
@@ -605,7 +608,7 @@ export function Usuarios() {
                                                             </select>
                                                         </>
                                                     )
-                                                ) : exigeEscola(edicao.papel) ? (
+                                                ) : edicao.papel !== "" && exigeEscola(edicao.papel) ? (
                                                     <>
                                                         <label htmlFor={`escola-${usuario.id}`} className="sr-only">Escola</label>
                                                         <select

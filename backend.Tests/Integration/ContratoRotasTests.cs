@@ -37,15 +37,18 @@ public class ContratoRotasTests : IClassFixture<ApiFactory>
         escolaId = _factory.EscolaIdPadrao
     };
 
-    private static object PayloadUsuario(string email) => new
+    private object PayloadUsuario(string email) => new
     {
         nome = "Usuario Contrato",
-        cpf = "12345678901",
+        cpf = ApiFactory.GerarCpfUnico(),
         dataNascimento = "1990-01-01",
         email,
         senha = "senha12345",
         telefone = (string?)null,
-        foto = (string?)null
+        foto = (string?)null,
+        tipo = "Responsavel",
+        unidadeId = _factory.UnidadeIdPadrao,
+        crn = (string?)null
     };
 
     private static async Task<JsonElement> LerCorpo(HttpResponseMessage resposta)
@@ -88,10 +91,15 @@ public class ContratoRotasTests : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
 
         var corpo = await LerCorpo(resposta);
-        var id = corpo.GetProperty("id").GetInt32();
+        var solicitacaoId = corpo.GetProperty("solicitacaoId").GetInt32();
+        var usuarioId = corpo.GetProperty("usuarioId").GetInt32();
 
-        Assert.Equal(email, corpo.GetProperty("email").GetString());
-        Assert.Equal($"/api/usuario/perfil/{id}", resposta.Headers.Location?.ToString());
+        Assert.True(usuarioId > 0);
+        Assert.True(solicitacaoId > 0);
+        Assert.Equal("Pendente", corpo.GetProperty("status").GetString());
+        Assert.Equal(
+            $"/api/solicitacoes-acesso/{solicitacaoId}",
+            resposta.Headers.Location?.ToString());
         Assert.False(corpo.TryGetProperty("senha", out _));
     }
 

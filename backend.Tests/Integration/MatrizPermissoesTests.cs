@@ -64,7 +64,7 @@ public class MatrizPermissoesTests : IClassFixture<ApiFactory>
         var resposta = await admin.PostAsJsonAsync("/api/usuarios", new
         {
             nome = "Usuario Matriz",
-            cpf = "12345678901",
+            cpf = ApiFactory.GerarCpfUnico(),
             dataNascimento = "1990-01-01",
             email,
             senha = "senha12345",

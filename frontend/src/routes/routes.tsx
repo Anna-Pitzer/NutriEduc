@@ -39,6 +39,7 @@ import { HomeEscolas } from "../pages/escolas/HomeEscolas"
 
 // Solicitações
 import { SolicitacoesPage } from "../pages/solicitacoes/SolicitacoesPage"
+import { SolicitacoesAcesso } from "../pages/secretaria/SolicitacoesAcesso"
 
 // Ocorrências
 import { OcorrenciasPage } from "../pages/ocorrencias/OcorrenciasPage"
@@ -106,6 +107,7 @@ export function Rotas() {
           <Route path="/secretaria/escolas" element={<Escolas />} />
           <Route path="/secretaria/unidades" element={<Unidades />} />
           <Route path="/secretaria/usuarios" element={<Usuarios />} />
+          <Route path="/secretaria/solicitacoes-acesso" element={<SolicitacoesAcesso />} />
         </Route>
 
         <Route element={<ProtegidaPorPapel papeis={["AdminEscola"]} />}>

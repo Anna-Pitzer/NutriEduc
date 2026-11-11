@@ -9,6 +9,7 @@ const abas = [
     { rotulo: "Escolas", caminho: "/secretaria/escolas", fim: false },
     { rotulo: "Unidades", caminho: "/secretaria/unidades", fim: false },
     { rotulo: "Usuários", caminho: "/secretaria/usuarios", fim: false },
+    { rotulo: "Solicitações de acesso", caminho: "/secretaria/solicitacoes-acesso", fim: false },
 ];
 
 /**

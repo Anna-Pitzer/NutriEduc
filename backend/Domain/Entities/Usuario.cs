@@ -72,7 +72,7 @@ public class Usuario {
         }
 
         AtualizarPerfil(nome, email);
-        Cpf = cpf;
+        Cpf = NormalizarCpf(cpf);
         DataNascimento = dataNascimento;
 
         // A regra por papel exige o CRN já definido antes de trocar para Nutricionista;
@@ -212,7 +212,24 @@ public class Usuario {
         Nome = nome;
         Email = email;
     }
-    
+
+    /// <summary>
+    /// Normaliza e valida o CPF (Spec 033, RF3/D7): apenas dígitos, exatamente 11. Não
+    /// aplica algoritmo de dígitos verificadores — a spec não o exige — e não impõe
+    /// unicidade, que é decisão do serviço.
+    /// </summary>
+    public static string NormalizarCpf(string? cpf)
+    {
+        var digitos = new string((cpf ?? string.Empty).Where(char.IsDigit).ToArray());
+
+        if (digitos.Length != 11)
+        {
+            throw new ArgumentException("O CPF deve ter 11 dígitos.");
+        }
+
+        return digitos;
+    }
+
     public void AtualizarTelefone(string? telefone)
 {
     if (string.IsNullOrWhiteSpace(telefone))
@@ -296,10 +313,10 @@ public class Usuario {
             throw new ArgumentException("A senha não pode ser vazia.", nameof(senha));
         }
 
-        if (senha.Length < 8)
+        if (senha.Length < 8 || senha.Length > 100)
         {
             throw new ArgumentException(
-                "A senha deve possuir pelo menos 8 caracteres.", nameof(senha));
+                "A senha deve ter entre 8 e 100 caracteres.", nameof(senha));
         }
 
         Senha = HashSenha.Criar(senha).ToString();
