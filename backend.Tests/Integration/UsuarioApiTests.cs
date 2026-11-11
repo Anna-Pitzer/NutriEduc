@@ -18,15 +18,18 @@ public class UsuarioApiTests : IClassFixture<ApiFactory>
 
     private static string EmailUnico() => $"teste.{Guid.NewGuid():N}@nutrieduc.local";
 
-    private static object Payload(string email, string senha = "senha12345") => new
+    private object Payload(string email, string senha = "senha12345") => new
     {
         nome = "Usuario Teste",
-        cpf = "12345678901",
+        cpf = ApiFactory.GerarCpfUnico(),
         dataNascimento = "1990-01-01",
         email,
         senha,
         telefone = (string?)null,
-        foto = (string?)null
+        foto = (string?)null,
+        tipo = "Responsavel",
+        unidadeId = _factory.UnidadeIdPadrao,
+        crn = (string?)null
     };
 
     [Fact]
@@ -38,11 +41,11 @@ public class UsuarioApiTests : IClassFixture<ApiFactory>
 
         Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
         Assert.NotNull(resposta.Headers.Location);
-        Assert.StartsWith("/api/usuario/perfil/", resposta.Headers.Location!.ToString());
+        Assert.StartsWith("/api/solicitacoes-acesso/", resposta.Headers.Location!.ToString());
     }
 
     [Fact]
-    public async Task Post_ComEmailDuplicado_Retorna400ComErro()
+    public async Task Post_ComEmailDuplicado_Retorna409ComErro()
     {
         var client = _factory.CreateClient();
         var email = EmailUnico();
@@ -50,7 +53,7 @@ public class UsuarioApiTests : IClassFixture<ApiFactory>
         await client.PostAsJsonAsync("/api/usuario/registrar", Payload(email));
         var resposta = await client.PostAsJsonAsync("/api/usuario/registrar", Payload(email));
 
-        Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, resposta.StatusCode);
 
         using var corpo = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
         Assert.True(corpo.RootElement.TryGetProperty("erro", out var erro));
@@ -82,7 +85,7 @@ public class UsuarioApiTests : IClassFixture<ApiFactory>
 
         await client.PostAsJsonAsync("/api/usuario/registrar", Payload(email));
 
-        // A conta nasce sem papel (Spec 009): sem esta promoção o login devolve 401.
+        // A conta nasce sem papel (Spec 033): sem esta promoção o login devolve 401.
         _factory.DefinirPapel(
             email, PapelUsuario.Nutricionista, unidadeId: _factory.UnidadeIdPadrao);
 
@@ -107,6 +110,23 @@ public class UsuarioApiTests : IClassFixture<ApiFactory>
         var resposta = await client.PostAsJsonAsync("/api/usuario/login", new { email, senha = "senhaerrada" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, resposta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_DeContaSemPapel_Retorna401Generico()
+    {
+        var email = EmailUnico();
+        var client = _factory.CreateClient();
+
+        await client.PostAsJsonAsync("/api/usuario/registrar", Payload(email));
+
+        var resposta = await client.PostAsJsonAsync("/api/usuario/login", new { email, senha = "senha12345" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, resposta.StatusCode);
+
+        using var corpo = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
+        var erro = corpo.RootElement.GetProperty("erro").GetString();
+        Assert.Equal("Email ou senha incorretos.", erro);
     }
 
     [Fact]

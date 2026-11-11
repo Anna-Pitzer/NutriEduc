@@ -960,6 +960,69 @@ namespace backend.Migrations
                     b.ToTable("SolicitacaoAlteracoes");
                 });
 
+            modelBuilder.Entity("Ntc.Domain.Entity.SolicitacaoDeAcesso", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CrnSolicitado")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DecididoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DecididoPorId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DecididoPorNome")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("EscolaConcedidaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("JustificativaCorrecaoPapel")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PapelConcedido")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("SolicitadoEmUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TipoSolicitado")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UnidadeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EscolaConcedidaId");
+
+                    b.HasIndex("UsuarioId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 0");
+
+                    b.HasIndex("UnidadeId", "Status", "SolicitadoEmUtc");
+
+                    b.ToTable("SolicitacoesAcesso", (string)null);
+                });
+
             modelBuilder.Entity("Ntc.Domain.Entity.SubstituicaoDeItem", b =>
                 {
                     b.Property<int>("Id")
@@ -1454,6 +1517,26 @@ namespace backend.Migrations
                         .WithMany("Alteracoes")
                         .HasForeignKey("SolicitacaoId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Ntc.Domain.Entity.SolicitacaoDeAcesso", b =>
+                {
+                    b.HasOne("Ntc.Domain.Entity.Escola", null)
+                        .WithMany()
+                        .HasForeignKey("EscolaConcedidaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Ntc.Domain.Entity.UnidadeEscolar", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Ntc.Domain.Entity.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

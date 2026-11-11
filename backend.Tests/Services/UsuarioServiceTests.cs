@@ -355,6 +355,25 @@ public class UsuarioServiceTests
     }
 
     [Fact]
+    public void CriarUsuarioAdministrado_CpfDuplicado_Retorna409()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var escolas = new EscolaRepositoryFake();
+        var unidade = escolas.AddUnidade(new UnidadeEscolar("Unidade A"));
+        var servico = CriarServico(repositorio, escolas);
+        var escopo = AdminDaUnidade(unidade.Id);
+
+        var primeiro = servico.CriarUsuarioAdministrado(
+            DtoNutricionista("a@teste.com", "CRN-3 12345", unidade.Id), escopo);
+        var duplicado = servico.CriarUsuarioAdministrado(
+            DtoNutricionista("b@teste.com", "CRN-3 54321", unidade.Id), escopo);
+
+        Assert.Equal(ResultadoStatus.Ok, primeiro.Status);
+        Assert.Equal(ResultadoStatus.Conflito, duplicado.Status);
+        Assert.Equal("CPF já cadastrado.", duplicado.Erro);
+    }
+
+    [Fact]
     public void DiagnosticarCrn_ListaNutricionistaSemCrn()
     {
         var repositorio = new UsuarioRepositoryFake();

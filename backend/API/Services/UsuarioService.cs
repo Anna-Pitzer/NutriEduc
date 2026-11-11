@@ -141,6 +141,15 @@ public class UsuarioService
             return Resultado<int>.Conflito("Este CRN já está vinculado a outro usuário.");
         }
 
+        // D7: unicidade de CPF no serviço, sem índice no banco. A normalização também valida
+        // os 11 dígitos (o construtor repetiria a mesma regra).
+        var cpf = Usuario.NormalizarCpf(dto.Cpf);
+
+        if (_usuarioRepository.GetByCpf(cpf) is not null)
+        {
+            return Resultado<int>.Conflito("CPF já cadastrado.");
+        }
+
         var resolucao = ResolverEscopoInstitucional(
             papel, dto.EscolaId, dto.UnidadeId, escopo);
 
@@ -156,7 +165,7 @@ public class UsuarioService
 
         Usuario usuario = new(
             dto.Nome,
-            dto.Cpf,
+            cpf,
             dto.DataNascimento,
             dto.Email,
             papel,

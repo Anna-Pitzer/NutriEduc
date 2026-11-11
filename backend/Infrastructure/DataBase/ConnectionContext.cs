@@ -42,6 +42,7 @@ public class ConnectionContext : DbContext
     public DbSet<Ocorrencia> Ocorrencias {get;set;}
     public DbSet<HistoricoOcorrencia> HistoricoOcorrencias {get;set;}
     public DbSet<Feedback> Feedbacks {get;set;}
+    public DbSet<SolicitacaoDeAcesso> SolicitacoesDeAcesso {get;set;}
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -794,6 +795,14 @@ public class ConnectionContext : DbContext
             entity.Property(ocorrencia => ocorrencia.RefeicaoNome).HasMaxLength(60);
             entity.Property(ocorrencia => ocorrencia.AlimentoNome).HasMaxLength(100);
 
+            // SQLite devolve DateTime como Unspecified; o "mesmo dia" do cancelamento (RF9)
+            // compara o dia civil em America/Sao_Paulo e exige Kind Utc para não deslocar a
+            // data pela hora local da máquina (falha na fronteira 00:00–03:00 UTC).
+            entity.Property(ocorrencia => ocorrencia.CriadoEmUtc)
+                .HasConversion(valor => valor, valor => DateTime.SpecifyKind(valor, DateTimeKind.Utc));
+            entity.Property(ocorrencia => ocorrencia.AtualizadoEmUtc)
+                .HasConversion(valor => valor, valor => DateTime.SpecifyKind(valor, DateTimeKind.Utc));
+
             entity.Property(ocorrencia => ocorrencia.Status)
                 .IsConcurrencyToken();
 
@@ -870,6 +879,48 @@ public class ConnectionContext : DbContext
                     valor => DateTime.SpecifyKind(valor, DateTimeKind.Utc));
             entity.HasIndex(acao => new { acao.AlvoTipo, acao.AlvoId });
             entity.HasIndex(acao => acao.EmUtc);
+        });
+
+        // ---------- Solicitação de acesso (Spec 033) ----------
+        modelBuilder.Entity<SolicitacaoDeAcesso>(entity =>
+        {
+            entity.ToTable("SolicitacoesAcesso");
+            entity.HasKey(solicitacao => solicitacao.Id);
+
+            entity.Property(solicitacao => solicitacao.CrnSolicitado).HasMaxLength(20);
+            entity.Property(solicitacao => solicitacao.DecididoPorNome).HasMaxLength(100);
+            entity.Property(solicitacao => solicitacao.Motivo).HasMaxLength(500);
+            entity.Property(solicitacao => solicitacao.JustificativaCorrecaoPapel).HasMaxLength(500);
+
+            // ADR-010: o estado é token de concorrência; decisões simultâneas geram 409.
+            entity.Property(solicitacao => solicitacao.Status).IsConcurrencyToken();
+
+            entity.HasOne<Usuario>()
+                .WithMany()
+                .HasForeignKey(solicitacao => solicitacao.UsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<UnidadeEscolar>()
+                .WithMany()
+                .HasForeignKey(solicitacao => solicitacao.UnidadeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Escola>()
+                .WithMany()
+                .HasForeignKey(solicitacao => solicitacao.EscolaConcedidaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // RF11: no máximo uma solicitação pendente por usuário (índice único filtrado).
+            entity.HasIndex(solicitacao => solicitacao.UsuarioId)
+                .IsUnique()
+                .HasFilter("\"Status\" = 0");
+
+            entity.HasIndex(solicitacao => new
+            {
+                solicitacao.UnidadeId,
+                solicitacao.Status,
+                solicitacao.SolicitadoEmUtc
+            });
         });
     }
 }

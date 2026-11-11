@@ -73,7 +73,7 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
         var resposta = await admin.PostAsJsonAsync("/api/usuarios", new
         {
             nome = "Usuario de Papel",
-            cpf = "12345678901",
+            cpf = ApiFactory.GerarCpfUnico(),
             dataNascimento = "1990-01-01",
             email,
             senha = "senha12345",
@@ -274,7 +274,8 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, resposta.StatusCode);
 
         var corpo = await Ler(resposta);
-        Assert.Contains("papel", corpo.GetProperty("erro").GetString()!);
+        // RF5: mensagem genérica, sem confirmar a existência do e-mail.
+        Assert.Equal("Email ou senha incorretos.", corpo.GetProperty("erro").GetString()!);
     }
 
     [Fact]

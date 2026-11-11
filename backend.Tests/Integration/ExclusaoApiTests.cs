@@ -46,7 +46,7 @@ public class ExclusaoApiTests : IClassFixture<ApiFactory>
         var resposta = await admin.PostAsJsonAsync("/api/usuarios", new
         {
             nome = "Conta Exclusão",
-            cpf = "12345678901",
+            cpf = ApiFactory.GerarCpfUnico(),
             dataNascimento = "1990-01-01",
             email,
             senha = "senha12345",

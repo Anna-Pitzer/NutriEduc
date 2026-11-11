@@ -10,6 +10,9 @@ public interface IUsuarioRepository
 
     /// <summary>Busca o usuário por CRN normalizado; usado na verificação de unicidade (RF5).</summary>
     Usuario? GetByCrn(string crn);
+
+    /// <summary>Busca o usuário por CPF; usado na verificação de unicidade (Spec 033, D7).</summary>
+    Usuario? GetByCpf(string cpf);
     void Update(Usuario usuario);
 
     /// <summary>
@@ -21,6 +24,9 @@ public interface IUsuarioRepository
     /// (Spec 024, F5). O porto não conhece sessão nem papel.
     /// </summary>
     List<Usuario> Listar(FiltroUsuarios filtro);
+
+    /// <summary>Contas sem papel (legado pré-033), para o diagnóstico de acesso.</summary>
+    List<Usuario> ListarSemPapel();
 
     /// <summary>Exclusão definitiva: o chamador já verificou que não há referências.</summary>
     void Delete(Usuario usuario);

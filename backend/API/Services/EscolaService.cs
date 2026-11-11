@@ -219,6 +219,17 @@ public class EscolaService
         return unidades.Select(ParaDTO).ToList();
     }
 
+    /// <summary>
+    /// Consulta pública mínima para o cadastro (Spec 033): apenas unidades ativas, com id e
+    /// nome. Não expõe dados administrativos e não passa pela rota autenticada.
+    /// </summary>
+    public List<UnidadeAtivaDTO> ListarUnidadesAtivas() =>
+        _escolas.ListarUnidades()
+            .Where(unidade => unidade.Ativa)
+            .OrderBy(unidade => unidade.Nome)
+            .Select(unidade => new UnidadeAtivaDTO(unidade.Id, unidade.Nome))
+            .ToList();
+
     public Resultado<UnidadeRespostaDTO> AtualizarUnidade(int id, UnidadeDTO dto, EscopoUsuario escopo)
     {
         var unidade = _escolas.GetUnidade(id);

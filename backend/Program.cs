@@ -57,9 +57,12 @@ builder.Services.AddScoped<AlimentoService>();
 
 builder.Services.AddScoped<ICardapioRepository, CardapioRepository>();
 builder.Services.AddScoped<ISolicitacaoRepository, SolicitacaoRepository>();
+builder.Services.AddScoped<ISolicitacaoDeAcessoRepository, SolicitacaoDeAcessoRepository>();
 builder.Services.AddScoped<INotificacaoRepository, NotificacaoRepository>();
 builder.Services.AddScoped<NotificacaoService>();
 builder.Services.AddScoped<SolicitacaoService>();
+builder.Services.AddScoped<RegistrarAcessoService>();
+builder.Services.AddScoped<AprovarAcessoService>();
 builder.Services.AddScoped<IOcorrenciaRepository, OcorrenciaRepository>();
 builder.Services.AddScoped<OcorrenciaService>();
 builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();

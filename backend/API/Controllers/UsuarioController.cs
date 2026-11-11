@@ -14,25 +14,28 @@ public class UsuarioController : RespostaController
 {
     private readonly UsuarioService _usuarioService;
     private readonly AutenticacaoService _autenticacao;
+    private readonly RegistrarAcessoService _registroAcesso;
 
-    public UsuarioController(UsuarioService usuarioService, AutenticacaoService autenticacao)
+    public UsuarioController(
+        UsuarioService usuarioService,
+        AutenticacaoService autenticacao,
+        RegistrarAcessoService registroAcesso)
     {
         _usuarioService = usuarioService;
         _autenticacao = autenticacao;
+        _registroAcesso = registroAcesso;
     }
 
     /// <summary>
-    /// Autocadastro público. Cria a conta <b>sem papel</b>: ela só autentica depois que
-    /// um administrador define o papel (Spec 009).
+    /// Autocadastro público (Spec 033). Cria a conta sem papel e a solicitação de acesso
+    /// pendente, registrando o tipo pedido e a unidade de destino.
     /// </summary>
     [HttpPost("registrar")]
-    public IActionResult PostAdd([FromBody]CriarUsuarioEntrada usuarioDTO)
+    public IActionResult PostAdd([FromBody]CadastroEntrada entrada)
     {
         return Traduzir(
-            _usuarioService.CriarUsuario(usuarioDTO),
-            id => Created(
-                $"/api/usuario/perfil/{id}",
-                _usuarioService.ObterUsuarioPorId(id)!));
+            _registroAcesso.Registrar(entrada),
+            registro => Created($"/api/solicitacoes-acesso/{registro.SolicitacaoId}", registro));
     }
 
     [Authorize]
@@ -67,9 +70,10 @@ public class UsuarioController : RespostaController
 
         if (resultado != ResultadoLogin.Ok)
         {
+            // RF5: conta sem papel (pendente/recusada) responde 401 genérico, sem confirmar
+            // a existência do e-mail.
             var mensagem = resultado switch
             {
-                ResultadoLogin.SemPapel => "Conta sem papel definido. Procure a secretaria.",
                 ResultadoLogin.Inativo => "Conta desativada.",
                 _ => "Email ou senha incorretos."
             };
