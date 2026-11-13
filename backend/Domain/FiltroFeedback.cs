@@ -10,4 +10,5 @@ public sealed record FiltroFeedback(
     StatusFeedback? Status = null,
     int? UnidadeId = null,
     int? EscolaId = null,
-    int? AutorId = null);
+    int? AutorId = null,
+    int? AlunoId = null);

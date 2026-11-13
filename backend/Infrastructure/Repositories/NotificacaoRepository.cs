@@ -62,6 +62,17 @@ public class NotificacaoRepository : INotificacaoRepository
     public bool ExistePorDestinatario(int destinatarioId) =>
         _context.Notificacoes.Any(notificacao => notificacao.DestinatarioId == destinatarioId);
 
+    public bool ExistePorReferencia(
+        int destinatarioId,
+        TipoNotificacao tipo,
+        string referenciaTipo,
+        int referenciaId) =>
+        _context.Notificacoes.Any(notificacao =>
+            notificacao.DestinatarioId == destinatarioId &&
+            notificacao.Tipo == tipo &&
+            notificacao.ReferenciaTipo == referenciaTipo &&
+            notificacao.ReferenciaId == referenciaId);
+
     public void MarcarTodasComoLidas(int destinatarioId)
     {
         var naoLidas = _context.Notificacoes

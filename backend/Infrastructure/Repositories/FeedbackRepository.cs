@@ -53,6 +53,11 @@ public class FeedbackRepository : IFeedbackRepository
             consulta = consulta.Where(feedback => feedback.AutorId == autorId);
         }
 
+        if (filtro.AlunoId is { } alunoId)
+        {
+            consulta = consulta.Where(feedback => feedback.AlunoId == alunoId);
+        }
+
         var total = consulta.Count();
 
         var itens = consulta

@@ -16,29 +16,13 @@ import {
     type StatusOcorrencia,
     type TipoOcorrencia,
 } from "../../services/OcorrenciaApi";
-
-const rotuloTipo: Record<TipoOcorrencia, string> = {
-    Aluno: "Aluno",
-    Refeicao: "Refeição",
-    Alimento: "Alimento",
-    Outro: "Outro",
-};
-
-const rotuloStatus: Record<StatusOcorrencia, string> = {
-    Aberta: "Aberta",
-    EmAnalise: "Em análise",
-    Resolvida: "Resolvida",
-    Arquivada: "Arquivada",
-    Cancelada: "Cancelada",
-};
-
-const corStatus: Record<StatusOcorrencia, string> = {
-    Aberta: "bg-sky-50 text-sky-700",
-    EmAnalise: "bg-amber-50 text-amber-700",
-    Resolvida: "bg-emerald-50 text-emerald-700",
-    Arquivada: "bg-slate-100 text-slate-600",
-    Cancelada: "bg-red-50 text-red-700",
-};
+import {
+    corStatusOcorrencia as corStatus,
+    formatarData,
+    ListaOcorrencias,
+    rotuloStatusOcorrencia as rotuloStatus,
+    rotuloTipoOcorrencia as rotuloTipo,
+} from "../../components/ListaOcorrencias";
 
 function tiposDeCriacao(papel: string | null): TipoOcorrencia[] {
     if (papel === "Responsavel") {
@@ -54,10 +38,6 @@ function tiposDeCriacao(papel: string | null): TipoOcorrencia[] {
 
 function podeMudarStatus(papel: string | null): boolean {
     return papel === "Nutricionista" || papel === "AdminEscola";
-}
-
-function formatarData(valor: string): string {
-    return new Date(valor).toLocaleString("pt-BR");
 }
 
 export function OcorrenciasPage() {
@@ -137,7 +117,9 @@ export function OcorrenciasPage() {
         Promise.all([
             buscarAlunos().catch(() => []),
             papel === "Responsavel" ? Promise.resolve({ itens: [] }) : listarCardapios({ tamanho: 100 }).catch(() => ({ itens: [] })),
-            listarAlimentos({ tamanho: 100 }).catch(() => ({ itens: [] })),
+            papel === "Responsavel"
+                ? Promise.resolve({ itens: [] })
+                : listarAlimentos({ tamanho: 100 }).catch(() => ({ itens: [] })),
         ]).then(([listaAlunos, paginaCardapios, paginaAlimentos]) => {
             if (!ativo) return;
 
@@ -423,41 +405,12 @@ export function OcorrenciasPage() {
                             </div>
                         </div>
 
-                        {carregando ? (
-                            <p className="mt-4 text-sm text-slate-500">Carregando...</p>
-                        ) : ocorrencias.length === 0 ? (
-                            <p className="mt-4 text-sm text-slate-500">Nenhuma ocorrência encontrada.</p>
-                        ) : (
-                            <ul className="mt-4 divide-y divide-slate-100">
-                                {ocorrencias.map((item) => (
-                                    <li key={item.id}>
-                                        <button
-                                            type="button"
-                                            onClick={() => void selecionar(item.id)}
-                                            className={`flex w-full flex-wrap items-center justify-between gap-2 px-2 py-3 text-left hover:bg-slate-50 ${
-                                                selecionada?.id === item.id ? "rounded-xl bg-slate-100" : ""
-                                            }`}
-                                        >
-                                            <span className="min-w-0">
-                                                <span className="block text-sm font-semibold text-slate-800">
-                                                    #{item.id} · {rotuloTipo[item.tipo]}
-                                                </span>
-                                                <span className="block truncate text-sm text-slate-600">
-                                                    {item.descricao}
-                                                </span>
-                                                <span className="block text-xs text-slate-400">
-                                                    {item.autor} · {formatarData(item.criadoEm)}
-                                                </span>
-                                            </span>
-
-                                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${corStatus[item.status]}`}>
-                                                {rotuloStatus[item.status]}
-                                            </span>
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+                        <ListaOcorrencias
+                            itens={ocorrencias}
+                            onSelecionar={(id) => void selecionar(id)}
+                            carregando={carregando}
+                            selecionadaId={selecionada?.id ?? null}
+                        />
                     </article>
                 </div>
 

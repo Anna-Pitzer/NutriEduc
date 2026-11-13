@@ -35,6 +35,8 @@ export interface NovoUsuario {
     escolaId: number | null;
     /** Registro no conselho; usado na autoria do cardápio. */
     crn: string | null;
+    /** Obrigatório quando `papel === "Responsavel"` (Spec 034). */
+    alunosIds?: number[];
 }
 
 export interface AtualizacaoUsuario {
@@ -46,6 +48,8 @@ export interface AtualizacaoUsuario {
     /** Unidade de atribuição: o domínio só aceita para `AdminSecretaria`. */
     unidadeId: number | null;
     crn: string | null;
+    /** Alunos a vincular quando o papel passa a ser `Responsavel` (Spec 034). */
+    alunosIds?: number[];
 }
 
 async function ler<T>(resposta: Response, padrao: string): Promise<T> {
@@ -130,9 +134,12 @@ export async function excluirUsuario(id: number): Promise<void> {
 }
 
 // Regras espelhadas de `Usuario.DefinirPapel` (Spec 009): o formulário não oferece um
-// campo que o domínio vai recusar.
+// campo que o domínio vai recusar. Responsável exige unidade (implícita no ADM) e vínculo
+// com ao menos um aluno, nunca escola (Spec 034).
 export const exigeEscola = (papel: PapelUsuario) =>
-    papel === "AdminEscola" || papel === "Merendeira" || papel === "Responsavel";
+    papel === "AdminEscola" || papel === "Merendeira";
+
+export const exigeAlunos = (papel: PapelUsuario) => papel === "Responsavel";
 
 export const rotuloPapel: Record<PapelUsuario, string> = {
     Nutricionista: "Nutricionista",

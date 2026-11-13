@@ -57,7 +57,8 @@ public class MatrizPermissoesTests : IClassFixture<ApiFactory>
         HttpClient admin,
         PapelUsuario papel,
         int? escolaId = null,
-        int? unidadeId = null)
+        int? unidadeId = null,
+        IEnumerable<int>? alunosIds = null)
     {
         var email = $"matriz.{Guid.NewGuid():N}@nutrieduc.local";
 
@@ -70,7 +71,8 @@ public class MatrizPermissoesTests : IClassFixture<ApiFactory>
             senha = "senha12345",
             papel = papel.ToString(),
             escolaId,
-            unidadeId
+            unidadeId,
+            alunosIds
         });
         resposta.EnsureSuccessStatusCode();
 
@@ -115,7 +117,8 @@ public class MatrizPermissoesTests : IClassFixture<ApiFactory>
         var alunoId = (await Ler(aluno)).GetProperty("id").GetInt32();
 
         var (responsavelId, _) = await CriarUsuario(
-            admin, PapelUsuario.Responsavel, unidadeId: _factory.UnidadeIdPadrao);
+            admin, PapelUsuario.Responsavel, unidadeId: _factory.UnidadeIdPadrao,
+            alunosIds: new[] { alunoId });
 
         var adminEscola = await _factory.CreateAuthenticatedClientAsync(
             PapelUsuario.AdminEscola, escolaId);
@@ -134,7 +137,7 @@ public class MatrizPermissoesTests : IClassFixture<ApiFactory>
             PapelUsuario.AdminSecretaria, unidadeId: unidadeB);
 
         var (usuarioId, email) = await CriarUsuario(
-            adminB, PapelUsuario.Responsavel, unidadeId: unidadeB);
+            adminB, PapelUsuario.Merendeira, escolaId: escolaB, unidadeId: unidadeB);
 
         var adminA = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
 
@@ -182,11 +185,8 @@ public class MatrizPermissoesTests : IClassFixture<ApiFactory>
         var alunoId = (await Ler(aluno)).GetProperty("id").GetInt32();
 
         var (responsavelId, email) = await CriarUsuario(
-            admin, PapelUsuario.Responsavel, unidadeId: _factory.UnidadeIdPadrao);
-
-        var vinculo = await admin.PostAsync(
-            $"/api/aluno/{alunoId}/responsaveis/{responsavelId}", null);
-        Assert.Equal(HttpStatusCode.NoContent, vinculo.StatusCode);
+            admin, PapelUsuario.Responsavel, unidadeId: _factory.UnidadeIdPadrao,
+            alunosIds: new[] { alunoId });
 
         var responsavel = await _factory.EntrarAsync(email);
         var comoResponsavel = await responsavel.GetAsync(

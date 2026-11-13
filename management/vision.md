@@ -5,6 +5,29 @@ entregável e as specs que o entregam. A visão é estável; as specs evoluem.
 
 Fontes: `correcoes.md`, `implementacoes.md`, `README.md` e verificação do código.
 
+## Estado consolidado (2026-11-13)
+
+| Bloco | Entrega | Status |
+| --- | --- | --- |
+| V1–V5 | domínio do aluno, CRUD, hash de senha, testes e autorização | entregue |
+| V6 | cardápios, alimentos, ocorrências, solicitações, feedback e notificações | **parcial**: 019 (relatórios/exportação) não implementada |
+| V7–V13 | documentação viva, erro/DI, rotas, telas de secretaria, bootstrap, histórico, DDD | entregue |
+| V14 | painel por papel (secretaria, merendeira, família) | planejado (025) |
+| V15 | substituição assistida por IA | planejado (026) |
+| V16 | hierarquia unidade→escola→aluno | entregue (027, audited) |
+| V17 | matriz de permissões e isolamento | entregue (028, audited) |
+| V18 | cardápio geral e adaptado | **parcial**: backend entregue e portal dos pais exibe as duas versões; frontend de montagem/detalhe da nutrição pendente (029, PEND-042) |
+| V19 | correção de cadastro com pedido e prova | entregue (030, audited) |
+| V20 | CRN da nutricionista | entregue (031, audited) |
+| V21 | geração automática com prova | entregue (032, implemented) |
+| V22 | cadastro com intenção e aprovação com escopo | entregue (033, implemented) |
+| V23 | vínculo responsável↔aluno obrigatório e busca | entregue (034, audited) |
+| V24 | portal dos pais/responsáveis | entregue (035, audited); validação manual no navegador em PEND-050 |
+
+`implemented` = código e testes verdes, sem certificação `/spec-test`; `audited` = código, testes
+e documentação auditados (034 e 035 em 2026-11-13). A promoção automática continua bloqueada
+pelo PEND-028.
+
 ---
 
 ### V1: Domínio de aluno com invariantes reais
@@ -265,3 +288,23 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 **Canonical creation path:** `backend/Domain/Entities/SolicitacaoDeAcesso.cs`, `backend/Domain/Services/PoliticaDeAprovacao.cs`, `backend/Application/Cadastro/AprovarAcessoService.cs`, `backend/API/Controllers/SolicitacaoAcessoController.cs`, `frontend/src/pages/secretaria/SolicitacoesAcesso.tsx`
 
 **Delivered by:** Spec 033 (cadastro-e-autorizacao-de-acesso)
+
+### V23: Vínculo responsável↔aluno obrigatório e verificável
+**Problema:** a conta de responsável podia existir sem aluno — pela aprovação já era exigido vínculo, mas o cadastro direto e a definição de papel criavam contas soltas; a tela de aprovação listava todos os alunos sem busca e a página de alunos não mostrava as contas vinculadas.
+
+**Valor entregue:** toda conta `Responsavel` nasce e permanece com ao menos um aluno, criado na mesma transação do cadastro. O ADM localiza o aluno por nome, escola e série e confirma o vínculo no próprio ato; a página de alunos exibe o contato do cadastro e as contas vinculadas, permitindo vincular e desvincular. O responsável continua lendo apenas os próprios alunos.
+
+**Regra derivada:** nenhum fluxo cria `Responsavel` sem vínculo; o contato manual do aluno e a conta vinculada são dados distintos; a busca apenas estreita o escopo já autorizado.
+
+**Delivered by:** Spec 034 (vinculo-responsavel-aluno)
+
+### V24: Portal dos pais/responsáveis
+**Problema:** a área de pais existe apenas como menu e vitrine de cardápios públicos. O responsável não tem uma visão dos próprios filhos, não consulta o cardápio que cada aluno realmente recebe, não tem fluxo dedicado para ocorrências, solicitações de alergia e feedback, e o feedback enviado nem sequer registra a qual aluno se refere.
+
+**Valor entregue:** um portal próprio dos pais, com seleção de filho e isolamento pelo vínculo já implementado. O responsável consulta o cardápio servido por dia e refeição (geral e adaptado do filho), lê e relata ocorrências dos filhos, solicita inclusão de alergia/restrição — informando quando a reação é anafilática — e acompanha a decisão do profissional, e envia feedback com aluno opcional. Todas as ações reutilizam os contratos existentes; as mudanças de modelo são a associação do feedback ao aluno e a marcação de anafilaxia no pedido de alergia.
+
+**Regra derivada:** nenhuma tela mostra aluno fora do vínculo; solicitação de restrição só altera o cadastro após aprovação; ocorrência de responsável é sempre do tipo aluno; o portal não duplica o painel agregado da Spec 025.
+
+**Status:** entregue e auditada em 2026-11-13; validação manual no navegador pendente (PEND-050).
+
+**Delivered by:** Spec 035 (portal-pais-responsaveis)

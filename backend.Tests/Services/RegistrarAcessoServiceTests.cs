@@ -11,8 +11,19 @@ public class RegistrarAcessoServiceTests
     private static RegistrarAcessoService CriarServico(
         IUsuarioRepository usuarios,
         IEscolaRepository escolas,
-        ISolicitacaoDeAcessoRepository solicitacoes) =>
-        new(usuarios, escolas, solicitacoes, new UnidadeDeTrabalhoFake());
+        ISolicitacaoDeAcessoRepository solicitacoes,
+        NotificacaoDeAcessoService? notificacoesDeAcesso = null)
+    {
+        var uow = new UnidadeDeTrabalhoFake();
+        var notificacaoService = new NotificacaoService(new NotificacaoRepositoryFake(), uow);
+
+        return new(
+            usuarios,
+            escolas,
+            solicitacoes,
+            uow,
+            notificacoesDeAcesso ?? new NotificacaoDeAcessoService(usuarios, notificacaoService));
+    }
 
     private static CadastroEntrada Dto(
         string email = "maria@exemplo.com",

@@ -193,7 +193,13 @@ public sealed class OcorrenciaService
             return Resultado<OcorrenciaDTO>.Invalido(excecao.Message);
         }
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _ocorrencias.Add(ocorrencia));
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            _ocorrencias.Add(ocorrencia);
+            _unidadeDeTrabalho.Salvar();
+
+            NotificarOcorrenciaRegistrada(ocorrencia);
+        });
 
         return Carregar(ocorrencia.Id, escopo);
     }
@@ -528,6 +534,44 @@ public sealed class OcorrenciaService
         }
 
         return destinatarios;
+    }
+
+    /// <summary>
+    /// Avisa quem pode analisar a ocorrência (Nutricionista da unidade e AdminEscola da
+    /// escola) que um novo relato foi registrado. O autor não recebe o próprio relato.
+    /// </summary>
+    private void NotificarOcorrenciaRegistrada(Ocorrencia ocorrencia)
+    {
+        var destinatarios = _usuarios
+            .Listar(new FiltroUsuarios(
+                PapelUsuario.Nutricionista,
+                null,
+                ocorrencia.UnidadeId,
+                true,
+                null))
+            .Select(usuario => usuario.Id)
+            .ToList();
+
+        if (ocorrencia.EscolaId is { } escolaId)
+        {
+            destinatarios.AddRange(_usuarios
+                .Listar(new FiltroUsuarios(
+                    PapelUsuario.AdminEscola,
+                    escolaId,
+                    ocorrencia.UnidadeId,
+                    true,
+                    null))
+                .Select(usuario => usuario.Id));
+        }
+
+        _notificacoes.NotificarVariosUmaVez(
+            destinatarios.Where(id => id != ocorrencia.AutorId),
+            TipoNotificacao.OcorrenciaRegistrada,
+            $"Nova ocorrência #{ocorrencia.Id}",
+            $"Ocorrência de {ocorrencia.Tipo} aguardando análise.",
+            "Ocorrencia",
+            ocorrencia.Id,
+            DateTime.UtcNow);
     }
 
     private string NomeDoAutor(EscopoUsuario escopo) =>

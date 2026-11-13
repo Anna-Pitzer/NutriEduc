@@ -113,6 +113,41 @@ public class SolicitacaoApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Criar_InclusaoAlergiaDuplicada_Retorna409ComIdExistente()
+    {
+        var cenario = await PrepararAsync($"Duplicada {Guid.NewGuid():N}");
+        var solicitacaoId = await CriarSolicitacao(cenario);
+
+        var segunda = await cenario.Responsavel.PostAsJsonAsync(
+            "/api/solicitacoes",
+            PedidoRestricao(cenario.AlunoId));
+
+        Assert.Equal(HttpStatusCode.Conflict, segunda.StatusCode);
+
+        var corpo = await segunda.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains($"#{solicitacaoId}", corpo.GetProperty("erro").GetString());
+
+        // Restrição diferente continua permitida para o mesmo aluno.
+        var outra = await cenario.Responsavel.PostAsJsonAsync(
+            "/api/solicitacoes",
+            PedidoRestricao(cenario.AlunoId, "Amendoim"));
+
+        Assert.Equal(HttpStatusCode.Created, outra.StatusCode);
+
+        // Cancelado o primeiro, o mesmo par aluno/restrição pode ser pedido de novo.
+        var cancelamento = await cenario.Responsavel.PostAsync(
+            $"/api/solicitacoes/{solicitacaoId}/cancelar",
+            null);
+        cancelamento.EnsureSuccessStatusCode();
+
+        var terceira = await cenario.Responsavel.PostAsJsonAsync(
+            "/api/solicitacoes",
+            PedidoRestricao(cenario.AlunoId));
+
+        Assert.Equal(HttpStatusCode.Created, terceira.StatusCode);
+    }
+
+    [Fact]
     public async Task Fluxo_AprovarRestricao_AplicaNoAlunoEGravaTrilha()
     {
         var cenario = await PrepararAsync($"Ana Solicitação {Guid.NewGuid():N}");

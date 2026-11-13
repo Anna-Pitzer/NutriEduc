@@ -24,8 +24,10 @@ export default function Header() {
         }
     }
 
+    // Sem `overflow-hidden`: o painel de notificações é maior que o header e precisa poder
+    // escapar da caixa para rolar a lista completa.
     return (
-        <header className="relative h-60 w-full overflow-hidden">
+        <header className="relative h-60 w-full">
             {/*
               A faixa rosa precisa de profundidade constante: a versão anterior descia
               até ~30 unidades no canto direito (de 300) e o botão "Sair" ficava abaixo da

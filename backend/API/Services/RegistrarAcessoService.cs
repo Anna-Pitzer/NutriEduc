@@ -15,17 +15,20 @@ public sealed class RegistrarAcessoService
     private readonly IEscolaRepository _escolas;
     private readonly ISolicitacaoDeAcessoRepository _solicitacoes;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
+    private readonly NotificacaoDeAcessoService _notificacoesDeAcesso;
 
     public RegistrarAcessoService(
         IUsuarioRepository usuarios,
         IEscolaRepository escolas,
         ISolicitacaoDeAcessoRepository solicitacoes,
-        IUnidadeDeTrabalho unidadeDeTrabalho)
+        IUnidadeDeTrabalho unidadeDeTrabalho,
+        NotificacaoDeAcessoService notificacoesDeAcesso)
     {
         _usuarios = usuarios;
         _escolas = escolas;
         _solicitacoes = solicitacoes;
         _unidadeDeTrabalho = unidadeDeTrabalho;
+        _notificacoesDeAcesso = notificacoesDeAcesso;
     }
 
     public Resultado<RegistroDeAcessoDTO> Registrar(CadastroEntrada dto)
@@ -108,6 +111,8 @@ public sealed class RegistrarAcessoService
 
             _solicitacoes.Add(solicitacao);
             _unidadeDeTrabalho.Salvar();
+
+            _notificacoesDeAcesso.NovaSolicitacao(solicitacao, usuario.Id, DateTime.UtcNow);
 
             return new RegistroDeAcessoDTO(usuario.Id, solicitacao.Id, "Pendente");
         });

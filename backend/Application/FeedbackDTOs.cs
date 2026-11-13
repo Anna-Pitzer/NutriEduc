@@ -39,6 +39,15 @@ public class FeedbackResumoDTO
 
     public int? EscolaId { get; set; }
 
+    public int? AlunoId { get; set; }
+
+    public string? Aluno { get; set; }
+
+    /// <summary>Resposta da nutrição/escola; exposta também na listagem (Spec 035, RF23).</summary>
+    public string? Resposta { get; set; }
+
+    public string? RespondidoPor { get; set; }
+
     public StatusFeedback Status { get; set; }
 
     public DateTime CriadoEm { get; set; }
@@ -53,9 +62,5 @@ public class FeedbackResumoDTO
 /// <summary>Detalhe do feedback com a resposta e as permissões da sessão (RF3/RF4).</summary>
 public class FeedbackDTO : FeedbackResumoDTO
 {
-    public string? Resposta { get; set; }
-
-    public string? RespondidoPor { get; set; }
-
     public DateTime AtualizadoEm { get; set; }
 }

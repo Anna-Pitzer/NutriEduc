@@ -52,16 +52,20 @@ public sealed class FeedbackService
         }
 
         var escolaId = escopo.EscolaId;
+        int? alunoId = null;
+        string? alunoNome = null;
 
-        if (dto.AlunoId is { } alunoId && alunoId > 0)
+        if (dto.AlunoId is { } idAluno && idAluno > 0)
         {
-            var resolucao = ResolverAlunoParaFeedback(alunoId, escopo);
+            var resolucao = ResolverAlunoParaFeedback(idAluno, escopo);
 
             if (resolucao.Status != ResultadoStatus.Ok)
             {
                 return Rejeitar<FeedbackDTO>(resolucao);
             }
 
+            alunoId = idAluno;
+            alunoNome = resolucao.Valor!.Nome;
             escolaId = resolucao.Valor!.EscolaId;
         }
 
@@ -77,6 +81,8 @@ public sealed class FeedbackService
                 escopo.Papel,
                 unidadeId,
                 escolaId,
+                alunoId,
+                alunoNome,
                 _relogio.GetUtcNow().UtcDateTime);
         }
         catch (ArgumentException excecao)
@@ -93,6 +99,7 @@ public sealed class FeedbackService
 
     public Resultado<PaginaDTO<FeedbackResumoDTO>> Listar(
         string? status,
+        int? alunoId,
         int? pagina,
         int? tamanho,
         EscopoUsuario escopo)
@@ -103,7 +110,9 @@ public sealed class FeedbackService
                 $"Status inválido: '{status}'.");
         }
 
-        var filtro = new FiltroFeedback(Status: statusFiltro);
+        var filtro = new FiltroFeedback(
+            Status: statusFiltro,
+            AlunoId: alunoId is > 0 ? alunoId : null);
 
         switch (escopo.Papel)
         {
@@ -364,8 +373,12 @@ public sealed class FeedbackService
         PapelAutor = feedback.PapelAutor,
         UnidadeId = feedback.UnidadeId,
         EscolaId = feedback.EscolaId,
+        AlunoId = feedback.AlunoId,
+        Aluno = feedback.AlunoNome,
         Status = feedback.Status,
         CriadoEm = feedback.CriadoEmUtc,
+        Resposta = feedback.Resposta,
+        RespondidoPor = feedback.RespondidoPor,
         PodeResponder = PodeResponder(escopo.Papel) && feedback.Status == StatusFeedback.Aberto,
         PodeEncerrar = feedback.AutorId == escopo.UsuarioId &&
                        feedback.Status == StatusFeedback.Respondido
@@ -380,6 +393,8 @@ public sealed class FeedbackService
         PapelAutor = feedback.PapelAutor,
         UnidadeId = feedback.UnidadeId,
         EscolaId = feedback.EscolaId,
+        AlunoId = feedback.AlunoId,
+        Aluno = feedback.AlunoNome,
         Status = feedback.Status,
         CriadoEm = feedback.CriadoEmUtc,
         Resposta = feedback.Resposta,

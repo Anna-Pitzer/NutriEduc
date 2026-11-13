@@ -45,7 +45,9 @@ public class AlunoController : RespostaController
     [HttpGet]
     public IActionResult Listar(
         [FromQuery] int? escolaId,
-        [FromQuery] int? unidadeId)
+        [FromQuery] int? unidadeId,
+        [FromQuery] string? busca,
+        [FromQuery] string? serie)
     {
         var escopo = ObterEscopo(_escopo);
 
@@ -59,7 +61,7 @@ public class AlunoController : RespostaController
             return Forbid();
         }
 
-        return Ok(_alunoService.ListarAlunos(escopo, escolaId, unidadeId));
+        return Ok(_alunoService.ListarAlunos(escopo, escolaId, unidadeId, busca, serie));
     }
 
     [Authorize(Policy = "LeituraAluno")]

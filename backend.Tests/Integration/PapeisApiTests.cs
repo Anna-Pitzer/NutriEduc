@@ -66,7 +66,8 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
         HttpClient admin,
         PapelUsuario papel,
         int? escolaId = null,
-        int? unidadeId = null)
+        int? unidadeId = null,
+        IEnumerable<int>? alunosIds = null)
     {
         var email = EmailUnico();
 
@@ -81,7 +82,8 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
             foto = (string?)null,
             papel = papel.ToString(),
             escolaId,
-            unidadeId
+            unidadeId,
+            alunosIds
         });
         resposta.EnsureSuccessStatusCode();
 
@@ -221,21 +223,23 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
         var secretaria = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var (escolaId, unidadeId) = await CriarEscolaComUnidade(secretaria);
 
-        var alunoId = await CriarAluno(secretaria, "Aluno Vinculado", escolaId);
+        var alunoVinculado = await CriarAluno(secretaria, "Aluno Vinculado", escolaId);
+        var alunoAlvo = await CriarAluno(secretaria, "Aluno Fora do Vinculo", escolaId);
         var (responsavelId, responsavelEmail) = await CriarUsuario(
-            secretaria, PapelUsuario.Responsavel, unidadeId: unidadeId);
+            secretaria, PapelUsuario.Responsavel, unidadeId: unidadeId,
+            alunosIds: new[] { alunoVinculado });
 
         var responsavel = await _factory.EntrarAsync(responsavelEmail);
 
-        var antes = await responsavel.GetAsync($"/api/aluno/perfil/{alunoId}");
+        var antes = await responsavel.GetAsync($"/api/aluno/perfil/{alunoAlvo}");
         Assert.Equal(HttpStatusCode.Forbidden, antes.StatusCode);
 
         // O vínculo é feito pela secretaria: unidade é da rede e não define escola do aluno.
         var vinculo = await secretaria.PostAsync(
-            $"/api/aluno/{alunoId}/responsaveis/{responsavelId}", null);
+            $"/api/aluno/{alunoAlvo}/responsaveis/{responsavelId}", null);
         Assert.Equal(HttpStatusCode.NoContent, vinculo.StatusCode);
 
-        var depois = await responsavel.GetAsync($"/api/aluno/perfil/{alunoId}");
+        var depois = await responsavel.GetAsync($"/api/aluno/perfil/{alunoAlvo}");
         Assert.Equal(HttpStatusCode.OK, depois.StatusCode);
     }
 
@@ -244,16 +248,18 @@ public class PapeisApiTests : IClassFixture<ApiFactory>
     {
         var secretaria = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
         var (escolaId, unidadeId) = await CriarEscolaComUnidade(secretaria);
-        var alunoId = await CriarAluno(secretaria, "Aluno Duplicado", escolaId);
+        var alunoVinculado = await CriarAluno(secretaria, "Aluno Ja Vinculado", escolaId);
+        var alunoAlvo = await CriarAluno(secretaria, "Aluno Duplicado", escolaId);
         var (responsavelId, _) = await CriarUsuario(
-            secretaria, PapelUsuario.Responsavel, unidadeId: unidadeId);
+            secretaria, PapelUsuario.Responsavel, unidadeId: unidadeId,
+            alunosIds: new[] { alunoVinculado });
 
         var primeiro = await secretaria.PostAsync(
-            $"/api/aluno/{alunoId}/responsaveis/{responsavelId}", null);
+            $"/api/aluno/{alunoAlvo}/responsaveis/{responsavelId}", null);
         Assert.Equal(HttpStatusCode.NoContent, primeiro.StatusCode);
 
         var segundo = await secretaria.PostAsync(
-            $"/api/aluno/{alunoId}/responsaveis/{responsavelId}", null);
+            $"/api/aluno/{alunoAlvo}/responsaveis/{responsavelId}", null);
         Assert.Equal(HttpStatusCode.Conflict, segundo.StatusCode);
 
         var corpo = await Ler(segundo);

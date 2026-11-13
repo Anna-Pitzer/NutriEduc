@@ -49,4 +49,58 @@ public class NotificacaoServiceTests
 
         Assert.Single(repositorio.GetItens());
     }
+
+    [Fact]
+    public void NotificarUmaVez_MesmoEventoEDestinatario_NaoDuplica()
+    {
+        var repositorio = new NotificacaoRepositoryFake();
+        var servico = new NotificacaoService(repositorio, new UnidadeDeTrabalhoFake());
+
+        servico.NotificarUmaVez(
+            5,
+            TipoNotificacao.OcorrenciaRegistrada,
+            "Nova ocorrência #1",
+            "Ocorrência de Aluno aguardando análise.",
+            "Ocorrencia",
+            1,
+            Utc);
+
+        servico.NotificarUmaVez(
+            5,
+            TipoNotificacao.OcorrenciaRegistrada,
+            "Nova ocorrência #1",
+            "Ocorrência de Aluno aguardando análise.",
+            "Ocorrencia",
+            1,
+            Utc);
+
+        Assert.Single(repositorio.GetItens());
+    }
+
+    [Fact]
+    public void NotificarUmaVez_EventoDiferente_EmiteNovamente()
+    {
+        var repositorio = new NotificacaoRepositoryFake();
+        var servico = new NotificacaoService(repositorio, new UnidadeDeTrabalhoFake());
+
+        servico.NotificarUmaVez(
+            5,
+            TipoNotificacao.OcorrenciaRegistrada,
+            "Nova ocorrência #1",
+            "Ocorrência de Aluno aguardando análise.",
+            "Ocorrencia",
+            1,
+            Utc);
+
+        servico.NotificarUmaVez(
+            5,
+            TipoNotificacao.OcorrenciaRegistrada,
+            "Nova ocorrência #2",
+            "Ocorrência de Aluno aguardando análise.",
+            "Ocorrencia",
+            2,
+            Utc);
+
+        Assert.Equal(2, repositorio.GetItens().Count);
+    }
 }

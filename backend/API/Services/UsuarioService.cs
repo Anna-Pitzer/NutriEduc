@@ -11,19 +11,25 @@ public class UsuarioService
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
     private readonly AutorizacaoService _autorizacao;
     private readonly ITrilhaAcaoRepository _trilha;
+    private readonly IAlunoRepository _alunos;
+    private readonly IVinculoRepository _vinculos;
 
     public UsuarioService(
         IUsuarioRepository usuarioRepository,
         IEscolaRepository escolaRepository,
         IUnidadeDeTrabalho unidadeDeTrabalho,
         AutorizacaoService autorizacao,
-        ITrilhaAcaoRepository trilha)
+        ITrilhaAcaoRepository trilha,
+        IAlunoRepository alunos,
+        IVinculoRepository vinculos)
     {
         _usuarioRepository = usuarioRepository;
         _escolaRepository = escolaRepository;
         _unidadeDeTrabalho = unidadeDeTrabalho;
         _autorizacao = autorizacao;
         _trilha = trilha;
+        _alunos = alunos;
+        _vinculos = vinculos;
     }
 
     // ------------------------------------------------------------------ autocadastro
@@ -163,6 +169,21 @@ public class UsuarioService
             };
         }
 
+        var alunosVinculados = new List<Aluno>();
+
+        if (papel == PapelUsuario.Responsavel)
+        {
+            var resolucaoAlunos = ResolverAlunosDoResponsavel(
+                dto.AlunosIds, resolucao.UnidadeId!.Value, exigir: true);
+
+            if (resolucaoAlunos.Status != ResultadoStatus.Ok)
+            {
+                return Rejeitar<int>(resolucaoAlunos);
+            }
+
+            alunosVinculados = resolucaoAlunos.Valor!;
+        }
+
         Usuario usuario = new(
             dto.Nome,
             cpf,
@@ -178,7 +199,15 @@ public class UsuarioService
         usuario.AtualizarTelefone(dto.Telefone);
         usuario.AtualizarFoto(dto.Foto);
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _usuarioRepository.Add(usuario));
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            _usuarioRepository.Add(usuario);
+
+            // O vínculo exige o id gerado; permanece na mesma transação do cadastro.
+            _unidadeDeTrabalho.Salvar();
+
+            VincularAlunos(alunosVinculados, usuario.Id, escopo);
+        });
 
         return Resultado<int>.Ok(usuario.Id);
     }
@@ -241,6 +270,43 @@ public class UsuarioService
         var papelAnterior = alvo.Papel?.ToString();
         var crnAnterior = alvo.Crn;
 
+        // Spec 034: o papel só é aplicado com vínculo válido. A validação acontece antes
+        // de qualquer mutação da entidade e dentro da mesma operação do pedido.
+        ResolucaoEscopo? resolucaoPapel = null;
+        var alunosDoPapel = new List<Aluno>();
+
+        if (mudaPapel)
+        {
+            resolucaoPapel = ResolverEscopoInstitucional(
+                dto.Papel!.Value, dto.EscolaId, dto.UnidadeId, escopo);
+
+            if (resolucaoPapel.Falha is { } falhaPapel)
+            {
+                return falhaPapel switch
+                {
+                    ResultadoStatus.Proibido => Resultado<UsuarioRespostaDTO>.Proibido(),
+                    ResultadoStatus.NaoEncontrado =>
+                        Resultado<UsuarioRespostaDTO>.NaoEncontrado(resolucaoPapel.Erro!),
+                    _ => Resultado<UsuarioRespostaDTO>.Invalido(resolucaoPapel.Erro!)
+                };
+            }
+
+            if (dto.Papel == PapelUsuario.Responsavel)
+            {
+                var resolucaoAlunos = ResolverAlunosDoResponsavel(
+                    dto.AlunosIds,
+                    resolucaoPapel.UnidadeId!.Value,
+                    exigir: !_vinculos.ExistePorResponsavel(alvo.Id));
+
+                if (resolucaoAlunos.Status != ResultadoStatus.Ok)
+                {
+                    return Rejeitar<UsuarioRespostaDTO>(resolucaoAlunos);
+                }
+
+                alunosDoPapel = resolucaoAlunos.Valor!;
+            }
+        }
+
         alvo.AtualizarPerfil(dto.Nome, email);
         alvo.AtualizarTelefone(dto.Telefone);
 
@@ -279,26 +345,14 @@ public class UsuarioService
 
         if (mudaPapel)
         {
-            var resolucao = ResolverEscopoInstitucional(
-                dto.Papel!.Value, dto.EscolaId, dto.UnidadeId, escopo);
-
-            if (resolucao.Falha is { } falha)
-            {
-                return falha switch
-                {
-                    ResultadoStatus.Proibido => Resultado<UsuarioRespostaDTO>.Proibido(),
-                    ResultadoStatus.NaoEncontrado =>
-                        Resultado<UsuarioRespostaDTO>.NaoEncontrado(resolucao.Erro!),
-                    _ => Resultado<UsuarioRespostaDTO>.Invalido(resolucao.Erro!)
-                };
-            }
-
-            alvo.DefinirPapel(dto.Papel, resolucao.EscolaId, resolucao.UnidadeId);
+            alvo.DefinirPapel(dto.Papel, resolucaoPapel!.EscolaId, resolucaoPapel.UnidadeId);
         }
 
         _unidadeDeTrabalho.ExecutarEmTransacao(() =>
         {
             _usuarioRepository.Update(alvo);
+
+            VincularAlunos(alunosDoPapel, alvo.Id, escopo);
 
             var papelNovo = alvo.Papel?.ToString();
 
@@ -360,6 +414,87 @@ public class UsuarioService
 
     private string NomeDoAutor(EscopoUsuario escopo) =>
         _usuarioRepository.GetById(escopo.UsuarioId)?.Nome ?? "sistema";
+
+    /// <summary>
+    /// Resolve os alunos vinculados a um responsável (Spec 034). Cada aluno precisa existir
+    /// e pertencer à unidade do responsável; o vínculo é criado pelo administrador, nunca
+    /// inferido do texto do cadastro.
+    /// </summary>
+    private Resultado<List<Aluno>> ResolverAlunosDoResponsavel(
+        IEnumerable<int>? alunosIds,
+        int unidadeId,
+        bool exigir)
+    {
+        var ids = (alunosIds ?? Array.Empty<int>()).Distinct().ToList();
+
+        if (ids.Count == 0)
+        {
+            return exigir
+                ? Resultado<List<Aluno>>.Invalido(
+                    "Vincule ao menos um aluno ao responsável.")
+                : Resultado<List<Aluno>>.Ok(new List<Aluno>());
+        }
+
+        var alunos = new List<Aluno>();
+
+        foreach (var alunoId in ids)
+        {
+            var aluno = _alunos.ObterPorId(alunoId);
+
+            if (aluno is null)
+            {
+                return Resultado<List<Aluno>>.NaoEncontrado("Aluno não encontrado.");
+            }
+
+            if (aluno.UnidadeId != unidadeId)
+            {
+                return Resultado<List<Aluno>>.NaoEncontrado(
+                    "Aluno fora da unidade do responsável.");
+            }
+
+            alunos.Add(aluno);
+        }
+
+        return Resultado<List<Aluno>>.Ok(alunos);
+    }
+
+    /// <summary>
+    /// Cria o vínculo e o evento <c>VinculoCriado</c> de cada aluno (Spec 034, RF5/RF6).
+    /// Vínculo já existente é ignorado, preservando a idempotência do cadastro e da
+    /// definição de papel. Chamado dentro da transação da operação de origem.
+    /// </summary>
+    private void VincularAlunos(
+        IEnumerable<Aluno> alunos,
+        int usuarioId,
+        EscopoUsuario escopo)
+    {
+        foreach (var aluno in alunos)
+        {
+            if (_vinculos.Existe(aluno.Id, usuarioId))
+            {
+                continue;
+            }
+
+            _vinculos.Add(new VinculoResponsavelAluno(aluno.Id, usuarioId));
+            _trilha.Add(new TrilhaAcao(
+                "VinculoCriado",
+                escopo.UsuarioId,
+                NomeDoAutor(escopo),
+                "Responsavel",
+                usuarioId,
+                null,
+                aluno.Id.ToString(),
+                DateTime.UtcNow));
+        }
+    }
+
+    private static Resultado<T> Rejeitar<T>(Resultado<List<Aluno>> origem) =>
+        origem.Status switch
+        {
+            ResultadoStatus.NaoEncontrado => Resultado<T>.NaoEncontrado(origem.Erro!),
+            ResultadoStatus.Proibido => Resultado<T>.Proibido(),
+            _ => Resultado<T>.Invalido(origem.Erro ?? "Aluno inválido.")
+        };
 
     private sealed record ResolucaoEscopo(
         int? EscolaId,

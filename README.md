@@ -14,7 +14,7 @@ Curso: Ciência da Computação | Turma: A
 
 Aplicação web para apoiar atividades de educação alimentar em contexto escolar. O projeto reúne cadastro e consulta de alunos, dados de saúde e restrições alimentares, telas de cardápio e gerenciamento de usuários.
 
-> **Estado da integração:** cadastro, listagem e exclusão de alunos estão conectados ao backend. As operações de cardápio ainda não possuem controller correspondente. Consulte [Pendências conhecidas](#pendências-conhecidas).
+> **Estado da integração (2026-11-13):** backend com 20 controllers, 29 migrations e 830 testes verdes; frontend com build e lint sem erro. O fluxo de cardápio está implementado no backend (geral, adaptado, publicação e geração) e o frontend de montagem/detalhe ainda tem tarefas abertas na Spec 029. O portal dos pais mostra o cardápio geral e a versão adaptada do filho. O fluxo de notificações cobre solicitações de acesso, decisões e os eventos de solicitação e ocorrência. Consulte [`management/roadmap.md`](management/roadmap.md) para o status por spec e [`management/pending-items.md`](management/pending-items.md) para as pendências.
 
 ## Funcionalidades
 
@@ -53,6 +53,7 @@ NutriEduc/
 │   ├── src/routes/            # Rotas e proteção de páginas
 │   ├── src/services/          # Chamadas HTTP
 │   └── package.json
+├── management/                # SDD: roadmap, visão, arquitetura, ADRs, specs e pendências
 └── README.md
 ```
 
@@ -87,6 +88,8 @@ dotnet run
 ```
 
 A API inicia em `http://localhost:5001`. Na inicialização, o backend aplica automaticamente as migrations pendentes. A conexão atual usa SQLite (`database.db`), configurado em `backend/Infrastructure/DataBase/ConnectionContext.cs`.
+
+As regiões válidas do CRN podem ser ajustadas sem alterar código. O padrão é `1..11`; em `backend/appsettings.json` use `Crn:RegioesValidas` ou, no ambiente, a variável `Crn__RegioesValidas` com a lista separada por vírgula (ex.: `1,2,3,4,5,6,7,8,9,10,11`). Configuração inválida impede o startup com mensagem explícita.
 
 > **Se `dotnet run` falhar com `MSB3027`/`MSB3021` ("backend.exe está sendo usado por outro processo")** ou `address already in use`, há uma instância anterior rodando. Encerre-a antes de subir de novo:
 >
@@ -131,18 +134,25 @@ dotnet run --project backend/backend.csproj
 
 | Caminho | Página | Acesso |
 | --- | --- | --- |
-| `/login` | Login | Público |
-| `/` | Início | Protegido |
-| `/cadastro` | Cadastro de alunos | Protegido |
-| `/vizualunos` | Visualização de alunos | Protegido |
-| `/perfil` | Perfil do usuário | Protegido |
-| `/cardapio` | Cardápios | Protegido |
-| `/cardapio/montar/:refeicao` | Montagem de cardápio | Protegido |
-| `/suporte` | Suporte | Protegido |
-| `/termosdeuso` | Termos de uso | Protegido |
-| `/politicadeprivacidade` | Política de privacidade | Protegido |
+| `/login` | Login e cadastro público em duas etapas | Público |
+| `/bootstrap` | Cadastro do primeiro administrador por token | Público (token) |
+| `/` | Painel da nutrição | `Nutricionista`, `AdminSecretaria` |
+| `/aluno/registrar` | Cadastro de aluno | `Nutricionista`, `AdminSecretaria` |
+| `/aluno/vizualizar` | Listagem, histórico e responsáveis do aluno | `Nutricionista`, `AdminSecretaria` |
+| `/alunos/editar/:id` | Edição de aluno | `Nutricionista`, `AdminSecretaria` |
+| `/cardapios`, `/cardapios/:id` | Listagem e detalhe de cardápios | `Nutricionista`, `AdminSecretaria`, `Merendeira` |
+| `/cardapios/alteracoes` | Feed de alterações de cardápio | `Nutricionista`, `Merendeira` |
+| `/cardapios/novo`, `/cardapios/:id/editar`, `/cardapios/parametros-geracao` | Montagem e parâmetros de geração | `Nutricionista` |
+| `/alimentos`, `/alimentos/novo`, `/alimentos/editar/:id` | Catálogo de alimentos | `Nutricionista`, `Merendeira` (escrita validada no backend) |
+| `/merendeiras` | Área da merendeira | `Merendeira` |
+| `/pais`, `/pais/cardapios`, `/pais/ocorrencias`, `/pais/ocorrencias/nova`, `/pais/solicitacoes`, `/pais/feedback` | Portal dos pais: filhos, cardápio servido, ocorrências, solicitação de alergia e feedback | `Responsavel` |
+| `/secretaria`, `/secretaria/escolas`, `/secretaria/unidades`, `/secretaria/usuarios`, `/secretaria/solicitacoes-acesso` | Gestão da secretaria e fila de acesso | `AdminSecretaria` |
+| `/escolas` | Área da escola | `AdminEscola` |
+| `/solicitacoes`, `/ocorrencias`, `/feedbacks` | Solicitações, ocorrências e feedback | Todos os papéis autenticados, com escopo por papel |
+| `/perfil`, `/termosdeuso`, `/politicadeprivacidade`, `/suporte` | Telas comuns | Sessão válida |
 
-As rotas protegidas dependem da sessão autenticada.
+As rotas protegidas dependem da sessão autenticada; a guarda por papel está em
+`frontend/src/routes/routes.tsx` e a fonte única do painel inicial em `homePorPapel.ts`.
 
 ## Endpoints disponíveis
 
@@ -172,14 +182,14 @@ Registros gravados antes dessa mudança ainda têm a senha em claro: no primeiro
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
 | `POST` | `/api/aluno/registrar` | Cadastra um aluno; `escolaId` é obrigatório | `AdminSecretaria` |
-| `GET` | `/api/aluno` | Lista alunos no escopo do papel; aceita `escolaId`/`unidadeId` | Sessão válida |
+| `GET` | `/api/aluno` | Lista alunos no escopo do papel; aceita `escolaId`/`unidadeId`, `busca` (nome) e `serie` | Sessão válida |
 | `GET` | `/api/aluno/perfil/{id}` | Consulta um aluno pelo ID | Sessão válida; escopo por papel |
 | `PUT` | `/api/aluno/{id}` | Atualiza um aluno existente; não muda de unidade | `AdminSecretaria` |
 | `POST` | `/api/aluno/{id}/transferir-escola` | Transfere o aluno para outra escola da mesma unidade | `AdminSecretaria` |
 | `DELETE` | `/api/aluno/{id}` | Exclui um aluno | `AdminSecretaria` |
 | `GET` | `/api/aluno/{id}/historico` | Trilha de alterações do aluno (criação, campos e restrições), paginada e em ordem decrescente | Sim; `Nutricionista`, `AdminEscola`, `Merendeira` da unidade e `Responsavel` vinculado |
 | `GET` | `/api/aluno/{id}/restricoes/historico` | Histórico de restrições do aluno, paginado e em ordem decrescente (derivado da trilha; rota mantida por compatibilidade) | Sim; `Nutricionista`, `AdminEscola`, `Merendeira` da unidade e `Responsavel` vinculado |
-| `GET` | `/api/aluno/{id}/cardapio` | Versão servida ao aluno na data: geral para aluno sem restrição, adaptado publicado para aluno com restrição ou `Indisponivel` com alerta | Sim; mesmo escopo de leitura do aluno |
+| `GET` | `/api/aluno/{id}/cardapio` | Versões publicadas ao aluno na data: `cardapioGeral` sempre que houver geral publicado e `cardapioAdaptado` quando o aluno tem restrição e a versão adaptada existe; `cardapio` é a versão servida e `requerAdaptacao`/`alerta` indicam ausência da adaptada | Sim; mesmo escopo de leitura do aluno |
 
 O campo de nascimento do DTO é `DateOnly`; envie uma data no formato `yyyy-MM-dd`. `anafilaxia` deve ser um booleano JSON (`true` ou `false`). As restrições alimentares são armazenadas como uma coleção JSON na tabela `Alunos`.
 
@@ -250,8 +260,9 @@ O fluxo vive em `Solicitacoes` e `HistoricoSolicitacoes`. A solicitação é imu
 | --- | --- | --- | --- |
 | `GET` | `/api/solicitacoes` | Lista paginada com filtros `tipo`, `status`, `unidadeId`, `escolaId`, `alunoId`, `cardapioId`, `de`, `ate`, `pagina` e `tamanho` | Sessão; escopo por papel e vínculo |
 | `GET` | `/api/solicitacoes/{id}` | Detalhe com alvo, resposta e trilha de status | Sessão; escopo por papel e vínculo |
-| `POST` | `/api/solicitacoes` | Cria `MudancaCardapio`, `Ingrediente`, `FaltaIngrediente`, `InclusaoAlergia` ou `AlteracaoRestricao` conforme o papel | `Merendeira`, `AdminEscola`, `Nutricionista` ou `Responsavel` vinculado |
+| `POST` | `/api/solicitacoes` | Cria `MudancaCardapio`, `Ingrediente`, `FaltaIngrediente`, `InclusaoAlergia` ou `AlteracaoRestricao` conforme o papel; em alergia/restrição aceita `anafilaxia` (informada pelo solicitante) | `Merendeira`, `AdminEscola`, `Nutricionista` ou `Responsavel` vinculado |
 | `POST` | `/api/solicitacoes/{id}/analise` | `Aberta → EmAnalise` | Dono do tipo: `Nutricionista` ou `AdminSecretaria` |
+| `POST` | `/api/solicitacoes/{id}/anafilaxia` | Marca `Anafilaxia` no aluno de uma `InclusaoAlergia` ainda aberta/em análise, com evento na trilha (`Solicitacao:<id>`); idempotente | `AdminSecretaria`, `Nutricionista` da unidade ou `Responsavel` do próprio pedido/vínculo |
 | `POST` | `/api/solicitacoes/{id}/aprovar` | Aprova com `resposta`; restrição é aplicada ao aluno na mesma transação | Dono do tipo |
 | `POST` | `/api/solicitacoes/{id}/recusar` | Recusa com `resposta` (2–500) | Dono do tipo |
 | `POST` | `/api/solicitacoes/{id}/concluir` | `Aprovada → Concluida` | Dono do tipo |
@@ -291,11 +302,11 @@ A ocorrência não é apagada; o encerramento é `Arquivada`. O "mesmo dia" do c
 
 ### Feedback
 
-O feedback fecha o ciclo de comunicação: merendeira, responsável e escola criam; nutrição e escola respondem; o autor encerra o próprio feedback respondido. O status segue `Aberto → Respondido → Encerrado`. A escola é derivada do autor (quando tem escola) ou do aluno referenciado. O escopo de leitura respeita unidade, escola e vínculo (Spec 028).
+O feedback fecha o ciclo de comunicação: merendeira, responsável e escola criam; nutrição e escola respondem; o autor encerra o próprio feedback respondido. O status segue `Aberto → Respondido → Encerrado`. A escola é derivada do autor (quando tem escola) ou do aluno referenciado; quando `alunoId` é informado, o vínculo é validado e `AlunoId`/`AlunoNome` são persistidos como snapshot. O escopo de leitura respeita unidade, escola e vínculo (Spec 028).
 
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `GET` | `/api/feedbacks` | Lista paginada com filtro `status` | Sessão; escopo por papel e vínculo |
+| `GET` | `/api/feedbacks` | Lista paginada com filtros `status` e `alunoId`; inclui `resposta` e `respondidoPor` | Sessão; escopo por papel e vínculo |
 | `POST` | `/api/feedbacks` | Cria com `assunto` (5–120), `mensagem` (5–1000) e `alunoId` opcional | `Merendeira`, `Responsavel` ou `AdminEscola` |
 | `POST` | `/api/feedbacks/{id}/responder` | `Aberto → Respondido` com `resposta` (5–1000); emite `FeedbackRespondido` ao autor | `Nutricionista` da unidade ou `AdminEscola` da escola |
 | `POST` | `/api/feedbacks/{id}/encerrar` | `Respondido → Encerrado` | Somente o autor |
@@ -306,9 +317,20 @@ Feedback de outra unidade devolve `404`; de outra escola da mesma unidade, `403`
 
 As notificações são emitidas por um único serviço, na mesma transação da mudança de origem. A leitura é sempre restrita ao destinatário da sessão; notificação de outro usuário devolve `404`. O conteúdo nunca inclui CPF, e-mail, telefone ou dado clínico além do nome do aluno quando necessário.
 
+Eventos de criação usam emissão idempotente (`NotificarUmaVez`): o mesmo destinatário não recebe duas notificações do mesmo evento. Destinatários por evento:
+
+| Evento | Destinatários |
+| --- | --- |
+| Nova solicitação de acesso | `AdminSecretaria` ativos da unidade; o autor de criação manual não recebe |
+| Aprovação/recusa de acesso | Solicitante |
+| Nova solicitação (alergia, restrição, dado cadastral) | `AdminSecretaria` ativos da unidade |
+| Nova solicitação (cardápio, ingrediente) | `Nutricionista` ativos da unidade |
+| Nova ocorrência | `Nutricionista` da unidade e `AdminEscola` da escola (exceto o autor) |
+| Mudança de status de solicitação/ocorrência | Solicitante/decisor e autor/responsáveis, conforme a Spec 018 |
+
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
-| `GET` | `/api/notificacoes` | Lista paginada do usuário, com filtro `naoLidas` | Sessão |
+| `GET` | `/api/notificacoes` | Lista paginada do usuário, com filtro `naoLidas`; `total` serve de contador | Sessão |
 | `POST` | `/api/notificacoes/{id}/ler` | Marca uma notificação como lida (idempotente) | Sessão; dono |
 | `POST` | `/api/notificacoes/ler-todas` | Marca todas como lidas (idempotente) | Sessão |
 
@@ -323,7 +345,7 @@ recalculado pelo `CalculoNutricional` da Spec 012 antes de persistir.
 | --- | --- | --- | --- |
 | `GET` | `/api/unidades/{unidadeId}/parametros-geracao` | Parâmetros de geração da unidade | `AdminSecretaria` ou `Nutricionista` |
 | `PUT` | `/api/unidades/{unidadeId}/parametros-geracao` | Cria ou altera os parâmetros de geração | Sim; só `Nutricionista` |
-| `GET` | `/api/nutricionistas` | Lista as nutricionistas ativas (nome, e-mail, CPF e CRN) para escolher a autora do cardápio | Sim; só `Nutricionista` |
+| `GET` | `/api/nutricionistas` | Lista as nutricionistas ativas da unidade com CRN válido (nome, e-mail, CPF e CRN) para escolher a autora do cardápio | Sim; `Nutricionista` da unidade ou `AdminSecretaria` |
 | `POST` | `/api/cardapios/gerar` | Gera o geral e as versões adaptadas por escola/conjunto na mesma transação | Sim; só `Nutricionista` |
 
 A resposta traz `cardapioGeralId`, `seed`, `tentativasPorRefeicao`, `totaisPorRefeicao`,
@@ -440,7 +462,7 @@ Unidade é da secretaria, **não pertence a escola**: o nome é único na rede. 
 | `POST` | `/api/aluno/{alunoId}/responsaveis/{usuarioId}` | Vincula responsável | `AdminSecretaria` |
 | `DELETE` | `/api/aluno/{alunoId}/responsaveis/{usuarioId}` | Desvincula responsável | `AdminSecretaria` |
 
-O vínculo é único por par `(aluno, responsável)`: repetir devolve `409`. O responsável não carrega escola; o vínculo é a única autorização de leitura do aluno.
+O vínculo é único por par `(aluno, responsável)`: repetir devolve `409`. O responsável não carrega escola; o vínculo é a única autorização de leitura do aluno. Criar uma conta `Responsavel` exige vínculo: `POST /api/usuarios` recebe `alunosIds` com ao menos um aluno da unidade, e `PUT /api/usuarios/{id}` também exige `alunosIds` quando o papel passa a `Responsavel` em uma conta ainda sem vínculo. O contato manual do aluno (`nomeResponsavel`/`telefoneResponsavel`) é um dado do cadastro e não se confunde com as contas vinculadas.
 
 Erros seguem um contrato único: corpo `{ "erro": "mensagem" }` em `400` (validação de domínio, modelo inválido ou JSON malformado), `401` (sem sessão), `403` (acesso negado), `404` (recurso ou rota inexistente), `405` (verbo não permitido), `409` (conflito de estado), `415` (content-type não suportado) e `500` (erro interno, sem detalhe técnico). As exceções são traduzidas por `ErrorHandlingMiddleware`; modelo inválido, `404` de rota inexistente, `405` e `415` são traduzidos por `API/Middleware/ContratoDeErro.cs`. Nenhum controller monta resposta de erro fora desse formato.
 
@@ -450,18 +472,31 @@ O perfil de usuário devolve `id`, `nome`, `email`, `telefone`, `foto`, `papel`,
 
 ## Testes
 
-A suíte automatizada fica em `backend.Tests` (xUnit) e cobre as regras de domínio de `Usuario` e `Aluno`, os serviços `UsuarioService` e `AlunoService` (com repositórios em memória) e os contratos HTTP via `WebApplicationFactory` com SQLite em memória.
+A suíte automatizada fica em `backend.Tests` (xUnit) e cobre domínio, serviços com fakes,
+repositórios/filtros e contratos HTTP via `WebApplicationFactory` com SQLite em memória.
+Estado em 2026-11-13: **830 testes aprovados**.
 
 ```bash
 dotnet test backend.Tests/backend.Tests.csproj
 ```
 
 Para rodar apenas um grupo: `dotnet test backend.Tests/backend.Tests.csproj --filter Domain.AlunoTests`.
+O frontend ainda não possui testes automatizados; a validação é `npm run build` + `npm run lint`.
 
 ## Pendências conhecidas
 
-- O frontend possui chamadas para operações de cardápio, mas não há controller de cardápio no backend atual.
-- Não há um arquivo de exemplo de ambiente no estado atual do repositório; crie `frontend/.env` com `VITE_API_URL=http://localhost:5001` para que o proxy tenha seu destino.
+A lista canônica, com identificadores estáveis, evidência e próxima ação, é
+[`management/pending-items.md`](management/pending-items.md). Em resumo (2026-11-13):
+
+- **Spec 019 (relatórios/exportação)** ainda não implementada.
+- **Spec 029** com backend pronto e frontend de montagem/detalhe pendente (PEND-042).
+- **Specs 034 e 035** auditadas em 2026-11-13; a validação manual no navegador segue como PEND-047 e PEND-050.
+- **PEND-028** bloqueia a promoção automática de status pelo motor SDD; as auditorias de 034 e 035 foram registradas manualmente.
+- **PEND-046** mantém desabilitado o diagnóstico global de contas sem papel.
+- Limitações do SQLite (decimal, collation, datas e concorrência) seguem registradas como PEND-029 a PEND-037.
+- O frontend não possui testes automatizados.
+
+O arquivo `frontend/.env` é local e não versionado; use `frontend/.env.example` como base.
 
 ## Banco de dados
 

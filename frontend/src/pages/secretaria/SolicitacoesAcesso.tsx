@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { LayoutSecretaria } from "./layoutSecretaria";
 import {
     aprovarSolicitacaoAcesso,
@@ -7,22 +8,26 @@ import {
     type SolicitacaoAcessoResumo,
 } from "../../services/SolicitacaoAcessoApi";
 import { listarEscolas, type EscolaResposta } from "../../services/EscolaApi";
-import { buscarAlunos, type AlunoResposta } from "../../services/AlunoApi";
+import { SeletorDeAlunos } from "../../components/SeletorDeAlunos";
 
 type FiltroStatus = "" | "Pendente" | "Aprovada" | "Recusada";
 type ModoDecisao = "aprovar" | "recusar";
 
 export function SolicitacoesAcesso() {
+    const [parametros, setParametros] = useSearchParams();
+    const idDaNotificacao = Number(parametros.get("abrir") ?? "");
+    const alvoId =
+        Number.isInteger(idDaNotificacao) && idDaNotificacao > 0 ? idDaNotificacao : null;
+
     const [solicitacoes, setSolicitacoes] = useState<SolicitacaoAcessoResumo[]>([]);
     const [total, setTotal] = useState(0);
-    const [status, setStatus] = useState<FiltroStatus>("Pendente");
+    const [status, setStatus] = useState<FiltroStatus>(alvoId ? "" : "Pendente");
     const [tipo, setTipo] = useState("");
     const [busca, setBusca] = useState("");
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState("");
 
     const [escolas, setEscolas] = useState<EscolaResposta[]>([]);
-    const [alunos, setAlunos] = useState<AlunoResposta[]>([]);
 
     const [emDecisao, setEmDecisao] = useState<SolicitacaoAcessoResumo | null>(null);
     const [modoDecisao, setModoDecisao] = useState<ModoDecisao>("aprovar");
@@ -51,6 +56,25 @@ export function SolicitacoesAcesso() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [status, tipo]);
 
+    // Notificação clicada: abre a solicitação referenciada, mesmo fora do filtro "Pendente".
+    useEffect(() => {
+        if (alvoId === null) return;
+
+        const alvo = solicitacoes.find((solicitacao) => solicitacao.id === alvoId);
+
+        if (!alvo) return;
+
+        // Só abre o formulário de decisão quando a solicitação ainda está pendente.
+        if (alvo.status === "Pendente") {
+            void prepararAprovacao(alvo);
+        }
+
+        const restantes = new URLSearchParams(parametros);
+        restantes.delete("abrir");
+        setParametros(restantes, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [solicitacoes, alvoId]);
+
     async function prepararAprovacao(solicitacao: SolicitacaoAcessoResumo) {
         setErro("");
         setEmDecisao(solicitacao);
@@ -59,12 +83,9 @@ export function SolicitacoesAcesso() {
         setAlunosIds([]);
         setMotivo("");
 
-        if (solicitacao.tipoSolicitado === "Merendeira") {
+        if (solicitacao.tipoSolicitado === "Merendeira" ||
+            solicitacao.tipoSolicitado === "Responsavel") {
             setEscolas(await listarEscolas().catch(() => []));
-        }
-
-        if (solicitacao.tipoSolicitado === "Responsavel") {
-            setAlunos(await buscarAlunos().catch(() => []));
         }
     }
 
@@ -264,22 +285,12 @@ export function SolicitacoesAcesso() {
 
                                         {modoDecisao === "aprovar" &&
                                             solicitacao.tipoSolicitado === "Responsavel" && (
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-gray-600">Vincular alunos:</p>
-                                                    {alunos.map((aluno) => (
-                                                        <label
-                                                            key={aluno.id}
-                                                            className="flex items-center gap-2 text-sm text-gray-700"
-                                                        >
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={alunosIds.includes(aluno.id)}
-                                                                onChange={() => alternarAluno(aluno.id)}
-                                                            />
-                                                            {aluno.nome}
-                                                        </label>
-                                                    ))}
-                                                </div>
+                                                <SeletorDeAlunos
+                                                    selecionados={alunosIds}
+                                                    aoAlternar={alternarAluno}
+                                                    escolas={escolas}
+                                                    titulo="Vincular alunos"
+                                                />
                                             )}
 
                                         {modoDecisao === "recusar" && (

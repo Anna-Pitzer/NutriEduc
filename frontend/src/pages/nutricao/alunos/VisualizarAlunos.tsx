@@ -1,5 +1,5 @@
 
-import { Trash, ChevronLeft, Pencil, History } from "lucide-react";
+import { Trash, ChevronLeft, Pencil, History, Users, UserMinus, UserPlus } from "lucide-react";
 import Footer from "../../../components/Footer";
 import Header from "../../../components/Header"
 import { useEffect, Fragment, useRef, useState } from "react";
@@ -10,6 +10,13 @@ import { buscarAlunos, excluirAluno, type AlunoResposta } from "../../../service
 import { listarEscolas, type EscolaResposta } from "../../../services/EscolaApi";
 import { naoAutorizado } from "../../../services/erroApi";
 import { buscarHistoricoAluno, descreverEvento, type EventoAluno } from "../../../services/HistoricoAlunoApi";
+import {
+  desvincularResponsavel,
+  listarResponsaveis,
+  vincularResponsavel,
+  type ResponsavelVinculado,
+} from "../../../services/VinculoApi";
+import { listarUsuarios, type UsuarioResposta } from "../../../services/UsuarioAdminApi";
 import { useAuth } from "../../../context/authContext";
 
 export function VisualizarAlunos() {
@@ -17,6 +24,8 @@ export function VisualizarAlunos() {
   const navegar = useNavigate();
   const { userLogin, logout } = useAuth();
   const podeRegistrarOcorrencia = userLogin?.papel === "Nutricionista";
+  // Spec 034/028: só AdminSecretaria tem escrita em Vínculo; AdminEscola é somente leitura.
+  const podeGerenciarResponsaveis = userLogin?.papel === "AdminSecretaria";
 
 
   // ============ RESPOSTAS DO BACK ============
@@ -59,6 +68,14 @@ export function VisualizarAlunos() {
   const [historico, setHistorico] = useState<Record<number, EventoAluno[]>>({})
   const [historicoAberto, setHistoricoAberto] = useState<number | null>(null)
 
+  // Responsáveis vinculados (Spec 034): leitura para todos, escrita só para o ADM.
+  const [responsaveis, setResponsaveis] = useState<Record<number, ResponsavelVinculado[]>>({})
+  const [responsaveisAberto, setResponsaveisAberto] = useState<number | null>(null)
+  const [buscaResponsavel, setBuscaResponsavel] = useState("")
+  const [candidatos, setCandidatos] = useState<UsuarioResposta[]>([])
+  const [erroResponsavel, setErroResponsavel] = useState("")
+  const [processandoVinculo, setProcessandoVinculo] = useState(false)
+
   const alternarHistorico = async (alunoId: number) => {
     if (historicoAberto === alunoId) {
       setHistoricoAberto(null)
@@ -81,6 +98,100 @@ export function VisualizarAlunos() {
       setErro("Não foi possível carregar o histórico do aluno.")
     }
   }
+
+  async function recarregarResponsaveis(alunoId: number) {
+    try {
+      const lista = await listarResponsaveis(alunoId)
+      setResponsaveis((atual) => ({ ...atual, [alunoId]: lista }))
+    } catch (error) {
+      if (naoAutorizado(error)) {
+        void logout()
+        return
+      }
+
+      setErroResponsavel("Não foi possível carregar os responsáveis.")
+    }
+  }
+
+  async function alternarResponsaveis(alunoId: number) {
+    setErroResponsavel("")
+
+    if (responsaveisAberto === alunoId) {
+      setResponsaveisAberto(null)
+      setCandidatos([])
+      return
+    }
+
+    setResponsaveisAberto(alunoId)
+    setBuscaResponsavel("")
+    setCandidatos([])
+
+    if (!responsaveis[alunoId]) {
+      await recarregarResponsaveis(alunoId)
+    }
+  }
+
+  async function vincular(alunoId: number, usuarioId: number) {
+    setProcessandoVinculo(true)
+    setErroResponsavel("")
+
+    try {
+      await vincularResponsavel(alunoId, usuarioId)
+      await recarregarResponsaveis(alunoId)
+    } catch (error) {
+      if (naoAutorizado(error)) {
+        void logout()
+        return
+      }
+
+      setErroResponsavel(error instanceof Error ? error.message : "Não foi possível vincular.")
+    } finally {
+      setProcessandoVinculo(false)
+    }
+  }
+
+  async function desvincular(alunoId: number, usuarioId: number) {
+    setProcessandoVinculo(true)
+    setErroResponsavel("")
+
+    try {
+      await desvincularResponsavel(alunoId, usuarioId)
+      await recarregarResponsaveis(alunoId)
+    } catch (error) {
+      if (naoAutorizado(error)) {
+        void logout()
+        return
+      }
+
+      setErroResponsavel(error instanceof Error ? error.message : "Não foi possível desvincular.")
+    } finally {
+      setProcessandoVinculo(false)
+    }
+  }
+
+  useEffect(() => {
+    if (responsaveisAberto === null || !podeGerenciarResponsaveis) {
+      return
+    }
+
+    let ativo = true
+
+    const timer = setTimeout(() => {
+      listarUsuarios({ papel: "Responsavel", busca: buscaResponsavel, ativo: true })
+        .then((lista) => {
+          if (ativo) setCandidatos(lista)
+        })
+        .catch(() => {
+          if (ativo) setCandidatos([])
+        })
+    }, 300)
+
+    return () => {
+      ativo = false
+      clearTimeout(timer)
+    }
+  }, [responsaveisAberto, buscaResponsavel, podeGerenciarResponsaveis])
+
   useEffect(() => {
     listarEscolas()
       .then(setEscolas)
@@ -419,6 +530,7 @@ export function VisualizarAlunos() {
                 <th className="px-4 text-left font-light">Escola</th>
                 <th className="px-4 text-left font-light">Série</th>
                 <th className="px-4 text-left font-light">Restrições</th>
+                <th className="px-4 text-center font-light">Responsáveis</th>
                 <th className="px-4 text-center font-light">Histórico</th>
                 <th className="px-4 text-center font-light">Editar</th>
                 <th className="px-4 text-center font-light">Excluir</th>
@@ -451,6 +563,13 @@ export function VisualizarAlunos() {
                   </td>
                   <td className="p-4 text-center">
                     <button
+                      onClick={() => void alternarResponsaveis(aluno.id)}
+                      aria-label={`Responsáveis de ${aluno.nome}`}
+                      aria-expanded={responsaveisAberto === aluno.id}
+                      className="text-roxo p-2 hover:cursor-pointer hover:bg-purple-100 rounded-full"><Users /></button>
+                  </td>
+                  <td className="p-4 text-center">
+                    <button
                       onClick={() => void alternarHistorico(aluno.id)}
                       aria-label={`Histórico de ${aluno.nome}`}
                       aria-expanded={historicoAberto === aluno.id}
@@ -480,9 +599,100 @@ export function VisualizarAlunos() {
                   )}
                 </tr>
 
+                {responsaveisAberto === aluno.id && (
+                  <tr className="bg-[#FAF9F5]">
+                    <td colSpan={podeRegistrarOcorrencia ? 9 : 8} className="p-4">
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-semibold text-gray-800">Contato no cadastro:</span>{" "}
+                          {aluno.nomeResponsavel || "—"}
+                          {aluno.telefoneResponsavel ? ` · ${aluno.telefoneResponsavel}` : ""}
+                        </p>
+
+                        <div>
+                          <h3 className="mb-2 font-bold text-roxo">Responsáveis vinculados</h3>
+
+                          {!responsaveis[aluno.id] ? (
+                            <p className="text-gray-500">Carregando responsáveis...</p>
+                          ) : (responsaveis[aluno.id] ?? []).length === 0 ? (
+                            <p className="text-gray-500">Nenhum responsável vinculado.</p>
+                          ) : (
+                            <ul className="flex flex-col gap-2">
+                              {(responsaveis[aluno.id] ?? []).map((responsavel) => (
+                                <li key={responsavel.id} className="flex flex-wrap items-center gap-2 text-sm">
+                                  <span className="font-medium text-gray-800">{responsavel.nome}</span>
+                                  <span className="text-gray-500">{responsavel.email}</span>
+
+                                  {podeGerenciarResponsaveis && (
+                                    <button
+                                      type="button"
+                                      disabled={processandoVinculo}
+                                      onClick={() => void desvincular(aluno.id, responsavel.id)}
+                                      className="flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                                    >
+                                      <UserMinus size={14} /> Desvincular
+                                    </button>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        {podeGerenciarResponsaveis && (
+                          <div>
+                            <h3 className="mb-2 font-bold text-roxo">Adicionar responsável</h3>
+                            <input
+                              type="text"
+                              value={buscaResponsavel}
+                              onChange={(evento) => setBuscaResponsavel(evento.target.value)}
+                              placeholder="Buscar responsável por nome ou e-mail"
+                              aria-label="Buscar responsável por nome ou e-mail"
+                              className="h-10 w-full max-w-md rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-roxo"
+                            />
+
+                            <ul className="mt-2 max-h-40 overflow-y-auto">
+                              {candidatos
+                                .filter(
+                                  (candidato) =>
+                                    !(responsaveis[aluno.id] ?? []).some(
+                                      (vinculado) => vinculado.id === candidato.id,
+                                    ),
+                                )
+                                .map((candidato) => (
+                                  <li
+                                    key={candidato.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 py-1.5 text-sm last:border-0"
+                                  >
+                                    <span>
+                                      <span className="font-medium text-gray-800">{candidato.nome ?? `#${candidato.id}`}</span>
+                                      <span className="ml-2 text-gray-500">{candidato.email}</span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={processandoVinculo}
+                                      onClick={() => void vincular(aluno.id, candidato.id)}
+                                      className="flex items-center gap-1 rounded-lg border border-roxo px-2 py-1 text-xs font-medium text-roxo hover:bg-roxo/10 disabled:opacity-50"
+                                    >
+                                      <UserPlus size={14} /> Vincular
+                                    </button>
+                                  </li>
+                                ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {erroResponsavel && (
+                          <p role="alert" className="text-sm text-red-700">{erroResponsavel}</p>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+
                 {historicoAberto === aluno.id && (
                   <tr className="bg-[#FAF9F5]">
-                    <td colSpan={podeRegistrarOcorrencia ? 8 : 7} className="p-4">
+                    <td colSpan={podeRegistrarOcorrencia ? 9 : 8} className="p-4">
                       <h3 className="font-bold text-roxo mb-2">Histórico de alterações</h3>
 
                       {!historico[aluno.id] ? (

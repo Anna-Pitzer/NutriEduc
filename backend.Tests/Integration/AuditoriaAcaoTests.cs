@@ -76,14 +76,11 @@ public class AuditoriaAcaoTests : IClassFixture<ApiFactory>
             email,
             senha = "senha12345",
             papel = nameof(PapelUsuario.Responsavel),
-            unidadeId = _factory.UnidadeIdPadrao
+            unidadeId = _factory.UnidadeIdPadrao,
+            alunosIds = new[] { alunoId }
         });
         criacaoUsuario.EnsureSuccessStatusCode();
         var usuarioId = (await Ler(criacaoUsuario)).GetProperty("id").GetInt32();
-
-        var vinculo = await admin.PostAsync(
-            $"/api/aluno/{alunoId}/responsaveis/{usuarioId}", null);
-        Assert.Equal(HttpStatusCode.NoContent, vinculo.StatusCode);
 
         var papel = await admin.PutAsJsonAsync($"/api/usuarios/{usuarioId}", new
         {

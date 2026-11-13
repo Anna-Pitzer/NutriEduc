@@ -755,6 +755,9 @@ public class ConnectionContext : DbContext
                 .HasMaxLength(100)
                 .IsRequired();
 
+            entity.Property(feedback => feedback.AlunoNome)
+                .HasMaxLength(100);
+
             entity.Property(feedback => feedback.Resposta)
                 .HasMaxLength(Feedback.RespostaMax);
 
@@ -764,6 +767,12 @@ public class ConnectionContext : DbContext
             entity.HasIndex(feedback => new { feedback.UnidadeId, feedback.CriadoEmUtc });
             entity.HasIndex(feedback => new { feedback.EscolaId, feedback.CriadoEmUtc });
             entity.HasIndex(feedback => new { feedback.AutorId, feedback.CriadoEmUtc });
+            entity.HasIndex(feedback => feedback.AlunoId);
+
+            entity.HasOne<Aluno>()
+                .WithMany()
+                .HasForeignKey(feedback => feedback.AlunoId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasOne<UnidadeEscolar>()
                 .WithMany()

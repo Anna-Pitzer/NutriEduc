@@ -53,6 +53,17 @@ public class NotificacaoRepositoryFake : INotificacaoRepository
     public bool ExistePorDestinatario(int destinatarioId) =>
         _itens.Any(item => item.DestinatarioId == destinatarioId);
 
+    public bool ExistePorReferencia(
+        int destinatarioId,
+        TipoNotificacao tipo,
+        string referenciaTipo,
+        int referenciaId) =>
+        _itens.Any(item =>
+            item.DestinatarioId == destinatarioId &&
+            item.Tipo == tipo &&
+            item.ReferenciaTipo == referenciaTipo &&
+            item.ReferenciaId == referenciaId);
+
     public void MarcarTodasComoLidas(int destinatarioId)
     {
         foreach (var item in _itens.Where(item =>

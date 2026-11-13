@@ -103,6 +103,24 @@ public class SolicitacaoController : RespostaController
         return Traduzir(_solicitacoes.Analisar(id, escopo), Ok);
     }
 
+    /// <summary>
+    /// Marca a anafilaxia do aluno na análise de uma solicitação de inclusão de alergia
+    /// (Spec 017/023). A decisão da solicitação continua separada.
+    /// </summary>
+    [Authorize(Policy = "SessaoValida")]
+    [HttpPost("{id:int}/anafilaxia")]
+    public IActionResult MarcarAnafilaxia(int id)
+    {
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(_solicitacoes.MarcarAnafilaxia(id, escopo), Ok);
+    }
+
     [Authorize(Policy = "SessaoValida")]
     [HttpPost("{id:int}/aprovar")]
     public IActionResult Aprovar(int id, [FromBody] DecidirSolicitacaoDTO dto)

@@ -23,9 +23,48 @@ public sealed record CrnDeNutricionista
 
     private static readonly Regex FormatoDoNumero = new(@"^\d{3,8}$", RegexOptions.Compiled);
 
-    /// <summary>Faixa oficial de regiões (1..11). Configurável num único ponto (RF2/D3).</summary>
-    public static IReadOnlySet<int> RegioesPadrao { get; } =
+    /// <summary>Faixa oficial de regiões (1..11), ajustável no startup por configuração (RF2/D3).</summary>
+    public static IReadOnlySet<int> RegioesPadrao => _regioesPadrao;
+
+    private static IReadOnlySet<int> _regioesPadrao =
         new HashSet<int>(Enumerable.Range(1, 11));
+
+    /// <summary>
+    /// Interpreta a lista configurada em <c>Crn:RegioesValidas</c> (equivalente à variável
+    /// <c>Crn__RegioesValidas</c>). Vazio usa a faixa 1..11; item inválido falha no startup
+    /// em vez de aceitar silenciosamente uma configuração ambígua.
+    /// </summary>
+    public static IReadOnlySet<int> InterpretarRegioes(string? lista)
+    {
+        if (string.IsNullOrWhiteSpace(lista))
+        {
+            return new HashSet<int>(Enumerable.Range(1, 11));
+        }
+
+        var regioes = new HashSet<int>();
+
+        foreach (var parte in lista.Split(
+            new[] { ',', ';', ' ' },
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!int.TryParse(parte, out var regiao) || regiao <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"Crn:RegioesValidas contém uma região inválida: '{parte}'.");
+            }
+
+            regioes.Add(regiao);
+        }
+
+        return regioes.Count > 0
+            ? regioes
+            : throw new InvalidOperationException(
+                "Crn:RegioesValidas não contém nenhuma região válida.");
+    }
+
+    /// <summary>Aplica a configuração de regiões uma única vez no startup da aplicação.</summary>
+    public static void ConfigurarRegioes(string? lista) =>
+        _regioesPadrao = InterpretarRegioes(lista);
 
     /// <summary>Forma canônica: <c>CRN-&lt;região&gt;-&lt;número&gt;</c>.</summary>
     public string Valor { get; }

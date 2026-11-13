@@ -19,6 +19,7 @@ public sealed class AprovarAcessoService
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
     private readonly ITrilhaAcaoRepository _trilha;
     private readonly NotificacaoService _notificacoes;
+    private readonly NotificacaoDeAcessoService _notificacoesDeAcesso;
 
     public AprovarAcessoService(
         ISolicitacaoDeAcessoRepository solicitacoes,
@@ -28,7 +29,8 @@ public sealed class AprovarAcessoService
         IVinculoRepository vinculos,
         IUnidadeDeTrabalho unidadeDeTrabalho,
         ITrilhaAcaoRepository trilha,
-        NotificacaoService notificacoes)
+        NotificacaoService notificacoes,
+        NotificacaoDeAcessoService notificacoesDeAcesso)
     {
         _solicitacoes = solicitacoes;
         _usuarios = usuarios;
@@ -38,6 +40,7 @@ public sealed class AprovarAcessoService
         _unidadeDeTrabalho = unidadeDeTrabalho;
         _trilha = trilha;
         _notificacoes = notificacoes;
+        _notificacoesDeAcesso = notificacoesDeAcesso;
     }
 
     // ---------- Fila ----------
@@ -416,7 +419,14 @@ public sealed class AprovarAcessoService
 
         var solicitacao = new SolicitacaoDeAcesso(usuarioId, tipo, unidadeId, dto.Crn, DateTime.UtcNow);
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _solicitacoes.Add(solicitacao));
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            _solicitacoes.Add(solicitacao);
+            _unidadeDeTrabalho.Salvar();
+
+            // O autor da criação manual não recebe a própria notificação (RF18 da Spec 018).
+            _notificacoesDeAcesso.NovaSolicitacao(solicitacao, escopo.UsuarioId, DateTime.UtcNow);
+        });
 
         return Obter(solicitacao.Id, escopo);
     }

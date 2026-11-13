@@ -49,6 +49,8 @@ export interface SolicitacaoDetalhe extends SolicitacaoResumo {
     historico: HistoricoSolicitacao[];
     alteracoes: AlteracaoDeDados[];
     aviso?: string | null;
+    /** Solicitante informou reação anafilática para a restrição. */
+    anafilaxia: boolean;
 }
 
 export interface AlteracaoDeDados {
@@ -66,6 +68,8 @@ export interface CriarSolicitacaoEntrada {
     ingrediente?: string;
     justificativa?: string;
     alteracoes?: { campo: string; valorSolicitado: string }[];
+    /** InclusaoAlergia/AlteracaoRestricao: reação anafilática informada pelo solicitante. */
+    anafilaxia?: boolean;
 }
 
 export interface FiltrosSolicitacao {
@@ -166,3 +170,6 @@ export const recusarSolicitacao = (id: number, resposta: string) =>
 export const concluirSolicitacao = (id: number) => decidir(id, "concluir");
 
 export const cancelarSolicitacao = (id: number) => decidir(id, "cancelar");
+
+/** Confirma a anafilaxia do aluno na análise de uma inclusão de alergia (Spec 017/023). */
+export const marcarAnafilaxia = (id: number) => decidir(id, "anafilaxia");

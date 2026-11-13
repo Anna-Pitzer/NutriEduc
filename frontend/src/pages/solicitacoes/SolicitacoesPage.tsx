@@ -11,6 +11,7 @@ import {
     concluirSolicitacao,
     criarSolicitacao,
     listarSolicitacoes,
+    marcarAnafilaxia,
     obterSolicitacao,
     recusarSolicitacao,
     type SolicitacaoDetalhe,
@@ -18,33 +19,13 @@ import {
     type StatusSolicitacao,
     type TipoSolicitacao,
 } from "../../services/SolicitacaoApi";
-
-const rotuloTipo: Record<TipoSolicitacao, string> = {
-    MudancaCardapio: "Mudança de cardápio",
-    Ingrediente: "Ingrediente",
-    FaltaIngrediente: "Falta de ingrediente",
-    InclusaoAlergia: "Inclusão de alergia",
-    AlteracaoRestricao: "Alteração de restrição",
-    DadosCadastrais: "Dados cadastrais",
-};
-
-const rotuloStatus: Record<StatusSolicitacao, string> = {
-    Aberta: "Aberta",
-    EmAnalise: "Em análise",
-    Aprovada: "Aprovada",
-    Recusada: "Recusada",
-    Concluida: "Concluída",
-    Cancelada: "Cancelada",
-};
-
-const corStatus: Record<StatusSolicitacao, string> = {
-    Aberta: "bg-sky-50 text-sky-700",
-    EmAnalise: "bg-amber-50 text-amber-700",
-    Aprovada: "bg-emerald-50 text-emerald-700",
-    Recusada: "bg-red-50 text-red-700",
-    Concluida: "bg-emerald-100 text-emerald-800",
-    Cancelada: "bg-slate-100 text-slate-600",
-};
+import {
+    corStatusSolicitacao as corStatus,
+    formatarDataSolicitacao as formatarData,
+    ListaSolicitacoes,
+    rotuloStatusSolicitacao as rotuloStatus,
+    rotuloTipoSolicitacao as rotuloTipo,
+} from "../../components/ListaSolicitacoes";
 
 const statusFinal = new Set<StatusSolicitacao>(["Recusada", "Concluida", "Cancelada"]);
 
@@ -82,10 +63,6 @@ function ehDecisor(papel: string | null, tipo: TipoSolicitacao): boolean {
     }
 
     return papel === "Nutricionista";
-}
-
-function formatarData(valor: string): string {
-    return new Date(valor).toLocaleString("pt-BR");
 }
 
 export function SolicitacoesPage() {
@@ -307,6 +284,13 @@ export function SolicitacoesPage() {
         selecionada.solicitanteId === userLogin?.id;
 
     const podeDecidir = selecionada !== null && ehDecisor(papel, selecionada.tipo);
+
+    // Anafilaxia é marcada pelo ADM da unidade (dono da decisão) ou pelo Nutricionista
+    // da unidade (responsável clínico), enquanto a inclusão de alergia está em aberto.
+    const podeMarcarAnafilaxia =
+        selecionada !== null &&
+        selecionada.tipo === "InclusaoAlergia" &&
+        (papel === "AdminSecretaria" || papel === "Nutricionista");
 
     return (
         <section className="p-6">
@@ -542,41 +526,12 @@ export function SolicitacoesPage() {
                             </div>
                         </div>
 
-                        {carregando ? (
-                            <p className="mt-4 text-sm text-slate-500">Carregando...</p>
-                        ) : solicitacoes.length === 0 ? (
-                            <p className="mt-4 text-sm text-slate-500">Nenhuma solicitação encontrada.</p>
-                        ) : (
-                            <ul className="mt-4 divide-y divide-slate-100">
-                                {solicitacoes.map((item) => (
-                                    <li key={item.id}>
-                                        <button
-                                            type="button"
-                                            onClick={() => void selecionar(item.id)}
-                                            className={`flex w-full flex-wrap items-center justify-between gap-2 px-2 py-3 text-left hover:bg-slate-50 ${
-                                                selecionada?.id === item.id ? "rounded-xl bg-slate-100" : ""
-                                            }`}
-                                        >
-                                            <span className="min-w-0">
-                                                <span className="block text-sm font-semibold text-slate-800">
-                                                    #{item.id} · {rotuloTipo[item.tipo]}
-                                                </span>
-                                                <span className="block truncate text-sm text-slate-600">
-                                                    {item.descricao}
-                                                </span>
-                                                <span className="block text-xs text-slate-400">
-                                                    {item.solicitante} · {formatarData(item.criadoEm)}
-                                                </span>
-                                            </span>
-
-                                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${corStatus[item.status]}`}>
-                                                {rotuloStatus[item.status]}
-                                            </span>
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+                        <ListaSolicitacoes
+                            itens={solicitacoes}
+                            onSelecionar={(id) => void selecionar(id)}
+                            carregando={carregando}
+                            selecionadaId={selecionada?.id ?? null}
+                        />
                     </article>
                 </div>
 
@@ -644,6 +599,15 @@ export function SolicitacoesPage() {
                                     </div>
                                 )}
 
+                                {selecionada.anafilaxia && (
+                                    <div>
+                                        <dt className="font-medium text-slate-500">Anafilaxia</dt>
+                                        <dd className="font-semibold text-amber-800">
+                                            Informada pelo responsável no pedido
+                                        </dd>
+                                    </div>
+                                )}
+
                                 {selecionada.ingrediente && (
                                     <div>
                                         <dt className="font-medium text-slate-500">Ingrediente</dt>
@@ -670,9 +634,9 @@ export function SolicitacoesPage() {
                                 </p>
                             )}
 
-                            {podeDecidir && !statusFinal.has(selecionada.status) && (
+                            {(podeDecidir || podeMarcarAnafilaxia) && !statusFinal.has(selecionada.status) && (
                                 <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
-                                    {selecionada.status === "EmAnalise" && (
+                                    {podeDecidir && selecionada.status === "EmAnalise" && (
                                         <label className="block text-sm font-medium text-slate-700">
                                             Resposta da decisão
                                             <textarea
@@ -685,7 +649,29 @@ export function SolicitacoesPage() {
                                     )}
 
                                     <div className="flex flex-wrap gap-2">
-                                        {selecionada.status === "Aberta" && (
+                                        {podeMarcarAnafilaxia && (
+                                            <button
+                                                type="button"
+                                                disabled={salvando}
+                                                onClick={() => {
+                                                    const confirmado = window.confirm(
+                                                        "Confirmar que o aluno tem anafilaxia? A marcação fica registrada no histórico do aluno.",
+                                                    );
+
+                                                    if (!confirmado) return;
+
+                                                    void executar(
+                                                        () => marcarAnafilaxia(selecionada.id),
+                                                        "Anafilaxia registrada para o aluno.",
+                                                    );
+                                                }}
+                                                className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50"
+                                            >
+                                                Marcar anafilaxia
+                                            </button>
+                                        )}
+
+                                        {podeDecidir && selecionada.status === "Aberta" && (
                                             <button
                                                 type="button"
                                                 disabled={salvando}
@@ -699,7 +685,7 @@ export function SolicitacoesPage() {
                                             </button>
                                         )}
 
-                                        {selecionada.status === "EmAnalise" && (
+                                        {podeDecidir && selecionada.status === "EmAnalise" && (
                                             <>
                                                 <button
                                                     type="button"
@@ -727,7 +713,7 @@ export function SolicitacoesPage() {
                                             </>
                                         )}
 
-                                        {selecionada.status === "Aprovada" && (
+                                        {podeDecidir && selecionada.status === "Aprovada" && (
                                             <button
                                                 type="button"
                                                 disabled={salvando}

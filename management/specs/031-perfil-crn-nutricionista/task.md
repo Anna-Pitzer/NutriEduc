@@ -57,8 +57,8 @@ references: V20, ADR-004, PEND-038
 
 - [x] T11: atualizar `README.md` e a seção da spec em `arch.md`.
   - Validação: `DocumentationTests.Readme_ListaTodosOsEndpoints` verde.
-- [ ] T12: executar os gates completos.
-  - Validação: `dotnet build`, `dotnet test`, `npm run build`, `npm run lint`.
+- [x] T12: executar os gates completos.
+  - Validação: `dotnet build`, `dotnet test` (809/809), `npm run build` e `npm run lint` (0 erros).
 
 ## Definição de pronto
 

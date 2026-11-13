@@ -22,7 +22,7 @@ public class NutricionistaController : RespostaController
         _escopo = escopo;
     }
 
-    [Authorize(Policy = "Nutricionista")]
+    [Authorize(Policy = "SelecaoDeNutricionista")]
     [HttpGet]
     public IActionResult Listar()
     {

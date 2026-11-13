@@ -147,3 +147,197 @@ conversation history alone is not durable memory.
   checagem — não há garantia de unicidade em corrida real.
 - **Não promovido** (`created` no roadmap); status formal é do motor SDD (`/spec-test`), não
   da edição manual. Validação manual no navegador é de outro integrante.
+
+## Spec 034 — vínculo responsável↔aluno (2026-11-12)
+
+- **Implementado:** vínculo obrigatório na criação administrativa e na definição de papel
+  (`alunosIds` em `CriarUsuarioDTO`/`AtualizarUsuarioDTO`); usuário + vínculos + trilha na mesma
+  transação; busca de aluno por `busca`/`escolaId`/`serie` no SQL; `SeletorDeAlunos` na aprovação e
+  na tela de usuários; painel de responsáveis na página de alunos (listar/vincular/desvincular);
+  `VinculoService` recusa usuário desativado.
+- **Correção de acesso:** `HomePais` passou a usar `GET /api/unidades/ativas` (anônima). O
+  `CardapiosPublicados` chamava `GET /api/unidades`, que exclui `Responsavel` e devolvia `403`,
+  deixando o select de unidade vazio.
+- **Bug corrigido de passagem:** `UsuarioAdminApi.exigeEscola` incluía `Responsavel`, então criar
+  ou definir esse papel pela tela de usuários enviava `escolaId` e o domínio recusava com
+  "O responsável não pertence a uma escola".
+- **Decisão:** contato manual do aluno (`nomeResponsavel`/`telefoneResponsavel`) e conta vinculada
+  são dados distintos; a página exibe os dois sem sincronização.
+- **Testes:** novo `VinculoResponsavelApiTests` (5 casos). Ajustados `PapeisApiTests`,
+  `MatrizPermissoesTests`, `AuditoriaAcaoTests` e `UsuarioServiceTests` para a nova invariante.
+  `dotnet test` **792/792**; `npm run build` OK; `npm run lint` 0 erros (6 avisos pré-existentes).
+- **Nota de execução:** `backend.exe` estava em uso, então os gates rodaram com
+  `-p:OutDir=agentbuild-test/x/y/` (o `DocumentationTests` resolve o README por profundidade de
+  diretório). Nada foi commitado nem teve status promovido manualmente.
+- **Pendente:** validação manual no navegador; PEND-025 (telas de restrições/histórico para
+  responsável) e PEND-028 (promoção pelo motor) permanecem abertos.
+
+## Estado consolidado da documentação (2026-11-12)
+
+- **Código:** 20 controllers (19 de recurso + base), 26 serviços de aplicação, 27 migrations,
+  `dotnet test` **792/792**, `npm run build` OK e `npm run lint` 0 erros (6 avisos).
+- **Roadmap atualizado por evidência:** `audited` 001–009, 013–015, 020–022, 027, 028, 030;
+  `implemented` 010–012, 016–018, 023, 024, 031–034; `in-progress` 029; `created` 019;
+  `planned` 025, 026. A promoção formal continua sendo do `/spec-test`; o PEND-028 bloqueia.
+- **Documentos sincronizados:** `README.md` (estado, páginas, testes, pendências), `arch.md`
+  (§1 componentes, §9 dívida, §10 estado verificado, §11 mapa 009–034 e seção da Spec 034),
+  `vision.md` (estado consolidado V1–V23), `pending-items.md` (PEND-010/011/038/040/041
+  encerrados; PEND-039/044/042/027 atualizados; PEND-047–049 abertos) e `lessons.md` (L14/L15).
+- **Lacunas vivas:** 019 (relatórios/exportação) sem implementação; 029 sem frontend de
+  montagem/detalhe (PEND-042); diagnóstico global de contas sem papel desabilitado (PEND-046);
+  matriz × `CardapioService.PodeLer` divergem para `Responsavel` (PEND-048); frontend sem testes
+  (PEND-049); validação manual da 034 pendente (PEND-047).
+
+## Spec 035 — portal dos pais (somente especificação)
+
+- **Criada em 2026-11-12** em `management/specs/035-portal-pais-responsaveis/`
+  (`requirements.md`, `design.md`, `task.md`). Nenhum arquivo de código foi criado ou alterado.
+- **Escopo:** painel dos filhos, cardápio servido por aluno/dia/refeição, leitura e relato de
+  ocorrências, solicitação de inclusão de alergia com acompanhamento e feedback com aluno
+  opcional.
+- **Reuso:** `GET /api/aluno`, `GET /api/aluno/{id}/cardapio`, ocorrências, solicitações,
+  catálogo de restrições, feedback e notificações. Nenhum endpoint novo de agregação; o painel
+  da família continua na Spec 025.
+- **Única mudança de modelo prevista:** persistir `AlunoId` + snapshot `AlunoNome` em `Feedback`
+  (FK `SetNull`), com migration nova.
+- **Decisões em aberto:** catálogo vs texto livre na alergia (DA1), ordem em relação à 025 (DA2)
+  e confirmação do snapshot do aluno no feedback (DA3).
+- **Status:** `verified` no roadmap (2026-11-12); implementação não iniciada.
+
+## Sistema de notificações — correção e cobertura (2026-11-13)
+
+- **Lacuna principal corrigida:** o cadastro público criava `SolicitacaoDeAcesso` sem emitir
+  notificação. `RegistrarAcessoService` agora avisa, na mesma transação, todos os
+  `AdminSecretaria` ativos da unidade do pedido (`NotificacaoDeAcessoService.NovaSolicitacao`).
+  A criação manual do ADM (`AprovarAcessoService.Criar`) segue a mesma regra e não notifica o
+  próprio autor.
+- **Eventos de criação dos demais módulos:** `SolicitacaoService.Criar`/`CriarDadosCadastrais`
+  notifica o dono da decisão por tipo (`Nutricionista` para cardápio/ingrediente,
+  `AdminSecretaria` para alergia/restrição/dado cadastral), exceto o solicitante;
+  `OcorrenciaService.Criar` notifica `Nutricionista` da unidade e `AdminEscola` da escola,
+  exceto o autor.
+- **Novos tipos:** `TipoNotificacao.SolicitacaoAcesso`, `NovaSolicitacao` e
+  `OcorrenciaRegistrada`. Enum persistido como inteiro; não houve migration.
+- **Anti-duplicidade:** `INotificacaoRepository.ExistePorReferencia` +
+  `NotificacaoService.NotificarUmaVez`/`NotificarVariosUmaVez` (tipo + referência). Usado
+  somente em eventos de criação; transições de status continuam emitindo por mudança.
+- **Segurança mantida:** emissão e leitura continuam por destinatário; nenhuma rota nova.
+- **Frontend:** o sino usa `total` de `GET /api/notificacoes?naoLidas=true&tamanho=1` como
+  contador real (não mais o filtro da lista carregada), exibe data/hora, diferencia lida/não
+  lida, mantém a navegação mesmo se a marcação de leitura falhar e abre a solicitação de
+  acesso via `/secretaria/solicitacoes-acesso?abrir=<id>`.
+- **Evidência:** `dotnet test` **819/819** (10 novos: 8 de integração em
+  `NotificacaoEventosApiTests`, 2 de unidade em `NotificacaoServiceTests`); `npm run build` OK;
+  `npm run lint` 0 erros (21 avisos pré-existentes fora dos arquivos alterados). Gates rodados
+  com `-p:OutDir=agentbuild-test/x/y/` porque `backend.exe` estava em uso.
+- **Limitação conhecida:** conta recusada continua sem papel e não autentica (decisão da Spec
+  033), então o solicitante não vê a notificação de recusa até uma futura aprovação; a
+  notificação existe e fica persistida. Nenhum status de spec foi promovido manualmente.
+- **Causa do sintoma "não aparece notificação" (2026-11-13):** o processo em `:5001` era o
+  `backend.exe` de 2026-11-12, anterior às correções; a base (`backend/database.db`) comprovava
+  o comportamento antigo (solicitação aprovada sem notificação para o ADM). Processo encerrado,
+  rebuild feito e backend reiniciado; um cadastro real gerou a notificação `SolicitacaoAcesso`
+  para o `AdminSecretaria` da unidade. O sino também passou a atualizar a cada 30 s e no foco
+  da janela, sem F5.
+
+## Cardápio dos pais — geral e adaptado (2026-11-13)
+
+- **Antes:** `GET /api/aluno/{id}/cardapio` devolvia só a versão servida (geral sem restrição,
+  adaptada com restrição). Com restrição e sem adaptada publicada, o responsável ficava sem
+  qualquer cardápio; não havia como ver as duas versões.
+- **Agora:** o mesmo endpoint devolve `cardapioGeral` (geral publicado da unidade na data) e
+  `cardapioAdaptado` (adaptada publicada da escola + conjunto exato). `cardapio` continua sendo
+  a versão servida e `requerAdaptacao`/`alerta` sinalizam a ausência da adaptada. O geral nunca
+  é promovido a versão servida quando o aluno tem restrição.
+- **Tela:** `CardapioDoAluno` renderiza os dois cartões ("Cardápio geral" e "Cardápio adaptado
+  de <aluno>"), mantém o aviso quando a adaptada falta e filtra refeições por nome (ids diferem
+  entre versões). O responsável só alcança os próprios filhos.
+- **Evidência:** `dotnet test` **821/821** (2 novos em `CardapioPaisApiTests`: geral + adaptado
+  na mesma consulta, incluindo o estado "só geral publicado", e 403 para aluno sem vínculo);
+  `npm run build` OK; `npm run lint` 0 erros.
+- **Fora de escopo:** PEND-048 (leitura direta de `/api/cardapios` pelo responsável) continua
+  aberto; a página dos pais não depende dessa rota.
+
+## Notificações roláveis e anafilaxia na análise (2026-11-13)
+
+- **Scroll do sino:** o `<header>` tinha `overflow-hidden` e cortava o painel na altura de
+  240 px. O clipping saiu do header; o painel agora é uma coluna com cabeçalho fixo e lista
+  `max-h-80 overflow-y-auto overscroll-contain`.
+- **Anafilaxia:** novo `POST /api/solicitacoes/{id}/anafilaxia` marca `Aluno.Anafilaxia` para
+  solicitações `InclusaoAlergia` em `Aberta`/`EmAnalise`, grava `HistoricoAluno` com origem
+  `Solicitacao:<id>` e é idempotente. Autorização é a mesma da decisão
+  (`AdminSecretaria` da unidade); tipo diferente devolve 400 e papel sem decisão, 403. A
+  decisão da solicitação não muda.
+- **Revisão (2026-11-13):** Nutricionista da unidade também marca anafilaxia. O botão não
+  aparecia para esse papel porque `podeDecidir` exigia `AdminSecretaria`; a tela passou a usar
+  `podeMarcarAnafilaxia` (ADM ou Nutricionista) e o bloco de ações renderiza para ambos.
+- **Revisão 2 (2026-11-13):** o botão também aparece na área dos pais (`/pais/solicitacoes`),
+  no detalhe do pedido de `InclusaoAlergia` em aberto/análise. O backend autoriza o
+  `Responsavel` solicitante ou vinculado ao aluno (`NegacaoDeVisaoDoResponsavel`) e mantém
+  403 para responsável de outra família.
+- **Tela:** em `/solicitacoes` e `/pais/solicitacoes`, o botão "Marcar anafilaxia" aparece no
+  detalhe de uma `InclusaoAlergia` enquanto ela está aberta/em análise, com confirmação.
+- **Evidência:** `dotnet test` **828/828** (5 novos em `SolicitacaoAnafilaxiaApiTests`);
+  `npm run build` OK; `npm run lint` 0 erros.
+
+## Auditoria da Spec 034 — vínculo responsável↔aluno (2026-11-13)
+
+- **Cobertura verificada:** busca `busca/serie` no SQL sem ampliar escopo (`FiltrosDeConsulta`
+  + `AlunoRepository`); criação/atualização de `Responsavel` com `alunosIds` validados antes de
+  mutar e vínculos+trilha na mesma transação; `VinculoService` recusa usuário inativo e
+  duplicado (409); rotas listar/vincular/desvincular; frontend com `SeletorDeAlunos`,
+  `VinculoApi` e painel de responsáveis.
+- **Correção 1 (vertical slice):** `VisualizarAlunos` mostrava Vincular/Desvincular também para
+  `AdminEscola`, mas a matriz 028 dá apenas `R` em `Recurso.Vinculo` para esse papel — o clique
+  resultava em 403. A flag passou a ser exclusiva de `AdminSecretaria` (RF9).
+- **Correção 2 (DRY):** o bloco "cria vínculo + `VinculoCriado`" estava duplicado em
+  `CriarUsuarioAdministrado` e `AtualizarUsuario`; extraído para `VincularAlunos`, agora
+  idempotente nos dois caminhos.
+- **Testes novos:** `VincularResponsavel_Duplicado_Retorna409` e
+  `VincularResponsavel_UsuarioDesativado_Retorna409SemGravar`. Suíte **826/826**.
+- **Observação (não bloqueante):** `RF10` cita `HomePais`, página que não existe mais (o portal
+  usa `CardapiosPais` orientado ao filho; a listagem anônima de unidades ficou em
+  `CardapiosPublicados`). Nenhuma tela `/pais` chama `GET /api/unidades`, então o 403 descrito
+  não ocorre. Documentos da spec não foram alterados (imutáveis a partir de `implemented`).
+- **Pendência humana:** T14 (validação manual no navegador) continua em `PEND-047`.
+
+## Auditoria da Spec 035 — portal dos pais (2026-11-13)
+
+- **Cobertura verificada:** `Feedback.AlunoId`/`AlunoNome` + DTOs + `FiltroFeedback` +
+  `FeedbackService` (vínculo 403) + `FeedbackController?alunoId` + índice/migration
+  `FeedbackAluno`; páginas `PainelPais`, `CardapiosPais`, `OcorrenciasPais`,
+  `NovaOcorrenciaPais`, `SolicitacoesPais`, `FeedbackPais`; componentes compartilhados;
+  `OcorrenciaApi` com `de/ate`; rotas sob `Responsavel`; cinco abas no `LayoutPais`.
+- **Correção (RF20):** `InclusaoAlergia` duplicada agora responde `409` com o id da aberta
+  (mesmo aluno + restrição, comparação case-insensitive), fechando o **PEND-051**. A tela de
+  pais já tinha o botão "Abrir pedido existente #id".
+- **Testes novos:** `Criar_InclusaoAlergiaDuplicada_Retorna409ComIdExistente` (cobre 409,
+  restrição diferente permitida e novo pedido após cancelamento). Suíte **829/829**.
+- **Desvios aceitos (não bloqueantes):**
+  - `FiltroFeedback` vive em `backend/Domain/FiltroFeedback.cs`, não em `EscopoUsuario.cs`
+    (design §Modify); o tipo e o contrato são os mesmos.
+  - O cardápio do filho passou a expor `cardapioGeral` e `cardapioAdaptado` (revisão do dono
+    em 2026-11-13); RF5/RF6 originais descreviam só a versão servida.
+- **Pendência humana:** T14 segue em `PEND-050` (validação manual no navegador).
+
+## Anafilaxia informada no pedido de alergia (2026-11-13)
+
+- **Pedido:** o responsável precisa informar, ao criar a solicitação, que a nova alergia é
+  anafilática (antes só existia o botão de marcar depois, no detalhe).
+- **Modelo:** `Solicitacao.Anafilaxia` (`bool`, default `false`), migration
+  `20261113142544_SolicitacaoAnafilaxia`; `CriarSolicitacaoDTO.Anafilaxia`; o valor só é
+  aceito em `InclusaoAlergia`/`AlteracaoRestricao`.
+- **Efeito:** na aprovação (`SolicitacaoService.Aprovar`), se `Anafilaxia` for `true`, o aluno é
+  marcado com `AlunoService.MarcarAnafilaxia` na mesma transação da restrição, com trilha
+  `Solicitacao:<id>`.
+- **Tela:** `FormularioSolicitacao` ganhou o checkbox “Esta alergia é anafilática” (área dos
+  pais); o detalhe exibe “Informada pelo responsável” nas telas dos pais e da análise.
+- **Evidência:** `dotnet test` **830/830** (`SolicitacaoComAnafilaxia_Aprovada_MarcaOAluno`);
+  `npm run build` OK; `npm run lint` 0 erros.
+
+
+
+
+
+
+

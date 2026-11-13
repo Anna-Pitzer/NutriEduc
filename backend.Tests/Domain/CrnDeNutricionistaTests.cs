@@ -64,4 +64,33 @@ public class CrnDeNutricionistaTests
 
         Assert.False(CrnDeNutricionista.EhValido("CRN-12-12345"));
     }
+
+    [Fact]
+    public void InterpretarRegioes_SemConfiguracao_UsaPadrao()
+    {
+        var regioes = CrnDeNutricionista.InterpretarRegioes(null);
+
+        Assert.Equal(11, regioes.Count);
+        Assert.Contains(1, regioes);
+        Assert.Contains(11, regioes);
+        Assert.DoesNotContain(12, regioes);
+    }
+
+    [Fact]
+    public void InterpretarRegioes_ComListaCustomizada_RespeitaLista()
+    {
+        var regioes = CrnDeNutricionista.InterpretarRegioes("3; 7,11");
+
+        Assert.Equal(3, regioes.Count);
+        Assert.Contains(3, regioes);
+        Assert.Contains(7, regioes);
+        Assert.Contains(11, regioes);
+    }
+
+    [Fact]
+    public void InterpretarRegioes_ComItemInvalido_Lanca()
+    {
+        Assert.Throws<InvalidOperationException>(
+            () => CrnDeNutricionista.InterpretarRegioes("1,abc,11"));
+    }
 }

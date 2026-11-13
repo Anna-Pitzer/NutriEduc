@@ -61,8 +61,30 @@ export async function atualizarAluno(id: number, dados: AlunoCadastro): Promise<
     return resposta.json();
 }
 
-export async function buscarAlunos(): Promise<AlunoResposta[]> {
-    const resposta = await fetch(`${ApiURL}/api/aluno`, {
+export interface FiltroAlunos {
+    /** Busca textual pelo nome (Spec 034). */
+    busca?: string;
+    escolaId?: number | "";
+    serie?: string;
+}
+
+export async function buscarAlunos(filtros: FiltroAlunos = {}): Promise<AlunoResposta[]> {
+    const parametros = new URLSearchParams();
+
+    if (filtros.busca?.trim()) {
+        parametros.set("busca", filtros.busca.trim());
+    }
+
+    if (filtros.escolaId !== undefined && filtros.escolaId !== "") {
+        parametros.set("escolaId", String(filtros.escolaId));
+    }
+
+    if (filtros.serie?.trim()) {
+        parametros.set("serie", filtros.serie.trim());
+    }
+
+    const consulta = parametros.toString();
+    const resposta = await fetch(`${ApiURL}/api/aluno${consulta ? `?${consulta}` : ""}`, {
         credentials: "include",
     });
 

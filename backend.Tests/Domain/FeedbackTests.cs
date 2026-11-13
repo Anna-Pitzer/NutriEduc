@@ -22,6 +22,46 @@ public class FeedbackTests
         int? escolaId = 20) =>
         new(assunto, mensagem, autorId, autorNome, papel, unidadeId, escolaId, Utc);
 
+    private static Feedback CriarComAluno(int? alunoId, string? alunoNome) =>
+        new(
+            "Solicito revisão do cardápio",
+            "A refeição de terça não atendeu as crianças.",
+            3,
+            "Paulo",
+            PapelUsuario.Merendeira,
+            10,
+            20,
+            alunoId,
+            alunoNome,
+            Utc);
+
+    [Fact]
+    public void Criacao_ComAluno_PersisteAssociacao()
+    {
+        var feedback = CriarComAluno(7, "Ana");
+
+        Assert.Equal(7, feedback.AlunoId);
+        Assert.Equal("Ana", feedback.AlunoNome);
+    }
+
+    [Fact]
+    public void AlunoSemNome_Lanca()
+    {
+        Assert.Throws<ArgumentException>(() => CriarComAluno(7, null));
+    }
+
+    [Fact]
+    public void NomeSemAluno_Lanca()
+    {
+        Assert.Throws<ArgumentException>(() => CriarComAluno(null, "Ana"));
+    }
+
+    [Fact]
+    public void AlunoIdNaoPositivo_Lanca()
+    {
+        Assert.Throws<ArgumentException>(() => CriarComAluno(0, "Ana"));
+    }
+
     [Fact]
     public void Criacao_IniciaAberta()
     {

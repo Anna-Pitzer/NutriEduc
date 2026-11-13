@@ -42,6 +42,44 @@ public sealed class NotificacaoService
             utc));
 
     /// <summary>
+    /// Emite uma notificação de evento único: se o destinatário já recebeu o mesmo evento
+    /// (mesmo tipo e mesma referência), nada é criado. Usado pelos eventos de criação
+    /// (nova solicitação de acesso, nova solicitação, nova ocorrência) para impedir duplicidade.
+    /// </summary>
+    public void NotificarUmaVez(
+        int destinatarioId,
+        TipoNotificacao tipo,
+        string titulo,
+        string mensagem,
+        string referenciaTipo,
+        int referenciaId,
+        DateTime utc)
+    {
+        if (_notificacoes.ExistePorReferencia(destinatarioId, tipo, referenciaTipo, referenciaId))
+        {
+            return;
+        }
+
+        Notificar(destinatarioId, tipo, titulo, mensagem, referenciaTipo, referenciaId, utc);
+    }
+
+    /// <summary>Versão em lote de <see cref="NotificarUmaVez"/>, sem repetir destinatário.</summary>
+    public void NotificarVariosUmaVez(
+        IEnumerable<int> destinatarios,
+        TipoNotificacao tipo,
+        string titulo,
+        string mensagem,
+        string referenciaTipo,
+        int referenciaId,
+        DateTime utc)
+    {
+        foreach (var destinatario in destinatarios.Distinct())
+        {
+            NotificarUmaVez(destinatario, tipo, titulo, mensagem, referenciaTipo, referenciaId, utc);
+        }
+    }
+
+    /// <summary>
     /// Emissão em lote para vários destinatários, sem notificar a mesma pessoa duas vezes
     /// (RF9). Usada pelas specs de origem (015, 016, 010) após o chamador resolver os ids.
     /// </summary>

@@ -59,6 +59,13 @@ public class Solicitacao
 
     public string? RestricaoNome { get; private set; }
 
+    /// <summary>
+    /// Indica que o solicitante informou reação anafilática para a restrição pedida
+    /// (Spec 035, revisão). Só tem efeito em <c>InclusaoAlergia</c>/<c>AlteracaoRestricao</c>
+    /// e é aplicado ao aluno na aprovação.
+    /// </summary>
+    public bool Anafilaxia { get; private set; }
+
     public string? Ingrediente { get; private set; }
 
     public string Descricao { get; private set; } = string.Empty;
@@ -99,7 +106,8 @@ public class Solicitacao
         string? ingrediente,
         string? alunoNome,
         string? cardapioNome,
-        DateTime utc)
+        DateTime utc,
+        bool anafilaxia = false)
     {
         if (!Enum.IsDefined(tipo))
             throw new ArgumentException("Tipo de solicitação inválido.");
@@ -134,6 +142,7 @@ public class Solicitacao
                     throw new ArgumentException("A solicitação de restrição exige o aluno.");
                 AlunoId = alunoId;
                 RestricaoNome = ValidacaoDeCampo.Texto(restricaoNome, "restrição", 2, 60);
+                Anafilaxia = anafilaxia;
                 break;
 
             case TipoSolicitacao.Ingrediente:

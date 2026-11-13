@@ -388,6 +388,13 @@ namespace backend.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("AlunoId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AlunoNome")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Assunto")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -433,6 +440,8 @@ namespace backend.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AlunoId");
 
                     b.HasIndex("AutorId", "CriadoEmUtc");
 
@@ -860,6 +869,9 @@ namespace backend.Migrations
                     b.Property<string>("AlunoNome")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("Anafilaxia")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("AtualizadoEmUtc")
                         .HasColumnType("TEXT");
@@ -1352,6 +1364,11 @@ namespace backend.Migrations
 
             modelBuilder.Entity("Ntc.Domain.Entity.Feedback", b =>
                 {
+                    b.HasOne("Ntc.Domain.Entity.Aluno", null)
+                        .WithMany()
+                        .HasForeignKey("AlunoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Ntc.Domain.Entity.Escola", null)
                         .WithMany()
                         .HasForeignKey("EscolaId")

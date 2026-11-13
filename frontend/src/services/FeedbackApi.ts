@@ -19,33 +19,49 @@ export interface FeedbackResumo {
   papelAutor: PapelAutor;
   unidadeId: number;
   escolaId: number | null;
+  /** Aluno associado (Spec 035); nulo quando o feedback não referencia aluno. */
+  alunoId: number | null;
+  aluno: string | null;
   status: StatusFeedback;
   criadoEm: string;
+  /** Resposta da nutrição/escola (Spec 018) exposta também na listagem (Spec 035, RF23). */
+  resposta: string | null;
+  respondidoPor: string | null;
   podeResponder: boolean;
   podeEncerrar: boolean;
 }
 
 export interface FeedbackDetalhe extends FeedbackResumo {
-  resposta: string | null;
-  respondidoPor: string | null;
   atualizadoEm: string;
 }
 
-interface PaginaFeedbacks {
+export interface PaginaFeedbacks {
   pagina: number;
   tamanho: number;
   total: number;
   itens: FeedbackResumo[];
 }
 
+export interface FiltroFeedback {
+  status?: StatusFeedback | "";
+  alunoId?: number;
+  pagina?: number;
+  tamanho?: number;
+}
+
 async function falhar(resposta: Response, padrao: string): Promise<never> {
   throw new ErroRequisicao(await extrairErro(resposta, padrao), resposta.status);
 }
 
-export async function listarFeedbacks(status?: StatusFeedback): Promise<PaginaFeedbacks> {
+export async function listarFeedbacks(
+  filtro: FiltroFeedback = {},
+): Promise<PaginaFeedbacks> {
   const parametros = new URLSearchParams();
-  if (status) parametros.set("status", status);
-  parametros.set("tamanho", "100");
+
+  if (filtro.status) parametros.set("status", filtro.status);
+  if (filtro.alunoId) parametros.set("alunoId", String(filtro.alunoId));
+  parametros.set("pagina", String(filtro.pagina ?? 1));
+  parametros.set("tamanho", String(filtro.tamanho ?? 20));
 
   const resposta = await fetch(`${ApiURL}/api/feedbacks?${parametros.toString()}`, {
     credentials: "include",

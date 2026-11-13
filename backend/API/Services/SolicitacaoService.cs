@@ -137,6 +137,18 @@ public sealed class SolicitacaoService
                     return Resultado<SolicitacaoDTO>.NaoEncontrado("Aluno não encontrado.");
                 }
 
+                // RF20: o mesmo aluno não pode ter dois pedidos abertos para a mesma restrição.
+                var restricaoSolicitada = (dto.RestricaoNome ?? string.Empty).Trim();
+
+                if (restricaoSolicitada.Length > 0 &&
+                    _solicitacoes.IdDaAbertaParaRestricao(aluno.Id, restricaoSolicitada)
+                        is { } idDaAberta)
+                {
+                    return Resultado<SolicitacaoDTO>.Conflito(
+                        $"Já existe solicitação aberta para a restrição " +
+                        $"'{restricaoSolicitada}': #{idDaAberta}.");
+                }
+
                 unidadeId = contexto.Value.UnidadeId;
                 escolaId = aluno.EscolaId;
                 alunoNome = aluno.Nome;
@@ -164,14 +176,15 @@ public sealed class SolicitacaoService
                 dto.Ingrediente,
                 alunoNome,
                 cardapioNome,
-                DateTime.UtcNow);
+                DateTime.UtcNow,
+                dto.Anafilaxia);
         }
         catch (ArgumentException excecao)
         {
             return Resultado<SolicitacaoDTO>.Invalido(excecao.Message);
         }
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _solicitacoes.Add(solicitacao));
+        RegistrarSolicitacao(solicitacao);
 
         return Carregar(solicitacao.Id, escopo);
     }
@@ -312,6 +325,78 @@ public sealed class SolicitacaoService
         Transicionar(id, escopo, solicitacao =>
             solicitacao.IniciarAnalise(NomeDoAutor(escopo), DateTime.UtcNow));
 
+    /// <summary>
+    /// Confirma a anafilaxia do aluno a partir de uma solicitação de inclusão de alergia
+    /// (Spec 017/023), enquanto ela ainda está aberta ou em análise. Pode ser usada pelo
+    /// ADM da unidade (dono da decisão), pelo Nutricionista da unidade (responsável
+    /// clínico) e pelo Responsável do próprio pedido/família. O evento entra na trilha do
+    /// aluno com a origem <c>Solicitacao:&lt;id&gt;</c>; a decisão da solicitação não muda.
+    /// </summary>
+    public Resultado<SolicitacaoDTO> MarcarAnafilaxia(int id, EscopoUsuario escopo)
+    {
+        var solicitacao = _solicitacoes.ObterComHistorico(id);
+
+        if (solicitacao is null)
+        {
+            return Resultado<SolicitacaoDTO>.NaoEncontrado("Solicitação não encontrada.");
+        }
+
+        if (solicitacao.Tipo != TipoSolicitacao.InclusaoAlergia)
+        {
+            return Resultado<SolicitacaoDTO>.Invalido(
+                "Somente solicitações de inclusão de alergia podem marcar anafilaxia.");
+        }
+
+        if (escopo.Papel == PapelUsuario.Responsavel)
+        {
+            // O responsável só marca no pedido da própria família (solicitante ou vínculo).
+            if (NegacaoDeVisaoDoResponsavel(solicitacao, escopo) is not null)
+            {
+                return Resultado<SolicitacaoDTO>.Proibido();
+            }
+        }
+        else if (escopo.Papel is PapelUsuario.AdminSecretaria or PapelUsuario.Nutricionista)
+        {
+            if (solicitacao.UnidadeId != escopo.UnidadeId)
+            {
+                return Resultado<SolicitacaoDTO>.NaoEncontrado("Solicitação não encontrada.");
+            }
+        }
+        else
+        {
+            return Resultado<SolicitacaoDTO>.Proibido();
+        }
+
+        if (solicitacao.Status is not (StatusSolicitacao.Aberta or StatusSolicitacao.EmAnalise))
+        {
+            return Resultado<SolicitacaoDTO>.Conflito("A solicitação já foi decidida.");
+        }
+
+        var aluno = solicitacao.AlunoId is { } alunoId
+            ? _alunos.ObterPorId(alunoId)
+            : null;
+
+        if (aluno is null)
+        {
+            return Resultado<SolicitacaoDTO>.Invalido(
+                "Aluno da solicitação não encontrado.");
+        }
+
+        var aplicacao = _alunoService.MarcarAnafilaxia(
+            aluno,
+            NomeDoAutor(escopo),
+            $"Solicitacao:{solicitacao.Id}");
+
+        if (aplicacao.Status != ResultadoStatus.Ok)
+        {
+            return Resultado<SolicitacaoDTO>.Invalido(aplicacao.Erro!);
+        }
+
+        _unidadeDeTrabalho.ExecutarEmTransacao(() => _alunos.UpdateAluno(aluno));
+
+        return Carregar(id, escopo);
+    }
+
     public Resultado<SolicitacaoDTO> Aprovar(
         int id,
         DecidirSolicitacaoDTO dto,
@@ -361,6 +446,21 @@ public sealed class SolicitacaoService
             if (aplicacao.Status != ResultadoStatus.Ok)
             {
                 return Resultado<SolicitacaoDTO>.Invalido(aplicacao.Erro!);
+            }
+
+            // O solicitante informou anafilaxia: a marcação é aplicada ao aluno junto com a
+            // restrição, na mesma transação (Spec 035, revisão).
+            if (solicitacao.Anafilaxia)
+            {
+                var anafilaxia = _alunoService.MarcarAnafilaxia(
+                    aluno,
+                    autor,
+                    $"Solicitacao:{solicitacao.Id}");
+
+                if (anafilaxia.Status != ResultadoStatus.Ok)
+                {
+                    return Resultado<SolicitacaoDTO>.Invalido(anafilaxia.Erro!);
+                }
             }
         }
 
@@ -576,7 +676,7 @@ public sealed class SolicitacaoService
             return Resultado<SolicitacaoDTO>.Invalido(excecao.Message);
         }
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _solicitacoes.Add(solicitacao));
+        RegistrarSolicitacao(solicitacao);
 
         return Carregar(solicitacao.Id, escopo);
     }
@@ -867,11 +967,7 @@ public sealed class SolicitacaoService
         Solicitacao solicitacao,
         EscopoUsuario escopo)
     {
-        var donoDoTipo = solicitacao.Tipo is TipoSolicitacao.MudancaCardapio
-            or TipoSolicitacao.Ingrediente
-            or TipoSolicitacao.FaltaIngrediente
-            ? PapelUsuario.Nutricionista
-            : PapelUsuario.AdminSecretaria;
+        var donoDoTipo = DonoDoTipo(solicitacao.Tipo);
 
         if (escopo.Papel != donoDoTipo)
         {
@@ -898,6 +994,54 @@ public sealed class SolicitacaoService
             solicitacao.Tipo,
             solicitacao.Status,
             DateTime.UtcNow);
+
+    /// <summary>
+    /// Grava a solicitação e, na mesma transação, avisa quem decide o tipo. O id é
+    /// persistido antes da emissão para que a notificação referencie a solicitação real.
+    /// </summary>
+    private void RegistrarSolicitacao(Solicitacao solicitacao) =>
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            _solicitacoes.Add(solicitacao);
+            _unidadeDeTrabalho.Salvar();
+
+            NotificarNovaSolicitacao(solicitacao);
+        });
+
+    /// <summary>
+    /// Notifica os responsáveis pela análise (Nutricionista para cardápio/ingrediente,
+    /// AdminSecretaria para alergia/restrição/dado cadastral) da unidade da solicitação.
+    /// O solicitante nunca recebe a notificação do próprio pedido.
+    /// </summary>
+    private void NotificarNovaSolicitacao(Solicitacao solicitacao)
+    {
+        var destinatarios = _usuarios
+            .Listar(new FiltroUsuarios(
+                DonoDoTipo(solicitacao.Tipo),
+                null,
+                solicitacao.UnidadeId,
+                true,
+                null))
+            .Select(usuario => usuario.Id)
+            .Where(id => id != solicitacao.SolicitanteId);
+
+        _notificacoes.NotificarVariosUmaVez(
+            destinatarios,
+            TipoNotificacao.NovaSolicitacao,
+            $"Nova solicitação #{solicitacao.Id}",
+            $"Solicitação de {solicitacao.Tipo} aguardando análise.",
+            "Solicitacao",
+            solicitacao.Id,
+            DateTime.UtcNow);
+    }
+
+    /// <summary>Papel que decide cada tipo de solicitação (RF5 da Spec 017).</summary>
+    private static PapelUsuario DonoDoTipo(TipoSolicitacao tipo) =>
+        tipo is TipoSolicitacao.MudancaCardapio
+            or TipoSolicitacao.Ingrediente
+            or TipoSolicitacao.FaltaIngrediente
+            ? PapelUsuario.Nutricionista
+            : PapelUsuario.AdminSecretaria;
 
     private static bool TentarLerTipo(string? texto, out TipoSolicitacao? tipo)
     {
@@ -981,6 +1125,7 @@ public sealed class SolicitacaoService
             Resposta = resumo.Resposta,
             RespondidoPor = resumo.RespondidoPor,
             CriadoEm = resumo.CriadoEm,
+            Anafilaxia = solicitacao.Anafilaxia,
             Alteracoes = solicitacao.Alteracoes
                 .Select(alteracao => new AlteracaoDeDadosDTO
                 {

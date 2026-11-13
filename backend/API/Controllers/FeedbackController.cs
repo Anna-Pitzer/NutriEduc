@@ -25,6 +25,7 @@ public class FeedbackController : RespostaController
     [HttpGet]
     public IActionResult Listar(
         [FromQuery] string? status,
+        [FromQuery] int? alunoId,
         [FromQuery] int? pagina,
         [FromQuery] int? tamanho)
     {
@@ -35,7 +36,7 @@ public class FeedbackController : RespostaController
             return SessaoInvalida();
         }
 
-        return Traduzir(_feedbacks.Listar(status, pagina, tamanho, escopo), Ok);
+        return Traduzir(_feedbacks.Listar(status, alunoId, pagina, tamanho, escopo), Ok);
     }
 
     [Authorize(Policy = "SessaoValida")]

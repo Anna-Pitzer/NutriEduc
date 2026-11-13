@@ -40,4 +40,10 @@ public class CriarUsuarioDTO
 
     public int? EscolaId { get; set; }
     public int? UnidadeId { get; set; }
+
+    /// <summary>
+    /// Alunos vinculados (Spec 034). Obrigatório quando o papel é <c>Responsavel</c>: a
+    /// conta só existe com vínculo, criado no mesmo ato pelo administrador.
+    /// </summary>
+    public List<int>? AlunosIds { get; set; }
 }

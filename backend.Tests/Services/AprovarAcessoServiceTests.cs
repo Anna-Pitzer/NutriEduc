@@ -28,10 +28,12 @@ public class AprovarAcessoServiceTests
         var trilha = new TrilhaAcaoRepositoryFake();
         var notificacoes = new NotificacaoRepositoryFake();
         var uow = new UnidadeDeTrabalhoFake();
+        var notificacaoService = new NotificacaoService(notificacoes, uow);
 
         var servico = new AprovarAcessoService(
             solicitacoes, usuarios, escolas, new AlunoRepositoryFake(), vinculos,
-            uow, trilha, new NotificacaoService(notificacoes, uow));
+            uow, trilha, notificacaoService,
+            new NotificacaoDeAcessoService(usuarios, notificacaoService));
 
         var unidade = escolas.AddUnidade(new UnidadeEscolar("Unidade A"));
         var adm = new Usuario(

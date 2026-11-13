@@ -7,6 +7,7 @@ import {
   listarFeedbacks,
   responderFeedback,
 } from "../../services/FeedbackApi";
+import { ListaFeedback } from "../../components/ListaFeedback";
 
 /**
  * Tela de feedback (Spec 018): merendeira/responsável/escola enviam, nutrição/escola
@@ -27,7 +28,7 @@ export function FeedbackPage() {
 
   async function carregar() {
     try {
-      const pagina = await listarFeedbacks();
+      const pagina = await listarFeedbacks({ tamanho: 100 });
       setItens(pagina.itens);
     } catch (excecao) {
       setErro(excecao instanceof Error ? excecao.message : "Erro ao carregar os feedbacks");
@@ -35,7 +36,7 @@ export function FeedbackPage() {
   }
 
   useEffect(() => {
-    listarFeedbacks()
+    listarFeedbacks({ tamanho: 100 })
       .then((pagina) => setItens(pagina.itens))
       .catch((excecao) =>
         setErro(excecao instanceof Error ? excecao.message : "Erro ao carregar os feedbacks"),
@@ -122,62 +123,41 @@ export function FeedbackPage() {
         </form>
       )}
 
-      <ul className="space-y-4">
-        {itens.map((feedback) => (
-          <li
-            key={feedback.id}
-            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-roxo">{feedback.assunto}</h3>
-              <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                {feedback.status}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-gray-700">{feedback.mensagem}</p>
-            <p className="mt-2 text-xs text-gray-500">
-              Por {feedback.autor} ({feedback.papelAutor})
-            </p>
-
-            {feedback.podeResponder && (
-              <div className="mt-3 space-y-2">
-                <textarea
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="Resposta (5–1000 caracteres)"
-                  value={respostas[feedback.id] ?? ""}
-                  onChange={(evento) =>
-                    setRespostas((atuais) => ({
-                      ...atuais,
-                      [feedback.id]: evento.target.value,
-                    }))
-                  }
-                />
-                <button
-                  type="button"
-                  className="rounded-lg bg-verdeClaro px-3 py-1 text-sm font-semibold text-white hover:opacity-90"
-                  onClick={() => void responder(feedback.id)}
-                >
-                  Responder
-                </button>
-              </div>
-            )}
-
-            {feedback.podeEncerrar && (
+      <ListaFeedback
+        itens={itens}
+        onEncerrar={(id) => void encerrar(id)}
+        renderAcoes={(feedback) =>
+          feedback.podeResponder ? (
+            <div className="mt-3 space-y-2">
+              <label
+                htmlFor={`resposta-${feedback.id}`}
+                className="text-sm font-medium text-gray-700"
+              >
+                Resposta
+              </label>
+              <textarea
+                id={`resposta-${feedback.id}`}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                placeholder="Resposta (5–1000 caracteres)"
+                value={respostas[feedback.id] ?? ""}
+                onChange={(evento) =>
+                  setRespostas((atuais) => ({
+                    ...atuais,
+                    [feedback.id]: evento.target.value,
+                  }))
+                }
+              />
               <button
                 type="button"
-                className="mt-3 rounded-lg border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                onClick={() => void encerrar(feedback.id)}
+                className="rounded-lg bg-verdeClaro px-3 py-1 text-sm font-semibold text-white hover:opacity-90"
+                onClick={() => void responder(feedback.id)}
               >
-                Encerrar
+                Responder
               </button>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {itens.length === 0 && !erro && (
-        <p className="text-center text-sm text-gray-500">Nenhum feedback.</p>
-      )}
+            </div>
+          ) : null
+        }
+      />
     </div>
   );
 }

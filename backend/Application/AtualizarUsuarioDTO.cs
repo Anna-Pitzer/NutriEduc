@@ -31,4 +31,10 @@ public class AtualizarUsuarioDTO
 
     public int? EscolaId { get; set; }
     public int? UnidadeId { get; set; }
+
+    /// <summary>
+    /// Alunos a vincular quando o papel passa a ser <c>Responsavel</c> (Spec 034). A conta
+    /// não pode terminar o pedido sem ao menos um vínculo.
+    /// </summary>
+    public List<int>? AlunosIds { get; set; }
 }

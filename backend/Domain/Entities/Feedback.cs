@@ -32,6 +32,10 @@ public class Feedback
 
     public int? EscolaId { get; private set; }
 
+    public int? AlunoId { get; private set; }
+
+    public string? AlunoNome { get; private set; }
+
     public StatusFeedback Status { get; private set; }
 
     public string? Resposta { get; private set; }
@@ -56,6 +60,31 @@ public class Feedback
         int unidadeId,
         int? escolaId,
         DateTime utc)
+        : this(
+            assunto,
+            mensagem,
+            autorId,
+            autorNome,
+            papel,
+            unidadeId,
+            escolaId,
+            null,
+            null,
+            utc)
+    {
+    }
+
+    public Feedback(
+        string? assunto,
+        string? mensagem,
+        int autorId,
+        string? autorNome,
+        PapelUsuario papel,
+        int unidadeId,
+        int? escolaId,
+        int? alunoId,
+        string? alunoNome,
+        DateTime utc)
     {
         if (autorId <= 0)
             throw new ArgumentException("O feedback exige um autor válido.");
@@ -73,6 +102,21 @@ public class Feedback
         PapelAutor = papel;
         UnidadeId = unidadeId;
         EscolaId = escolaId is > 0 ? escolaId : null;
+
+        if (alunoId is { } id)
+        {
+            if (id <= 0)
+                throw new ArgumentException("O feedback exige um aluno válido.");
+
+            AlunoId = id;
+            AlunoNome = ValidacaoDeCampo.Texto(alunoNome, "aluno", 2, 100);
+        }
+        else if (!string.IsNullOrWhiteSpace(alunoNome))
+        {
+            throw new ArgumentException(
+                "Feedback sem aluno não pode ter nome de aluno.");
+        }
+
         Status = StatusFeedback.Aberto;
         CriadoEmUtc = AtualizadoEmUtc = NormalizarUtc(utc);
     }

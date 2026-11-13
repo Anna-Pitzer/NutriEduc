@@ -19,7 +19,9 @@ public static class FiltrosDeConsulta
     public static FiltroAluno ParaAluno(
         EscopoUsuario escopo,
         int? escolaId = null,
-        int? unidadeId = null)
+        int? unidadeId = null,
+        string? busca = null,
+        string? serie = null)
     {
         var filtro = escopo.Papel switch
         {
@@ -35,7 +37,11 @@ public static class FiltrosDeConsulta
             _ => FiltroAluno.Nenhum
         };
 
-        return Restringir(filtro, escolaId, unidadeId);
+        return Restringir(filtro, escolaId, unidadeId) with
+        {
+            Busca = string.IsNullOrWhiteSpace(busca) ? null : busca.Trim(),
+            Serie = string.IsNullOrWhiteSpace(serie) ? null : serie.Trim()
+        };
     }
 
     /// <summary>

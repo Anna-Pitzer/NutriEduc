@@ -361,3 +361,70 @@ export async function listarAlteracoesCardapios(
 
     return resposta.json();
 }
+
+// ---------- Versão servida ao aluno (Spec 029/035) ----------
+
+export type TipoCardapio = "Geral" | "Adaptado";
+
+export interface RestricaoDaVersao {
+    id: number;
+    nome: string;
+    categoria: "Alergia" | "Restricao";
+}
+
+export interface SubstituicaoCardapio {
+    refeicaoOrdem: number;
+    refeicaoNome: string;
+    alimentoOriginalId: number;
+    alimentoOriginal: string;
+    alimentoSubstitutoId: number;
+    alimentoSubstituto: string;
+    gramas: number;
+    restricoesBloqueantes: string;
+}
+
+export interface CardapioDaVersao {
+    id: number;
+    nome: string;
+    tipo: TipoCardapio;
+    origemId: number | null;
+    escolaId: number | null;
+    refeicoes: RefeicaoCardapio[];
+    total: ValoresItem;
+    restricoes: RestricaoDaVersao[];
+    substituicoes: SubstituicaoCardapio[];
+}
+
+export interface CardapioServido {
+    alunoId: number;
+    alunoNome: string;
+    escolaId: number | null;
+    conjuntoRestricoesChave: string;
+    disponivel: boolean;
+    motivo: string | null;
+    alerta: boolean;
+    cardapio: CardapioDaVersao | null;
+
+    /** Cardápio geral publicado para a data (nulo quando não existe). */
+    cardapioGeral: CardapioDaVersao | null;
+
+    /** Versão adaptada publicada para o aluno (nulo quando não se aplica ou não existe). */
+    cardapioAdaptado: CardapioDaVersao | null;
+
+    /** True quando o aluno tem restrições e depende de uma versão adaptada. */
+    requerAdaptacao: boolean;
+}
+
+export async function buscarCardapioDoAluno(
+    alunoId: number,
+    data: string,
+): Promise<CardapioServido> {
+    const resposta = await fetch(
+        `${ApiURL}/api/aluno/${alunoId}/cardapio?data=${encodeURIComponent(data)}`,
+        { credentials: "include" },
+    );
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao carregar o cardápio do aluno");
+
+    return resposta.json();
+}

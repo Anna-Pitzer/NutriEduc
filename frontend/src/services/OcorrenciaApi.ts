@@ -50,6 +50,8 @@ export interface FiltrosOcorrencia {
     tipo?: TipoOcorrencia | "";
     status?: StatusOcorrencia | "";
     alunoId?: number;
+    de?: string;
+    ate?: string;
     pagina?: number;
     tamanho?: number;
 }
@@ -71,6 +73,8 @@ function comoParametros(filtros: FiltrosOcorrencia): string {
     if (filtros.tipo) parametros.set("tipo", filtros.tipo);
     if (filtros.status) parametros.set("status", filtros.status);
     if (filtros.alunoId) parametros.set("alunoId", String(filtros.alunoId));
+    if (filtros.de) parametros.set("de", filtros.de);
+    if (filtros.ate) parametros.set("ate", filtros.ate);
     parametros.set("pagina", String(filtros.pagina ?? 1));
     parametros.set("tamanho", String(filtros.tamanho ?? 100));
 

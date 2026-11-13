@@ -648,12 +648,18 @@ public class SolicitacaoServiceTests
         var notificacoes = cenario.Notificacoes.GetItens();
 
         Assert.NotEmpty(notificacoes);
+
+        // A criação também emite NovaSolicitacao; a asserção de conteúdo vale para todas.
         Assert.All(notificacoes, notificacao =>
         {
-            Assert.Equal(TipoNotificacao.SolicitacaoStatus, notificacao.Tipo);
             Assert.DoesNotContain("Ana Maria", notificacao.Mensagem);
             Assert.DoesNotContain("11988888888", notificacao.Mensagem);
         });
+
+        Assert.Contains(notificacoes, notificacao =>
+            notificacao.Tipo == TipoNotificacao.NovaSolicitacao);
+        Assert.Contains(notificacoes, notificacao =>
+            notificacao.Tipo == TipoNotificacao.SolicitacaoStatus);
     }
 
     [Fact]
@@ -672,14 +678,19 @@ public class SolicitacaoServiceTests
 
         var notificacoes = cenario.Notificacoes.GetItens();
 
-        Assert.Equal(4, notificacoes.Count);
+        // Uma emissão de criação (NovaSolicitacao) e quatro transições de status em pares
+        // solicitante/decisor, totalizando 5 notificações nesta solicitação.
+        Assert.Equal(5, notificacoes.Count);
         Assert.All(notificacoes, notificacao =>
         {
-            Assert.Equal(TipoNotificacao.SolicitacaoStatus, notificacao.Tipo);
             Assert.Equal("Solicitacao", notificacao.ReferenciaTipo);
             Assert.Equal(criada.Id, notificacao.ReferenciaId);
             Assert.DoesNotContain("Lactose", notificacao.Mensagem);
         });
+        Assert.Single(notificacoes, notificacao =>
+            notificacao.Tipo == TipoNotificacao.NovaSolicitacao);
+        Assert.Contains(notificacoes, notificacao =>
+            notificacao.Tipo == TipoNotificacao.SolicitacaoStatus);
         Assert.Contains(notificacoes, notificacao => notificacao.Mensagem.Contains("EmAnalise"));
         Assert.Contains(notificacoes, notificacao => notificacao.Mensagem.Contains("Concluida"));
     }

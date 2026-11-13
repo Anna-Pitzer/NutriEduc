@@ -8,7 +8,10 @@ export type TipoNotificacao =
   | "SolicitacaoStatus"
   | "OcorrenciaStatus"
   | "AlunoAtualizado"
-  | "FeedbackRespondido";
+  | "FeedbackRespondido"
+  | "SolicitacaoAcesso"
+  | "NovaSolicitacao"
+  | "OcorrenciaRegistrada";
 
 export interface Notificacao {
   id: number;
@@ -44,6 +47,21 @@ export async function listarNotificacoes(naoLidas?: boolean): Promise<PaginaNoti
   if (!resposta.ok) return falhar(resposta, "Erro ao carregar as notificações");
 
   return resposta.json();
+}
+
+/**
+ * Total de não lidas do usuário da sessão. Usa o `total` da paginação com `tamanho=1`
+ * para não depender de quantas notificações a lista carregada contém.
+ */
+export async function contarNaoLidas(): Promise<number> {
+  const resposta = await fetch(`${ApiURL}/api/notificacoes?naoLidas=true&tamanho=1`, {
+    credentials: "include",
+  });
+
+  if (!resposta.ok) return falhar(resposta, "Erro ao contar as notificações não lidas");
+
+  const pagina: PaginaNotificacoes = await resposta.json();
+  return pagina.total;
 }
 
 export async function marcarLida(id: number): Promise<Notificacao> {

@@ -521,3 +521,25 @@ snapshot de autor (ADR-009).
 - Negativo: editar o geral torna as versões adaptadas `Desatualizado`; republicar exige
   readaptar.
 
+## ADR-023: Anafilaxia informada na solicitação e aplicada na aprovação
+
+**Status:** aceito (2026-11-13) por decisão do dono do produto
+
+**Contexto:** o cadastro do aluno já tem `Anafilaxia`, mas o fluxo de inclusão de alergia
+(Spec 017/035) não permitia ao responsável informar que a reação é anafilática no momento do
+pedido. A única ação existente marcava o aluno diretamente, fora do ciclo de aprovação, e o ADM
+decidia sem essa informação.
+
+**Decisão:** `Solicitacao` ganha `Anafilaxia` (`bool`, default `false`), aceito apenas em
+`InclusaoAlergia`/`AlteracaoRestricao`. O valor é informativo até a aprovação; quando o ADM
+aprova, `Aluno.Anafilaxia` é marcado junto com a restrição, na mesma transação, com evento na
+trilha do aluno (`Solicitacao:<id>`). O endpoint avulso `POST /api/solicitacoes/{id}/anafilaxia`
+continua disponível para ADM, nutricionista da unidade e responsável do próprio pedido, enquanto
+a solicitação está em aberto ou em análise.
+
+**Consequências:**
+- Positivo: a informação nasce com o pedido e a aplicação fica no fluxo aprovado.
+- Positivo: idempotente e rastreável em `HistoricoAluno`.
+- Negativo: mais uma coluna em `Solicitacoes` e uma migration (`SolicitacaoAnafilaxia`).
+- Negativo: o dado é declaratório; a confirmação clínica continua sob responsabilidade do ADM.
+

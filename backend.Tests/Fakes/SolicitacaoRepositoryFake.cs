@@ -108,4 +108,23 @@ public class SolicitacaoRepositoryFake : ISolicitacaoRepository
                 item.Alteracoes.Any(alteracao => alteracao.Campo == campo))
             .Select(item => (int?)item.Id)
             .FirstOrDefault();
+
+    public int? IdDaAbertaParaRestricao(int alunoId, string restricaoNome)
+    {
+        var alvo = (restricaoNome ?? string.Empty).Trim();
+
+        return _itens
+            .Where(item =>
+                (item.Tipo == TipoSolicitacao.InclusaoAlergia ||
+                 item.Tipo == TipoSolicitacao.AlteracaoRestricao) &&
+                item.AlunoId == alunoId &&
+                (item.Status == StatusSolicitacao.Aberta ||
+                 item.Status == StatusSolicitacao.EmAnalise))
+            .Where(item => string.Equals(
+                (item.RestricaoNome ?? string.Empty).Trim(),
+                alvo,
+                StringComparison.OrdinalIgnoreCase))
+            .Select(item => (int?)item.Id)
+            .FirstOrDefault();
+    }
 }

@@ -124,15 +124,18 @@ public class AlunoService
     }
 
     /// <summary>
-    /// Lista apenas o que o escopo do solicitante permite (Spec 027). `escolaId` e
-    /// `unidadeId` da requisição estreitam o recorte; nunca o ampliam (RF13).
+    /// Lista apenas o que o escopo do solicitante permite (Spec 027). `escolaId`,
+    /// `unidadeId`, `busca` e `serie` da requisição estreitam o recorte; nunca o ampliam
+    /// (RF13, Spec 034).
     /// </summary>
     public List<AlunoResposta> ListarAlunos(
         EscopoUsuario escopo,
         int? escolaId = null,
-        int? unidadeId = null)
+        int? unidadeId = null,
+        string? busca = null,
+        string? serie = null)
     {
-        var filtro = FiltrosDeConsulta.ParaAluno(escopo, escolaId, unidadeId);
+        var filtro = FiltrosDeConsulta.ParaAluno(escopo, escolaId, unidadeId, busca, serie);
 
         return _alunoRepository.Listar(filtro).Select(ParaResposta).ToList();
     }
@@ -309,6 +312,33 @@ public class AlunoService
             new[] { nome },
             Array.Empty<string>(),
             autor);
+
+        return Resultado<Aluno>.Ok(aluno);
+    }
+
+    /// <summary>
+    /// Marca a anafilaxia confirmada na análise da solicitação de inclusão de alergia
+    /// (Spec 017/023) e registra o evento no histórico do aluno com a origem. Idempotente:
+    /// se o aluno já está marcado, não cria evento repetido.
+    /// </summary>
+    public Resultado<Aluno> MarcarAnafilaxia(
+        Aluno aluno,
+        string autor,
+        string? origem = null)
+    {
+        if (aluno.Anafilaxia)
+        {
+            return Resultado<Aluno>.Ok(aluno);
+        }
+
+        aluno.MarcarAnafilaxia();
+
+        aluno.RegistrarHistorico(
+            new[] { new AlteracaoDeDado("Anafilaxia", "Não", "Sim") },
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            autor,
+            origem);
 
         return Resultado<Aluno>.Ok(aluno);
     }

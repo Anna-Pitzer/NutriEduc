@@ -10,37 +10,52 @@ dependências e as regras que impedem a degradação estrutural.
 ```text
 Navegador
   React 19 + TypeScript + Vite 8
-  ├── routes/         Rotas e proteção por sessão
-  ├── pages/          Telas divididas por área de usuário
-  │   ├── comum/          login, Perfil, TermosDeUso, PoliticaDePrivacidade, Suporte
-  │   ├── nutricao/       HomeNutricao + alunos/ + cardapios/
-  │   ├── merendeiras/    HomeMerendeiras (em construção)
-  │   ├── pais/           HomePais (em construção)
-  │   ├── secretaria/     HomeSecretaria, Escolas, Unidades, Usuarios
-  │   └── escolas/        HomeEscolas (em construção)
-  ├── components/     Header, Navbar, Footer, Button, CardapiosDiv, Notificacoes
+  ├── routes/         Rotas, guarda por sessão/papel e homePorPapel
+  ├── pages/          Telas por área de usuário
+  │   ├── comum/          login, BootstrapAdmin, Perfil, TermosDeUso, PoliticaDePrivacidade, Suporte
+  │   ├── nutricao/       HomeNutricao, alunos/, cardapios/, alimentos/
+  │   ├── merendeiras/    HomeMerendeiras, AlteracoesCardapios
+  │   ├── pais/           LayoutPais, PainelPais, CardapiosPais, OcorrenciasPais,
+  │   │                   NovaOcorrenciaPais, SolicitacoesPais, FeedbackPais
+  │   ├── secretaria/     HomeSecretaria, Escolas, Unidades, Usuarios, SolicitacoesAcesso
+  │   ├── escolas/        HomeEscolas (placeholder)
+  │   ├── solicitacoes/   SolicitacoesPage
+  │   ├── ocorrencias/    OcorrenciasPage
+  │   ├── feedback/       FeedbackPage
+  │   └── publico/        CardapiosPublicados
+  ├── components/     Header, Navbar, Footer, Button, CardapiosDiv, Notificacoes, SinoNotificacoes,
+  │                   SeletorDeAlunos, SeletorDeFilho, CardapioDoAluno, ListaOcorrencias,
+  │                   FormularioOcorrencia, ListaSolicitacoes, FormularioSolicitacao,
+  │                   ListaFeedback, FormularioFeedback
   ├── context/        authContext (sessão via cookie)
-  └── services/       AlunoApi, CardapioApi, Perfil  → fetch /api via proxy Vite
+  └── services/       AlunoApi, CardapioApi, SolicitacaoApi, OcorrenciaApi, FeedbackApi,
+                      NotificacaoApi, VinculoApi, UsuarioAdminApi, ... → fetch /api via proxy Vite
 
 Regra de organização das telas: cada tela nova entra na pasta da área que a usa.
 `comum/` é reservado a telas compartilhadas por mais de uma área; tela de área única
 não entra em `comum/`.
 
 API  ASP.NET Core 10 — http://localhost:5001
-  ├── API/Controllers  UsuarioController, AlunoController, UsuarioAdminController,
-  │                    EscolaController, UnidadeController, VinculoController,
-  │                    BootstrapController (+ RespostaController, base)
-  ├── API/Services     UsuarioService, AlunoService, EscolaService, VinculoService,
-  │                    BootstrapService, EscopoService
-  ├── Application      DTOs de entrada e saída
-  ├── Domain           Usuario, Aluno, Escola, UnidadeEscolar, ConsumoBootstrap,
-  │                    TokenDeCadastro + contratos de repositório
-  ├── Infrastructure   ConnectionContext (EF Core) e repositórios
-  └── Migrations       8 migrations, aplicadas no startup
+  ├── API/Controllers (20) Aluno, Usuario, UsuarioAdmin, Escola, Unidade, Vinculo, Bootstrap,
+  │                    Cardapio, Geracao, Restricao, Alimento, CategoriaAlimento, Ocorrencia,
+  │                    Solicitacao, SolicitacaoAcesso, Feedback, Notificacao, Nutricionista,
+  │                    Diagnostico (+ RespostaController, base)
+  ├── API/Services (26) AlunoService, UsuarioService, AutenticacaoService, EscolaService,
+  │                    VinculoService, BootstrapService, EscopoService, CardapioService,
+  │                    PublicacaoCardapioService, GeracaoCardapioService, AdaptarCardapioService,
+  │                    CardapioServidoService, OcorrenciaService, SolicitacaoService, ...
+  ├── Application      DTOs, filtros, segurança (MatrizDePermissoes/AutorizacaoService)
+  ├── Domain           entidades e serviços puros (Aluno, Usuario, Cardapio, Ocorrencia,
+  │                    Solicitacao, SolicitacaoDeAcesso, GeradorCardapioAutomatico,
+  │                    SeletorDeRefeicao, ValidadorDeCardapioGerado, AdaptacaoDeCardapio,
+  │                    PoliticaDeAprovacao, PoliticaDeCrn, ...)
+  ├── Infrastructure   ConnectionContext (EF Core), repositórios, UnidadeDeTrabalho, FiltroDeEscopo
+  └── Migrations       29 migrations, aplicadas no startup
 
 Persistência
-  SQLite — database.db (Usuarios, Alunos, Escolas, Unidades, Vinculos,
-  ConsumosBootstrap, TokensDeCadastro)
+  SQLite — database.db com usuários, alunos, escolas/unidades, vínculos, restrições,
+  alimentos/categorias, cardápios/refeições/itens/versões adaptadas, publicações,
+  solicitações/solicitações de acesso, ocorrências, feedbacks, notificações, trilha e bootstrap.
 ```
 
 ## 2. Camadas e responsabilidades
@@ -94,6 +109,11 @@ Violação desse fluxo é a causa raiz de estado inválido persistido.
   saída.
 - Coleções expostas pelo domínio são `IReadOnlyList`/`IReadOnlyCollection`
   acompanhadas de operação de domínio (`AdicionarRestricao`, `RemoverRestricao`).
+- Conta `Responsavel` só existe com ao menos um vínculo (Spec 034): `POST /api/usuarios` e
+  `PUT /api/usuarios/{id}` recebem `alunosIds`, validam a unidade do aluno e gravam usuário,
+  vínculos e trilha na mesma transação.
+- A busca de aluno (`busca`, `escolaId`, `serie`) é filtro de negócio aplicado no SQL, sempre
+  depois do recorte de escopo; nenhum parâmetro de consulta amplia o alcance.
 
 ## 6. Tratamento de erro
 
@@ -144,57 +164,72 @@ malformado, `404` de rota, `405` e `415`). `401` e `403` saem dos eventos do coo
 
 | Item | Situação | Encaminhamento |
 | --- | --- | --- |
-| Sem domínio de cardápio/alimento | Frontend chama 6 rotas inexistentes | Specs 011 (alimentos) e 012 (cardápio) |
-| Um único tipo de usuário | Cinco papéis implementados na Spec 009 | Resolvido em 2026-10-30 |
-| `Restricoes` como JSON | Impede consulta por restrição e não há histórico | Spec 010 |
-| Sem paginação em `/api/aluno` | Listagem cresce sem limite | Spec 009 (listagens escopadas e paginadas) |
+| Spec 019 sem implementação | Relatórios/exportação ausentes; só a matriz tem `Recurso.Relatorio` | Implementar a 019 |
+| 029 sem frontend | Backend geral/adaptado pronto; montagem/detalhe pendentes | PEND-042 |
+| `UsuarioService` com 757 linhas | Cadastro, perfil e administração no mesmo serviço | PEND-027 |
+| Matriz × `CardapioService.PodeLer` | Matriz dá `R` a `Responsavel` em cardápio; o serviço devolve 403 | PEND-048 |
+| Sem testes de frontend | Validação só por build e lint | PEND-049 |
+| `Aluno.Restricoes` em JSON | Catálogo e histórico normalizados; vínculo do aluno segue JSON | Aceito; reavaliar na migração |
+| Sem paginação em `/api/aluno` | Listagem devolve todo o escopo do solicitante | 025 / dívida técnica |
 | Sem versionamento de API | Contrato muda sem sinal | Pós-F2 |
-| Bootstrap grava dois agregados sem transação | Usuário e consumo em `SaveChanges` separados | Unidade de trabalho transacional (Spec 022, limitação registrada) |
-| `AdminEscola` sem vínculo aluno→escola | Unidade deixou de pertencer a escola (ADR-013) | PEND-024: adicionar `Aluno.EscolaId` |
-| Exclusão definitiva sem auditoria | `DELETE` remove o registro; resta só o log da requisição (ADR-014) | Registrar exclusões em histórico se auditoria for exigida |
+| Exclusão definitiva sem auditoria | `DELETE` remove o registro; resta o log da requisição | ADR-014; avaliar se auditoria é exigida |
+| SQLite sem decimal/collation/date/concorrência reais | PEND-029 a PEND-037 | Migrar de provedor |
 
-## 10. Estado atual verificado (2026-10-30)
+## 10. Estado atual verificado (2026-11-13)
 
 | Verificação | Resultado |
 | --- | --- |
-| `dotnet test backend.Tests` | 246 testes, 246 aprovados, 0 falhas (157 unitários + 89 de integração HTTP) |
-| Warnings de build | 0 (o `Usuario` reescrito na Spec 009 eliminou os 7 `CS8604`) |
-| `npm run build` / `npm run lint` | passam: build Vite OK (1855 módulos); lint 0 erros e 5 avisos |
-| Migrations | 9, aplicadas no startup por `Database.Migrate()`: duas do bootstrap (`BootstrapPorUnidade`, `UnidadesDaRede`) e a anterior `BootstrapPainel` |
-| Domínio implementado | `Aluno`, `Usuario` (hash PBKDF2 + papel/escopo), `Escola`, `UnidadeEscolar` (da rede, ADR-013), `VinculoResponsavelAluno`, `ConsumoBootstrap`, `TokenDeCadastro` |
-| Domínio especificado e não implementado | Specs 010–019 (30 documentos, status `created`) |
-| Superfície HTTP | 8 controllers (`Aluno`, `Usuario`, `UsuarioAdmin`, `Escola`, `Unidade`, `Vinculo`, `Bootstrap`, `Resposta` base), com `DELETE` em escola, unidade e usuário |
-| Índice canônico | `management/roadmap.md` com 22 linhas, todas `planned`, criadas por `roadmap-plan-commit` |
+| `dotnet test backend.Tests` | 830 testes, 830 aprovados, 0 falhas |
+| Build backend | 0 erros; avisos de nulabilidade pré-existentes em `GeracaoCardapioService` |
+| `npm run build` / `npm run lint` | build OK; lint 0 erros e 21 avisos pré-existentes |
+| Migrations | 29, aplicadas no startup por `Database.Migrate()` |
+| Superfície HTTP | 20 controllers (19 de recurso + `RespostaController` base) |
+| Serviços de aplicação | 27 (inclui `NotificacaoDeAcessoService` e `ConfiguracaoDeBootstrap`) |
+| Domínio implementado | aluno, usuário/papéis/CRN, escola/unidade, vínculo, restrições, alimentos, cardápio/refeições/adaptação/publicação, geração, ocorrências, solicitações (com anafilaxia informada), solicitações de acesso, feedback, notificações, trilha |
+| Specs | `audited`: 001–009, 013–015, 020–022, 027, 028, 030, 034, 035. `implemented`: 010–012, 016–018, 023, 024, 031–033. `in-progress`: 029. `created`: 019. `planned`: 025, 026 |
+| Pendências | `management/pending-items.md`; PEND-028 bloqueia o motor; 019 e 029 incompletas; PEND-047 e PEND-050 aguardam validação manual |
 
-Estado formal por spec: no roadmap, as 22 estão `planned` e a promoção para
-`verified`/`implemented` é feita pelos comandos do pipeline (`/spec-new`,
-`/spec-implement`, `/spec-test`). 001–009 e 020–022 têm os três documentos e as tasks
-executadas (a 009 com T13 transferida para a 021); 010–019 têm os três documentos e
-nenhuma task executada.
+Estado formal: o roadmap tem 35 linhas. As Specs 034 e 035 foram auditadas manualmente em
+2026-11-13 (código, testes e documentação); a promoção automática pelo `/spec-test` continua
+bloqueada pelo PEND-028.
 
-## 11. Mapa de módulos especificados (009–019) e telas (021)
+## 11. Mapa de módulos especificados (009–035)
 
-| Spec | Módulo | Entidades / tipos principais | Superfície HTTP |
-| --- | --- | --- | --- |
-| 009 | Identidade e estrutura escolar | `Escola`, `UnidadeEscolar`, `VinculoResponsavelAluno`, `PapelUsuario` | `EscolaController`, `UnidadeController`, `VinculoController`, ampliação de `UsuarioController` |
-| 010 | Restrições e alergias | `RestricaoAlimentar`, `HistoricoRestricaoAluno` | `RestricaoController`, histórico em `AlunoController` |
-| 011 | Catálogo de alimentos | `CategoriaAlimento`, `Alimento`, `AlimentoRestricao`, `ValoresNutricionais` | `AlimentoController`, `CategoriaAlimentoController` |
-| 012 | Cardápio | `Cardapio`, `Refeicao`, `ItemRefeicao`, `PeriodoVigencia` | `CardapioController` (interno + público) |
-| 013 | Geração automática | `ParametroGeracao`, `GeradorCardapioAutomatico` | `GeracaoController` |
-| 014 | Compatibilidade | `AnaliseCompatibilidade` (função pura) | rota em `CardapioController` |
-| 015 | Publicação e histórico | `HistoricoCardapio`, `EventoCardapio`, transições de `Cardapio` | `CardapioController` |
-| 016 | Ocorrências | `Ocorrencia`, `HistoricoOcorrencia` | `OcorrenciaController` |
-| 017 | Solicitações | `Solicitacao`, `HistoricoSolicitacao` | `SolicitacaoController` |
-| 018 | Feedback e notificações | `Feedback`, `Notificacao` | `FeedbackController`, `NotificacaoController` |
-| 019 | Relatórios | `RelatorioGerado`, `IRelatorio`, exportadores | `RelatorioController` |
-| 021 | Telas de secretaria (V10) | nenhuma entidade nova | consome `/api/escolas`, `/api/unidades` e `/api/usuarios`, incluindo os `DELETE` |
-| 022 | Bootstrap de admin por token (V11) | `ConsumoBootstrap` (1 uso por unidade), `TokenDeCadastro` (30 min, uso único), `BootstrapService`; unidade da rede (ADR-013) | `/api/bootstrap/status`, `POST /api/bootstrap/admin`, `GET`/`POST /api/bootstrap/token`, `GET`/`POST /api/unidades` |
+| Spec | Módulo | Entidades / tipos principais | Superfície HTTP | Status |
+| --- | --- | --- | --- | --- |
+| 009 | Identidade e estrutura escolar | `Escola`, `UnidadeEscolar`, `VinculoResponsavelAluno`, `PapelUsuario` | `EscolaController`, `UnidadeController`, `VinculoController`, `UsuarioController` | audited |
+| 010 | Restrições e alergias | `RestricaoAlimentar`, histórico do aluno | `RestricaoController`, histórico em `AlunoController` | implemented |
+| 011 | Catálogo de alimentos | `CategoriaAlimento`, `Alimento`, `AlimentoRestricao`, `ValoresNutricionais` | `AlimentoController`, `CategoriaAlimentoController` | implemented |
+| 012 | Cardápio | `Cardapio`, `Refeicao`, `ItemRefeicao`, `PeriodoVigencia` | `CardapioController` (interno + público) | implemented |
+| 013 | Geração automática | `ParametroGeracao`, `GeradorCardapioAutomatico` | `GeracaoController` | audited |
+| 014 | Compatibilidade | `AnaliseCompatibilidade` (função pura) | rota em `CardapioController` | audited |
+| 015 | Publicação e histórico | `HistoricoCardapio`, transições de `Cardapio` | `CardapioController` | audited |
+| 016 | Ocorrências | `Ocorrencia`, `HistoricoOcorrencia` | `OcorrenciaController` | implemented |
+| 017 | Solicitações | `Solicitacao`, `HistoricoSolicitacao` | `SolicitacaoController` | implemented |
+| 018 | Feedback e notificações | `Feedback`, `Notificacao` | `FeedbackController`, `NotificacaoController` | implemented |
+| 019 | Relatórios e exportação | `RelatorioGerado`, exportadores | `RelatorioController` (não existe) | created |
+| 020 | Contrato de rotas | middleware de erro e padronização | `ContratoDeErro`, controllers | audited |
+| 021 | Telas de secretaria | nenhuma entidade nova | consome escolas, unidades e usuários | audited |
+| 022 | Bootstrap por token | `ConsumoBootstrap`, `TokenDeCadastro` | `BootstrapController`, `UnidadeController` | audited |
+| 023 | Histórico do aluno | `HistoricoAluno` | `AlunoController` | implemented |
+| 024 | Fronteiras DDD | DTOs, filtros, unidade de trabalho | todos os controllers | implemented |
+| 025 | Painel por papel | agregações de leitura | `PainelController` (planejado) | planned |
+| 026 | Substituição assistida por IA | sugestão determinística + provedor plugável | rotas de substituição (planejadas) | planned |
+| 027 | Hierarquia | `Escola.UnidadeId`, `Aluno.EscolaId`, `Aluno.UnidadeId` derivado | `EscolaController`, `UnidadeController`, `VinculoController` | audited |
+| 028 | Matriz de permissões | `MatrizDePermissoes`, `AutorizacaoService`, `FiltroDeEscopo`, `TrilhaAcao` | transversal | audited |
+| 029 | Cardápio geral e adaptado | `ConjuntoDeRestricoes`, `AdaptacaoDeCardapio`, `CardapioServido` | `CardapioController`, `AlunoController` | in-progress |
+| 030 | Solicitação de dados cadastrais | `SolicitacaoAlteracao`, `AlteracaoSolicitada` | `SolicitacaoController` | audited |
+| 031 | CRN da nutricionista | `CrnDeNutricionista`, `PoliticaDeCrn` | `UsuarioAdminController`, `UsuarioController` | audited |
+| 032 | Correção da geração | `SeletorDeRefeicao`, `ValidadorDeCardapioGerado` | `GeracaoController` | implemented |
+| 033 | Cadastro e autorização | `SolicitacaoDeAcesso`, `PoliticaDeAprovacao` | `SolicitacaoAcessoController`, `UsuarioController` | implemented |
+| 034 | Vínculo responsável↔aluno | `FiltroAluno`, `VinculoResponsavelAluno` | `AlunoController`, `VinculoController`, `UsuarioAdminController` | audited |
+| 035 | Portal dos pais/responsáveis | `Feedback.AlunoId`/`AlunoNome`; `Solicitacao.Anafilaxia`; componentes de cardápio, ocorrência, solicitação e feedback | `AlunoController`, `OcorrenciaController`, `SolicitacaoController`, `FeedbackController` (reuso) | audited |
 
-**Regra de dependência entre módulos:** o fluxo de dados é
-`009 → 010 → 011 → 012 → 014 → {013, 015} → 016 → 017 → 018 → 019`. A seta
-significa "o módulo à direita consome contrato do módulo à esquerda". Nenhum módulo
-reimplementa regra de outro: compatibilidade (014) é a única fonte de severidade, e
-notificação (018) é a única fonte de `Notificacao`.
+**Regra de dependência entre módulos:** o fluxo principal é
+`009 → 010 → 011 → 012 → 014 → {013, 015} → 016 → 017 → 018 → 019`, com 027/028/033/034
+fornecendo hierarquia, autorização e vínculo. Nenhum módulo reimplementa regra de outro:
+compatibilidade (014) é a única fonte de severidade, notificação (018) é a única fonte de
+`Notificacao` e o vínculo (034) é a única autorização de leitura do responsável.
 
 **Regra de escrita entre agregados:** operações que tocam dois agregados (ex.: aprovar
 solicitação de restrição, em 017) usam o mesmo `ConnectionContext` Scoped e uma
@@ -382,7 +417,9 @@ pendente (Spec 029, T12–T13; PEND-042). Criação exige nutricionista com CRN 
 autor.
 
 **Regra derivada:** item bloqueante nunca é servido; sem versão publicada para `(escola,
-conjunto)`, o cardápio do aluno é `Indisponivel`; o geral nunca é fallback.
+conjunto)`, o cardápio do aluno é `Indisponivel`; o geral nunca é fallback da versão servida.
+Revisão de 2026-11-13: o responsável vê as duas versões publicadas (`cardapioGeral` e
+`cardapioAdaptado`) na mesma consulta, com alerta quando a adaptada falta.
 
 ## Spec 017 — solicitacoes
 
@@ -401,7 +438,9 @@ decisão é separada por tipo (nutrição para cardápio/ingrediente, ADM para r
 cadastrais) e o efeito usa os donos existentes, sem escrita paralela.
 
 **Regra derivada:** aprovar não edita cardápio automaticamente; a resposta diz qual spec é
-dona da alteração.
+dona da alteração. Pedido aberto duplicado do mesmo aluno + restrição responde `409` com o id
+existente (RF20 da Spec 035). O endpoint `POST /api/solicitacoes/{id}/anafilaxia` permite ao
+ADM, ao nutricionista da unidade ou ao responsável do pedido marcar a anafilaxia do aluno.
 
 ## Spec 030 — solicitacao-alteracao-dados
 
@@ -430,10 +469,17 @@ fatia central de `Notificacao` da Spec 018, sem dado clínico.
 **Problema estrutural:** o CRN é texto livre de 3 a 20 caracteres, sem formato, sem unicidade e
 sem obrigatoriedade. A geração aceita nutricionista sem registro e o snapshot nasce incompleto.
 
-**Decisão:** objeto de valor com formato `CRN-<região>-<número>` (regiões configuráveis),
-normalização única e unicidade no banco; obrigatório exclusivo de `Nutricionista`, no cadastro e
-em toda operação de cardápio. Legado sem CRN é diagnosticado e bloqueado de operar cardápio,
-mantendo o login. A validação é de formato, não de autenticidade.
+**Decisão:** objeto de valor com formato `CRN-<região>-<número>` (regiões configuráveis em
+`Crn:RegioesValidas`, variável `Crn__RegioesValidas`), normalização única e unicidade no banco;
+obrigatório exclusivo de `Nutricionista`, no cadastro e em toda operação de cardápio. Legado sem
+CRN é diagnosticado e bloqueado de operar cardápio, mantendo o login. A validação é de formato,
+não de autenticidade. A seleção de autora (`GET /api/nutricionistas`) é lida pela nutrição e pelo
+`AdminSecretaria` da unidade.
+
+**Implementação:** `CrnDeNutricionista` (normalização/validação), `PoliticaDeCrn` (gate de
+cardápio), `Usuario` (regra por papel), `UsuarioService` (criação/edição, unicidade, trilha e
+diagnóstico), migration `CrnUnico` e campo condicional em `Usuarios.tsx` (criação e mudança de
+papel). A suíte cobre normalização, papel, duplicidade, seleção, diagnóstico, trilha e bloqueio.
 
 **Regra derivada:** nenhum serviço de cardápio reimplementa a regra; todos usam
 `PoliticaDeCrn` e a mesma mensagem.
@@ -480,3 +526,58 @@ papel, escopo, CRN e vínculos do responsável. Recusa exige motivo; decisão co
 
 **Regra derivada:** pessoa, escola e unidade são conceitos distintos; a cadeia
 unidade→escola→aluno é validada no backend e no banco, e o frontend não é fonte de integridade.
+
+## Spec 034 — vinculo-responsavel-aluno
+
+**Canonical creation path:** `backend/Domain/FiltroAluno.cs`,
+`backend/Infrastructure/Repositories/AlunoRepository.cs`,
+`backend/API/Services/UsuarioService.cs`, `backend/API/Services/VinculoService.cs`,
+`frontend/src/components/SeletorDeAlunos.tsx`, `frontend/src/services/VinculoApi.ts`,
+`frontend/src/pages/nutricao/alunos/VisualizarAlunos.tsx`.
+
+**Problema estrutural:** o cadastro direto e a definição de papel criavam `Responsavel` sem
+aluno; a aprovação já exigia vínculo, mas a conta podia ficar órfã por outro caminho. A busca de
+aluno não existia (listava tudo) e a página de alunos mostrava apenas o contato manual, não as
+contas vinculadas.
+
+**Decisão:** vínculo é invariante de cadastro. `CriarUsuarioAdministrado` e `AtualizarUsuario`
+recebem `alunosIds`, validam existência e unidade antes de mutar e gravam usuário, vínculos e
+trilha na mesma transação (com `Salvar()` intermediário para obter o id). A busca (`busca`,
+`escolaId`, `serie`) é filtro de negócio aplicado no SQL depois do recorte de escopo. O contato
+manual do aluno e a conta vinculada permanecem dados distintos.
+
+**Regra derivada:** nenhum fluxo cria `Responsavel` sem vínculo; a escrita de vínculo continua
+nas rotas dedicadas e na matriz; a página de alunos exibe contato + contas e permite ao ADM
+vincular/desvincular.
+
+**Validação:** `VinculoResponsavelApiTests` (7 casos), suíte completa 830/830, `npm run build` e
+`npm run lint` sem erro. Auditada em 2026-11-13; validação manual no navegador segue em PEND-047.
+
+## Spec 035 — portal-pais-responsaveis
+
+**Canonical creation path:** `frontend/src/pages/pais/` (layout, painel, cardápios, ocorrências,
+solicitações e feedback), `frontend/src/components/` (seletor de filho e componentes extraídos de
+ocorrências/solicitações/feedback), `frontend/src/services/CardapioApi.ts`,
+`frontend/src/services/FeedbackApi.ts`, `backend/Domain/Entities/Feedback.cs`,
+`backend/API/Services/FeedbackService.cs`.
+
+**Problema estrutural:** a área de pais tem menu e vitrine pública de cardápios, mas não tem
+visão dos filhos, cardápio servido por aluno, fluxo dedicado de ocorrências, solicitação de
+alergia acompanhável nem feedback associado ao aluno. O `AlunoId` do feedback é usado apenas para
+derivar a escola e não é persistido.
+
+**Decisão:** criar um portal próprio em `/pais` consumindo os contratos existentes por aluno
+(`GET /api/aluno`, `GET /api/aluno/{id}/cardapio`, ocorrências, solicitações e feedback). As
+mudanças de modelo são persistir `AlunoId` + snapshot `AlunoNome` no feedback (FK `SetNull`) e
+`Solicitacao.Anafilaxia`, informada pelo responsável no pedido de alergia. O painel agregado da
+família continua sendo da Spec 025; a 035 não redefine esse contrato.
+
+**Regra derivada:** o vínculo é a única autorização; ocorrência de responsável é sempre tipo
+`Aluno`; restrição (e a marcação de anafilaxia) só entra no cadastro após aprovação do ADM;
+pedido duplicado do mesmo aluno/restrição responde `409`; nenhuma tela exibe aluno fora do
+vínculo. Status: auditada em 2026-11-13; T14 (validação manual no navegador) segue em PEND-050.
+
+**Implementação:** `frontend/src/pages/pais/` (layout com cinco abas e rotas aninhadas),
+componentes compartilhados em `components/` reutilizados por ocorrências/solicitações/feedback,
+`FeedbackApi` com filtro por aluno e o checkbox de anafilaxia no formulário de solicitação. Os
+gates passaram: backend 830/830, `npm run build` e `npm run lint` sem erro.

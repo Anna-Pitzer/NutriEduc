@@ -27,5 +27,15 @@ public interface INotificacaoRepository
     /// <summary>True quando o destinatário possui ao menos uma notificação (ADR-014).</summary>
     bool ExistePorDestinatario(int destinatarioId);
 
+    /// <summary>
+    /// True quando o destinatário já recebeu a notificação do mesmo evento, identificado por
+    /// (tipo, referência). Evita duplicidade quando o mesmo fato é processado mais de uma vez.
+    /// </summary>
+    bool ExistePorReferencia(
+        int destinatarioId,
+        TipoNotificacao tipo,
+        string referenciaTipo,
+        int referenciaId);
+
     void MarcarTodasComoLidas(int destinatarioId);
 }

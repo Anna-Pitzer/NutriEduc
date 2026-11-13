@@ -26,7 +26,13 @@ import { HomeMerendeiras } from "../pages/merendeiras/HomeMerendeiras"
 import { AlteracoesCardapios } from "../pages/merendeiras/AlteracoesCardapios"
 
 // Pais / Responsáveis
-import { HomePais } from "../pages/pais/HomePais"
+import { LayoutPais } from "../pages/pais/LayoutPais"
+import { PainelPais } from "../pages/pais/PainelPais"
+import { CardapiosPais } from "../pages/pais/CardapiosPais"
+import { OcorrenciasPais } from "../pages/pais/OcorrenciasPais"
+import { NovaOcorrenciaPais } from "../pages/pais/NovaOcorrenciaPais"
+import { SolicitacoesPais } from "../pages/pais/SolicitacoesPais"
+import { FeedbackPais } from "../pages/pais/FeedbackPais"
 
 // Secretaria
 import { HomeSecretaria } from "../pages/secretaria/HomeSecretaria"
@@ -99,7 +105,14 @@ export function Rotas() {
         </Route>
 
         <Route element={<ProtegidaPorPapel papeis={["Responsavel"]} />}>
-          <Route path="/pais" element={<HomePais />} />
+          <Route path="/pais" element={<LayoutPais />}>
+            <Route index element={<PainelPais />} />
+            <Route path="cardapios" element={<CardapiosPais />} />
+            <Route path="ocorrencias" element={<OcorrenciasPais />} />
+            <Route path="ocorrencias/nova" element={<NovaOcorrenciaPais />} />
+            <Route path="solicitacoes" element={<SolicitacoesPais />} />
+            <Route path="feedback" element={<FeedbackPais />} />
+          </Route>
         </Route>
 
         <Route element={<ProtegidaPorPapel papeis={["AdminSecretaria"]} />}>
