@@ -42,5 +42,8 @@ dist-ssr
 node.exe
 dscode.mjs
 dscode.cmd
+AGENTS.md
+LICENSE
+NOTICE
 /package-lock.json
 *.bak.*
