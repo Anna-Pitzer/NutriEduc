@@ -273,8 +273,46 @@ export function ListarCardapios() {
                         <tbody>
                             {pagina?.itens.map((cardapio) => (
                                 <tr key={cardapio.id} className="border-t border-[#fce9d3] h-12">
-                                    <td className="p-4 max-w-60 truncate" title={cardapio.nome}>
-                                        {cardapio.nome}
+                                    <td className="p-4 max-w-60">
+                                        <p className="truncate" title={cardapio.nome}>
+                                            {cardapio.nome}
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                                            <span className="rounded-full bg-bege px-2 py-0.5 text-xs text-roxo">
+                                                {cardapio.tipo === "Geral" ? "Geral" : "Adaptado"}
+                                            </span>
+                                            {cardapio.statusAdaptacao && (
+                                                <span
+                                                    className={
+                                                        cardapio.statusAdaptacao === "Atualizado"
+                                                            ? "rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800"
+                                                            : cardapio.statusAdaptacao === "Desatualizado"
+                                                              ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
+                                                              : "rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700"
+                                                    }
+                                                >
+                                                    {cardapio.statusAdaptacao === "PendenteDeRevisao"
+                                                        ? "Pendente de revisão"
+                                                        : cardapio.statusAdaptacao}
+                                                </span>
+                                            )}
+                                            {cardapio.escolaId && (
+                                                <span className="text-xs text-gray-500">
+                                                    Escola #{cardapio.escolaId}
+                                                </span>
+                                            )}
+                                            {cardapio.origemId && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        navigate(`/cardapios/${cardapio.origemId}`)
+                                                    }
+                                                    className="text-xs text-roxo underline hover:text-purple-700"
+                                                >
+                                                    Ver origem
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="p-4">
                                         {dataCurta(cardapio.periodo.inicio)} a{" "}

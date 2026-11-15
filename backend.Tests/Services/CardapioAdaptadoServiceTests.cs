@@ -4,6 +4,7 @@ using Ntc.Application;
 using Ntc.Application.Seguranca;
 using Ntc.Domain;
 using Ntc.Domain.Entity;
+using Ntc.Domain.Services;
 using Xunit;
 
 namespace Backend.Tests.Services;
@@ -329,6 +330,97 @@ public class CardapioAdaptadoServiceTests
         Assert.Single(
             cenario.Cardapios.GetCardapios(),
             cardapio => cardapio.Tipo == TipoCardapio.Adaptado);
+    }
+
+    [Fact]
+    public async Task Adaptar_UsaSomenteAlunosDaEscola()
+    {
+        var cenario = await MontarAsync();
+        AdicionarAluno(cenario, "Ana", cenario.EscolaA);
+        AdicionarAluno(cenario, "Bia", cenario.EscolaB, "Lactose");
+
+        var geral = cenario.Servico
+            .Criar(Entrada(cenario), Nutricao(cenario.UnidadeId))
+            .Valor!;
+
+        var antes = cenario.Cardapios.GetCardapios().Count;
+
+        var resultado = cenario.Adaptacao.Adaptar(
+            geral.Id,
+            new AdaptarCardapioDTO { EscolaId = cenario.EscolaA },
+            Nutricao(cenario.UnidadeId));
+
+        Assert.Equal(ResultadoStatus.Ok, resultado.Status);
+        Assert.Empty(resultado.Valor!);
+        Assert.Equal(antes, cenario.Cardapios.GetCardapios().Count);
+    }
+
+    [Fact]
+    public async Task Adaptar_AcimaDoLimite_LancaSemGravar()
+    {
+        var cenario = await MontarAsync();
+
+        var geral = cenario.Servico
+            .Criar(Entrada(cenario), Nutricao(cenario.UnidadeId))
+            .Valor!;
+
+        var entidade = cenario.Cardapios
+            .GetCardapios()
+            .Single(cardapio => cardapio.Tipo == TipoCardapio.Geral);
+
+        for (var indice = 1; indice <= 50; indice++)
+        {
+            var conjunto = ConjuntoDeRestricoes.DeIds(new[] { indice });
+            var adaptado = Cardapio.CriarAdaptado(
+                entidade,
+                cenario.EscolaB,
+                conjunto,
+                new List<Refeicao>(),
+                new List<ItemSubstituido>(),
+                new List<PendenciaDeAdaptacao>(),
+                StatusAdaptacao.Atualizado);
+
+            cenario.Cardapios.Add(adaptado);
+        }
+
+        AdicionarAluno(cenario, "Ana", cenario.EscolaA, "Lactose");
+        var antes = cenario.Cardapios.GetCardapios().Count;
+
+        Assert.Throws<LimiteDeAdaptacoesException>(() =>
+            cenario.Adaptacao.Adaptar(
+                geral.Id,
+                new AdaptarCardapioDTO
+                {
+                    EscolaId = cenario.EscolaA,
+                    RestricaoIds = new List<int> { cenario.LactoseId }
+                },
+                Nutricao(cenario.UnidadeId)));
+
+        Assert.Equal(antes, cenario.Cardapios.GetCardapios().Count);
+    }
+
+    [Fact]
+    public async Task Responsavel_SoVeCardapioDoProprioFilho()
+    {
+        var cenario = await MontarAsync();
+        AdicionarAluno(cenario, "Ana", cenario.EscolaA, "Lactose");
+        AdicionarAluno(cenario, "Bia", cenario.EscolaA, "Lactose");
+
+        var alunos = cenario.Alunos.GetAlunos();
+        var responsavelId = 7;
+        cenario.Alunos.Vinculos.Add((responsavelId, alunos[0].Id));
+
+        var escopo = new EscopoUsuario(
+            responsavelId,
+            PapelUsuario.Responsavel,
+            cenario.EscolaA,
+            cenario.UnidadeId);
+
+        var doFilho = cenario.Servido.Obter(alunos[0].Id, Inicio, escopo);
+        var deOutro = cenario.Servido.Obter(alunos[1].Id, Inicio, escopo);
+
+        Assert.Equal(ResultadoStatus.Ok, doFilho.Status);
+        Assert.Equal(ResultadoStatus.Proibido, deOutro.Status);
     }
 
     [Fact]

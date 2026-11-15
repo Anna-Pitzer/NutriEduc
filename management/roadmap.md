@@ -47,7 +47,7 @@
 | 026 | substituicao-assistida-ia | planned | V15; ADR-011; ADR-004 |
 | 027 | hierarquia-unidade-escola-aluno | audited | V16; ADR-020; ADR-021; L11 |
 | 028 | matriz-permissoes-e-isolamento | audited | V17; ADR-021; ADR-020; L5; L12 |
-| 029 | cardapio-geral-e-adaptado | created | V18; V20; ADR-022; ADR-011; ADR-009; L7 |
+| 029 | cardapio-geral-e-adaptado | implemented | V18; V20; ADR-022; ADR-011; ADR-009; L7 |
 | 030 | solicitacao-alteracao-dados | created | V19; ADR-016; ADR-004; L9 |
 | 031 | perfil-crn-nutricionista | created | V20; ADR-021; ADR-004; ADR-009; PEND-038 |
 | 032 | correcao-geracao-automatica-cardapios | created | V21; V18; ADR-022; ADR-011; ADR-004 |
