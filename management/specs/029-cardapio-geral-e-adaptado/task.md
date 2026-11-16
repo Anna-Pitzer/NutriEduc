@@ -11,7 +11,7 @@ references: V18, V20, ADR-022, L7
 - [x] T0: Specs 012, 014 e 015 implementadas ou verificadas; Spec 027 implementada
   (`Aluno.EscolaId`); Spec 031 implementada (CRN obrigatório).
   - Validação: `Cardapio` cria com `nutricionistaId`; aluno devolve `escolaId`;
-    nutricionista sem CRN é recusada no cadastro.
+    nutricionista sem CRN é recusada em criar/adaptar/publicar (RF17).
 
 ## Domínio
 
@@ -62,14 +62,15 @@ references: V18, V20, ADR-022, L7
 
 ## Frontend
 
-- [ ] T12: na montagem manual, select de nutricionista com nome e CRN e painel de alunos e
+- [x] T12: na montagem manual, select de nutricionista com nome e CRN e painel de alunos e
   restrições por escola; marcar alimento incompatível, bloquear o sem substituto e pedir
   confirmação explícita.
   - Validação: `npm run build` e `npm run lint` sem erro novo; fluxo manual de criar, receber
-  aviso, confirmar e publicar.
-- [ ] T13: detalhe com o par geral↔adaptado por escola, diffs de substituição e alerta de
+    aviso, confirmar e publicar — execução em navegador pendente (PEND-042).
+- [x] T13: detalhe com o par geral↔adaptado por escola, diffs de substituição e alerta de
   aluno indisponível na tela da merendeira.
-  - Validação: navegar entre versões e conferir cada grupo.
+  - Validação: navegar entre versões e conferir cada grupo — execução em navegador pendente
+    (PEND-042).
 
 ## Fechamento
 

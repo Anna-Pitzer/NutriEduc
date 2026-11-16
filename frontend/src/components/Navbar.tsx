@@ -87,13 +87,15 @@ export default function Navbar() {
     );
 
     return (
-        <aside className="relative z-30  w-auto px-5">
-            <div className="rounded-2xl border border-[#E8E8E8]/10 bg-[rgba(214,211,205,0.07)] p-3 shadow-[0_8px_30px_rgba(11,102,25,0.08)] backdrop-blur-[1px] mt-10">
-                <div className="m-3 px-3 py-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-roxo/60">Menu Principal</p>
+        <aside className="relative w-auto px-5 
+        duration-300
+        hover:-translate-y-1.5 ">
+            <div className="rounded-2xl border-4 border-lilaz  bg-white p-3 shadow-[0_8px_30px_rgba(11,102,25,0.08)] backdrop-blur-[1px]">
+                <div className=" px-3 py-2 bg-white rounded rounded-b-none">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-roxo/60 text-center">Menu Principal</p>
                 </div>
 
-                <nav className="flex flex-col gap-1.5">
+                <nav className="flex flex-col gap-1.5 bg-white rounded rounded-t-none">
                     {visiveis.map((opcao) => {
                         const Icon = opcao.icone;
 

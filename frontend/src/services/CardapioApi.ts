@@ -4,6 +4,12 @@ const ApiURL = "";
 
 export type SituacaoCardapio = "Rascunho" | "Publicado" | "Cancelado" | "Substituido";
 
+/** Versão geral (da unidade) ou adaptada (por escola e conjunto de restrições). */
+export type TipoCardapio = "Geral" | "Adaptado";
+
+/** Estado da adaptação de uma versão (Spec 029, RF7). */
+export type StatusAdaptacao = "Atualizado" | "Desatualizado" | "PendenteDeRevisao";
+
 /** Período de vigência (Spec 012, RF1). Datas no formato ISO `yyyy-mm-dd`. */
 export interface PeriodoCardapio {
     inicio: string;
@@ -54,6 +60,16 @@ export interface Cardapio {
     cardapioDuplicadoDeId: number | null;
     /** Nulo em cardápios criados antes da regra de autoria. */
     nutricionista: NutricionistaCardapio | null;
+    tipo: TipoCardapio;
+    origemId: number | null;
+    escolaId: number | null;
+    conjuntoRestricoesChave: string | null;
+    restricoes: RestricaoDaVersao[];
+    statusAdaptacao: StatusAdaptacao | null;
+    semRestricoes: boolean;
+    substituicoes: SubstituicaoCardapio[];
+    pendencias: PendenciaAdaptacao[];
+    confirmacoes: ConfirmacaoIncompatibilidade[];
     refeicoes: RefeicaoCardapio[];
     total: ValoresItem;
 }
@@ -65,6 +81,10 @@ export interface CardapioResumo {
     unidadeId: number;
     situacao: SituacaoCardapio;
     periodo: PeriodoCardapio;
+    tipo: TipoCardapio;
+    origemId: number | null;
+    escolaId: number | null;
+    statusAdaptacao: StatusAdaptacao | null;
     totalRefeicoes: number;
     totalBloqueantes: number;
     totalAlertas: number;
@@ -109,6 +129,97 @@ export interface CardapioEntrada {
     unidadeId: number;
     periodo: PeriodoCardapio;
     refeicoes: RefeicaoEntrada[];
+    /** Obrigatório na criação manual com CRN válido (Spec 029, RF9). */
+    nutricionistaId?: number | null;
+    /** Confirma alimento incompatível com substituto seguro (Spec 029, RF12). */
+    confirmarIncompatibilidades?: boolean;
+}
+
+/** Restrição exibida no conjunto de uma versão adaptada (RF18). */
+export interface RestricaoDaVersao {
+    id: number;
+    nome: string;
+    categoria: string;
+}
+
+/** Substituição aplicada na versão adaptada (RF5, RF18). */
+export interface SubstituicaoCardapio {
+    refeicaoOrdem: number;
+    refeicaoNome: string;
+    alimentoOriginalId: number;
+    alimentoOriginal: string;
+    alimentoSubstitutoId: number;
+    alimentoSubstituto: string;
+    gramas: number;
+    restricoesBloqueantes: string;
+}
+
+/** Motivo registrado que impede publicar ou servir a versão (RF8). */
+export interface PendenciaAdaptacao {
+    refeicaoOrdem: number;
+    refeicaoNome: string;
+    alimentoId: number | null;
+    alimento: string | null;
+    motivo: string;
+}
+
+/** Confirmação append-only de incompatibilidade mantida no geral (RF13). */
+export interface ConfirmacaoIncompatibilidade {
+    autor: string;
+    criadoEm: string;
+    alimentoId: number;
+    alimento: string;
+    escolas: string;
+    conjuntos: string;
+}
+
+/** Linha do par geral↔adaptado (RF18). */
+export interface CardapioAdaptadoResumo {
+    id: number;
+    nome: string;
+    origemId: number;
+    escolaId: number;
+    escolaNome: string;
+    conjuntoRestricoesChave: string;
+    statusAdaptacao: StatusAdaptacao | null;
+    situacao: SituacaoCardapio;
+    totalSubstituicoes: number;
+    totalPendencias: number;
+    semRestricoes: boolean;
+}
+
+/** Aluno e restrições no painel da montagem manual (RF11). */
+export interface AlunoNoContexto {
+    alunoId: number;
+    nome: string;
+    restricoes: RestricaoDaVersao[];
+    conjuntoRestricoesChave: string;
+}
+
+/** Escola com alunos e restrições (RF11). */
+export interface EscolaNoContexto {
+    escolaId: number;
+    escolaNome: string;
+    semRestricoes: boolean;
+    alunos: AlunoNoContexto[];
+}
+
+/** Contexto de restrições por escola (RF11, RNF7). */
+export interface ContextoDeRestricoes {
+    unidadeId: number;
+    escolas: EscolaNoContexto[];
+}
+
+/** Versão servida ao aluno ou o motivo de indisponibilidade (RF15). */
+export interface CardapioServido {
+    alunoId: number;
+    alunoNome: string;
+    escolaId: number | null;
+    conjuntoRestricoesChave: string;
+    disponivel: boolean;
+    motivo: string | null;
+    alerta: boolean;
+    cardapio: Cardapio | null;
 }
 
 export interface DuplicarEntrada {
@@ -345,6 +456,78 @@ export async function obterHistoricoCardapio(id: number): Promise<Pagina<EventoH
     });
 
     if (!resposta.ok) return falhar(resposta, "Erro ao carregar o histórico do cardápio");
+
+    return resposta.json();
+}
+
+// ---------- Geral e adaptado (Spec 029) ----------
+
+/** Entrada da adaptação manual: escola e, opcionalmente, o conjunto exato (T6). */
+export interface AdaptarCardapioEntrada {
+    escolaId: number;
+    /** Quando nulo, o backend adapta todos os conjuntos distintos existentes na escola. */
+    restricaoIds?: number[] | null;
+}
+
+/** Alunos ativos e restrições por escola, para o painel da montagem manual (RF11). */
+export async function obterContextoDeRestricoes(
+    unidadeId: number,
+    escolaId?: number,
+): Promise<ContextoDeRestricoes> {
+    const consulta = new URLSearchParams({ unidadeId: String(unidadeId) });
+
+    if (escolaId !== undefined) {
+        consulta.set("escolaId", String(escolaId));
+    }
+
+    const resposta = await fetch(`${ApiURL}/api/cardapios/contexto-restricoes?${consulta}`, {
+        credentials: "include",
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao carregar as restrições da unidade");
+
+    return resposta.json();
+}
+
+/** Versões adaptadas de um geral (RF18). */
+export async function listarAdaptados(id: number): Promise<CardapioAdaptadoResumo[]> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}/adaptados`, {
+        credentials: "include",
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao carregar as versões adaptadas");
+
+    return resposta.json();
+}
+
+/** Adapta um geral para a escola; idempotente por (origem, escola, conjunto) (T6). */
+export async function adaptarCardapio(
+    id: number,
+    entrada: AdaptarCardapioEntrada,
+): Promise<CardapioAdaptadoResumo[]> {
+    const resposta = await fetch(`${ApiURL}/api/cardapios/${id}/adaptar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(entrada),
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao adaptar o cardápio");
+
+    return resposta.json();
+}
+
+/** Versão servida ao aluno na data, ou `Indisponivel` (RF15). */
+export async function obterCardapioDoAluno(
+    alunoId: number,
+    data?: string,
+): Promise<CardapioServido> {
+    const consulta = data ? `?data=${encodeURIComponent(data)}` : "";
+    const resposta = await fetch(`${ApiURL}/api/aluno/${alunoId}/cardapio${consulta}`, {
+        credentials: "include",
+    });
+
+    if (!resposta.ok) return falhar(resposta, "Erro ao carregar o cardápio do aluno");
 
     return resposta.json();
 }
