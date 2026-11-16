@@ -60,8 +60,9 @@ saída   := "CRN-<regiao>-<numero>"
 ```
 
 `TryParse` remove espaços, converte para maiúsculas, colapsa separadores, valida faixa e
-dígitos e devolve a forma canônica. A faixa de regiões é configuração para não travar o
-sistema caso a lista oficial mude; a especificação não presume a lista completa (D3).
+dígitos e devolve a forma canônica. A faixa de regiões é configuração (`Crn:RegioesValidas`,
+variável `Crn__RegioesValidas`) para não travar o sistema caso a lista oficial mude; sem
+configuração, vale 1..11. A especificação não presume a lista completa (D3).
 
 ## Regras no agregado `Usuario`
 
@@ -83,8 +84,7 @@ sistema caso a lista oficial mude; a especificação não presume a lista comple
   concedido não for `Nutricionista`, o CRN solicitado é descartado e a aprovação falha se
   houver CRN sem papel de nutrição;
 - `PUT /api/usuarios/{id}` só aplica `DefinirCrn` quando o solicitante é administrador do
-  escopo; o dono do perfil nunca altera o CRN. O código atual chama `DefinirCrn` antes de
-  distinguir dono × administrador e deve ser corrigido.
+  escopo; o dono do perfil nunca altera o CRN.
 
 `PoliticaDeCrn.ExigirParaCardapio(usuario)` devolve erro acionável quando o papel é
 `Nutricionista` e o CRN é nulo/inválido. As Specs 029 e 032 chamam essa política; nenhum
@@ -123,8 +123,9 @@ Erros seguem `{ erro }` (ADR-005):
 
 ## Frontend
 
-- `Usuarios.tsx`: o campo CRN aparece somente quando o papel é `Nutricionista`; máscara
-  guia a digitação, mas a mensagem de erro exibida é a do servidor.
+- `Usuarios.tsx`: o campo CRN aparece somente quando o papel é `Nutricionista`, inclusive
+  ao promover uma conta na edição de papel; máscara guia a digitação, mas a mensagem de erro
+  exibida é a do servidor. Ao trocar para outro papel, o campo é limpo e não é enviado.
 - `Perfil.tsx`: exibe `CRN` em modo leitura para a própria nutricionista; sem campo editável.
 - Listagem administrativa mostra `crn` ou "—" e marca `crnValido = false`.
 - Seleção de nutricionista no cardápio mostra nome + CRN e já recebe a lista filtrada.
@@ -133,18 +134,20 @@ Erros seguem `{ erro }` (ADR-005):
 
 | Teste | Prova |
 |---|---|
-| `Crn_TryParse_AceitaVariacoes` | RF2 (espaço, ponto, hífen, caixa) |
-| `Crn_TryParse_RejeitaRegiaoNumeroETamanho` | RF2 |
-| `Usuario_NutricionistaSemCrn_Lanca` | RF3 |
-| `Usuario_OutroPapelComCrn_Lanca` | RF6 |
+| `TryParse_AceitaVariacoes_Normaliza` | RF2 (espaço, ponto, hífen, caixa) |
+| `TryParse_RejeitaFormatoInvalido` | RF2 |
+| `InterpretarRegioes_*` | RF2/D3 (regiões configuráveis) |
+| `Construtor_NutricionistaSemCrn_Lanca` | RF3 |
+| `Construtor_OutroPapelComCrn_Lanca` | RF6 |
 | `DefinirPapel_ParaNutricionistaSemCrn_Lanca` | RF4 |
-| `DefinirPapel_ParaOutroLimpaCrn` | RF4 |
-| `Criar_Nutricionista_CrnDuplicado_409` | RF5 |
-| `Nutricionistas_ListaSoComCrnValido` | RF8 |
-| `Cardapio_SemCrn_400` | RF9 (consumido por 029/032) |
-| `Diagnostico_ListaLegadoSemCrn` | RF10 |
-| `Trilha_CrnAnteriorENovo` | RF11 |
-| `Me_NaoExpoeCrnDeOutroUsuario` | RF7, RNF4 |
+| `DefinirPapel_ParaOutroPapel_LimpaCrn` | RF4 |
+| `CriarUsuarioAdministrado_CrnDuplicado_Retorna409` | RF5 |
+| `CriarUsuarioAdministrado_NutricionistaSemCrnValido_LancaENaoPersiste` | RF3/RF5 |
+| `ListarNutricionistas_ExcluiSemCrnValido` | RF8 |
+| `NutricionistaSemCrn_NaoCria` e `PoliticaDeCrn_*` | RF9 (consumido por 029/032) |
+| `DiagnosticarCrn_ListaNutricionistaSemCrn` | RF10 |
+| `AtualizarUsuario_CrnAlterado_GravaTrilhaComAnteriorENovo` | RF11 |
+| `Get_Me_SemSessao_Retorna401` e escopo do controller | RF7, RNF4 |
 
 ## Riscos
 

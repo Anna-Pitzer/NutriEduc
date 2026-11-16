@@ -192,3 +192,50 @@ consumo de contratos entre módulos.
 dele; quando a ordem divergir da numeração, isso fica escrito no `arch.md` (regra de
 dependência entre módulos) e no `design.md` das specs envolvidas.
 
+## L14: Regra de domínio espelhada no frontend envelhece
+
+**Observado:** `UsuarioAdminApi.exigeEscola` listava `Responsavel` como papel que exige escola.
+O domínio (`Usuario.DefinirPapel`) sempre recusou escola para esse papel. O formulário enviava
+`escolaId` e a criação/definição de papel falhava com “O responsável não pertence a uma escola”.
+O comentário do arquivo dizia justamente que a regra era “espelhada do domínio”.
+
+**Lição:** espelhar uma regra de domínio no frontend sem um teste de concordância cria uma
+segunda fonte de verdade que envelhece em silêncio. O sintoma aparece longe da causa (400 na
+API), e o caminho só é descoberto quando alguém tenta o fluxo real.
+
+**Regra:** o frontend pode esconder campos para melhorar a experiência, mas a decisão continua
+no domínio. Regra espelhada precisa de teste de contrato ou de uma fonte única compartilhada
+(schema/validador) — nunca de uma lista mantida à mão em dois lugares.
+
+## L15: Gate extra fora da matriz esconde permissão declarada
+
+**Observado:** a matriz (Spec 028) atribui `R` a `Responsavel` em `CardapioGeral` e
+`CardapioAdaptado`, mas `CardapioService.PodeLer` mantém uma lista de papéis que exclui
+`Responsavel` e responde `403` antes de consultar a matriz. A permissão declarada e o
+comportamento observável divergem, e nenhum teste de conformidade cobre essa célula.
+
+**Lição:** quando um serviço adiciona um gate próprio antes da matriz, a matriz deixa de ser
+autoritativa de fato. O gate pode ser mais restritivo por um motivo legítimo, mas isso precisa
+estar declarado e testado — senão vira dívida invisível.
+
+**Regra:** todo gate de recurso consulta a matriz ou documenta e testa a exceção. O teste de
+conformidade da matriz deve cobrir o comportamento HTTP, não apenas a função pura.
+
+## L16: O binário em execução pode não conter o código atual
+
+**Observado:** três sintomas de “a correção não funcionou” — notificação de acesso ausente,
+botão de anafilaxia invisível e 409 de duplicidade não emitido — tinham a mesma causa: o
+`backend.exe` em `:5001` era de um build anterior. O frontend (Vite/HMR) refletia o código novo,
+mas a API respondia com o comportamento antigo; o build falhava com `MSB3027`/`MSB3021` porque o
+processo segurava `bin/Debug/net10.0/backend.exe`.
+
+**Lição:** ao validar uma mudança de backend, o primeiro passo é confirmar que o processo em
+execução é o build atual (timestamp de `bin/Debug/net10.0/backend.dll` ≥ fonte) e que a porta
+5001 pertence a ele. “Testei e não mudou” sem essa checagem é evidência inválida.
+
+**Regra:** reiniciar o backend após qualquer alteração de código e registrar no relatório qual
+build está no ar. `dotnet test` usa outro binário e não prova o processo em execução; builds com
+`-p:OutDir=...` existem justamente para não disputar o arquivo bloqueado.
+
+
+

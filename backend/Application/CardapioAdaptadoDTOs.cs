@@ -97,7 +97,12 @@ public class ContextoDeRestricoesDTO
     public List<EscolaNoContextoDTO> Escolas { get; set; } = new();
 }
 
-/// <summary>Versão servida a um aluno ou o motivo de indisponibilidade (Spec 029, RF15).</summary>
+/// <summary>
+/// Versões visíveis para o aluno (Spec 029, RF15; revisão para o portal dos pais).
+/// <see cref="Cardapio"/> continua sendo a versão servida (geral sem restrição, adaptada
+/// com restrição); <see cref="CardapioGeral"/> e <see cref="CardapioAdaptado"/> permitem
+/// que o responsável veja as duas versões publicadas para a data.
+/// </summary>
 public class CardapioServidoDTO
 {
     public int AlunoId { get; set; }
@@ -108,4 +113,13 @@ public class CardapioServidoDTO
     public string? Motivo { get; set; }
     public bool Alerta { get; set; }
     public CardapioDTO? Cardapio { get; set; }
+
+    /// <summary>Cardápio geral publicado para a data (nulo quando não existe).</summary>
+    public CardapioDTO? CardapioGeral { get; set; }
+
+    /// <summary>Versão adaptada publicada para o aluno (nulo quando não se aplica ou não existe).</summary>
+    public CardapioDTO? CardapioAdaptado { get; set; }
+
+    /// <summary>True quando o aluno tem restrições e depende de uma versão adaptada.</summary>
+    public bool RequerAdaptacao { get; set; }
 }

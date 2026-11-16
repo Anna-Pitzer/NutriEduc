@@ -50,11 +50,45 @@ public class TotalRefeicaoGeradaDTO
     public decimal CaloriasKcal { get; set; }
 }
 
-/// <summary>Resposta de geração (Spec 013, RF10): cardápio, semente, totais e avisos.</summary>
+/// <summary>Tentativas consumidas por uma refeição gerada (Spec 032, RF12).</summary>
+public class TentativaRefeicaoGeradaDTO
+{
+    public string Refeicao { get; set; } = string.Empty;
+    public int Tentativas { get; set; }
+}
+
+/// <summary>Versão adaptada criada junto com o geral (Spec 032, RF8/RF12).</summary>
+public class VersaoAdaptadaGeradaDTO
+{
+    public int Id { get; set; }
+    public int EscolaId { get; set; }
+    public string Conjunto { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string? Motivo { get; set; }
+}
+
+/// <summary>Diagnóstico de uma refeição que não pôde ser gerada (Spec 032, RF15).</summary>
+public class DiagnosticoRefeicaoDTO
+{
+    public string Refeicao { get; set; } = string.Empty;
+    public int Tentativas { get; set; }
+    public decimal FaixaMinimaAlcancavel { get; set; }
+    public decimal FaixaMaximaAlcancavel { get; set; }
+    public int? CategoriaAusente { get; set; }
+    public int CandidatosDisponiveis { get; set; }
+}
+
+/// <summary>
+/// Resposta de geração (Spec 032, RF12): ids do geral e dos adaptados, semente, tentativas,
+/// totais por refeição, avisos e diagnóstico.
+/// </summary>
 public class GeracaoCardapioDTO
 {
-    public int CardapioId { get; set; }
+    public int CardapioGeralId { get; set; }
     public int Seed { get; set; }
-    public List<TotalRefeicaoGeradaDTO> Totais { get; set; } = new();
+    public List<TentativaRefeicaoGeradaDTO> TentativasPorRefeicao { get; set; } = new();
+    public List<TotalRefeicaoGeradaDTO> TotaisPorRefeicao { get; set; } = new();
+    public List<VersaoAdaptadaGeradaDTO> VersaoAdaptadaIds { get; set; } = new();
     public List<string> Avisos { get; set; } = new();
+    public List<DiagnosticoRefeicaoDTO> Diagnostico { get; set; } = new();
 }

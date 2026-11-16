@@ -51,7 +51,20 @@ public class Solicitacao
 
     public int? CardapioId { get; private set; }
 
+    /// <summary>Snapshot do nome do aluno no momento do pedido (RNF3/ADR-009).</summary>
+    public string? AlunoNome { get; private set; }
+
+    /// <summary>Snapshot do nome do cardápio no momento do pedido (RNF3/ADR-009).</summary>
+    public string? CardapioNome { get; private set; }
+
     public string? RestricaoNome { get; private set; }
+
+    /// <summary>
+    /// Indica que o solicitante informou reação anafilática para a restrição pedida
+    /// (Spec 035, revisão). Só tem efeito em <c>InclusaoAlergia</c>/<c>AlteracaoRestricao</c>
+    /// e é aplicado ao aluno na aprovação.
+    /// </summary>
+    public bool Anafilaxia { get; private set; }
 
     public string? Ingrediente { get; private set; }
 
@@ -91,7 +104,10 @@ public class Solicitacao
         int? cardapioId,
         string? restricaoNome,
         string? ingrediente,
-        DateTime utc)
+        string? alunoNome,
+        string? cardapioNome,
+        DateTime utc,
+        bool anafilaxia = false)
     {
         if (!Enum.IsDefined(tipo))
             throw new ArgumentException("Tipo de solicitação inválido.");
@@ -126,6 +142,7 @@ public class Solicitacao
                     throw new ArgumentException("A solicitação de restrição exige o aluno.");
                 AlunoId = alunoId;
                 RestricaoNome = ValidacaoDeCampo.Texto(restricaoNome, "restrição", 2, 60);
+                Anafilaxia = anafilaxia;
                 break;
 
             case TipoSolicitacao.Ingrediente:
@@ -142,6 +159,9 @@ public class Solicitacao
                 AlunoId = alunoId;
                 break;
         }
+
+        AlunoNome = NormalizarNome(alunoNome);
+        CardapioNome = NormalizarNome(cardapioNome);
 
         Status = StatusSolicitacao.Aberta;
         CriadoEmUtc = AtualizadoEmUtc = NormalizarUtc(utc);
@@ -243,4 +263,7 @@ public class Solicitacao
 
     private static DateTime NormalizarUtc(DateTime utc) =>
         utc.Kind == DateTimeKind.Utc ? utc : utc.ToUniversalTime();
+
+    private static string? NormalizarNome(string? nome) =>
+        string.IsNullOrWhiteSpace(nome) ? null : nome.Trim();
 }

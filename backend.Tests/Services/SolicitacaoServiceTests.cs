@@ -54,6 +54,8 @@ public class SolicitacaoServiceTests
         var unidadeDeTrabalho = new UnidadeDeTrabalhoFake();
         var autorizacao = new AutorizacaoService();
         var trilha = new TrilhaAcaoRepositoryFake();
+        var vinculos = new VinculoRepositoryFake();
+        var notificacaoService = new NotificacaoService(notificacoes, unidadeDeTrabalho);
 
         var unidadeId = escolas.AddUnidade(new UnidadeEscolar("Unidade A")).Id;
         var escolaId = escolas.Add(new Escola("Escola A", unidadeId)).Id;
@@ -114,7 +116,9 @@ public class SolicitacaoServiceTests
             hierarquia,
             autorizacao,
             trilha,
-            unidadeDeTrabalho);
+            unidadeDeTrabalho,
+            vinculos,
+            notificacaoService);
 
         var servico = new SolicitacaoService(
             solicitacoes,
@@ -124,7 +128,7 @@ public class SolicitacaoServiceTests
             usuarios,
             unidadeDeTrabalho,
             alunoService,
-            new NotificacaoService(notificacoes));
+            notificacaoService);
 
         return new Cenario(
             servico,
@@ -414,6 +418,28 @@ public class SolicitacaoServiceTests
         Assert.Empty(pagina.Valor!.Itens);
     }
 
+    [Fact]
+    public void Listar_MerendeiraNaoVeDadosCadastrais()
+    {
+        var cenario = Montar();
+
+        cenario.Servico.Criar(
+            Dados(cenario.AlunoId, ("nome", "Ana Maria")),
+            Responsavel(cenario.UnidadeId));
+
+        cenario.Servico.Criar(
+            Restricao(cenario.AlunoId),
+            Responsavel(cenario.UnidadeId));
+
+        var pagina = cenario.Servico.Listar(
+            null, null, null, null, null, null, null, null, null, null,
+            Merendeira(cenario.UnidadeId, cenario.EscolaId));
+
+        Assert.Equal(ResultadoStatus.Ok, pagina.Status);
+        Assert.Single(pagina.Valor!.Itens);
+        Assert.Equal(TipoSolicitacao.InclusaoAlergia, pagina.Valor.Itens[0].Tipo);
+    }
+
     private static CriarSolicitacaoDTO Dados(
         int alunoId,
         params (string Campo, string Valor)[] alteracoes) => new()
@@ -485,6 +511,20 @@ public class SolicitacaoServiceTests
         Assert.Equal(ResultadoStatus.Conflito, segundo.Status);
         Assert.Contains($"#{primeiro.Id}", segundo.Erro!);
         Assert.Single(cenario.Solicitacoes.GetItens());
+    }
+
+    [Fact]
+    public void Criar_DadosCadastrais_SemVinculo_Proibido()
+    {
+        var cenario = Montar();
+        cenario.Alunos.Vinculos.Clear();
+
+        var resultado = cenario.Servico.Criar(
+            Dados(cenario.AlunoId, ("nome", "Ana Maria")),
+            Responsavel(cenario.UnidadeId));
+
+        Assert.Equal(ResultadoStatus.Proibido, resultado.Status);
+        Assert.Empty(cenario.Solicitacoes.GetItens());
     }
 
     [Fact]
@@ -572,6 +612,57 @@ public class SolicitacaoServiceTests
     }
 
     [Fact]
+    public void Recusar_DadosCadastrais_MotivoCurto_Invalido()
+    {
+        var cenario = Montar();
+        var criada = cenario.Servico.Criar(
+            Dados(cenario.AlunoId, ("nome", "Ana Maria")),
+            Responsavel(cenario.UnidadeId)).Valor!;
+
+        cenario.Servico.Analisar(criada.Id, Admin(cenario.UnidadeId));
+
+        var resultado = cenario.Servico.Recusar(
+            criada.Id,
+            new DecidirSolicitacaoDTO { Resposta = "Não." },
+            Admin(cenario.UnidadeId));
+
+        Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
+        Assert.Equal(StatusSolicitacao.EmAnalise, cenario.Solicitacoes.GetItens().Single().Status);
+        Assert.Equal("Ana", cenario.Alunos.GetAluno(cenario.AlunoId)!.Nome);
+    }
+
+    [Fact]
+    public void Aprovar_DadosCadastrais_NotificaSemValorSolicitado()
+    {
+        var cenario = Montar();
+        var criada = cenario.Servico.Criar(
+            Dados(cenario.AlunoId, ("nome", "Ana Maria")),
+            Responsavel(cenario.UnidadeId)).Valor!;
+
+        cenario.Servico.Analisar(criada.Id, Admin(cenario.UnidadeId));
+        cenario.Servico.Aprovar(
+            criada.Id,
+            new DecidirSolicitacaoDTO { Resposta = "Confirmado." },
+            Admin(cenario.UnidadeId));
+
+        var notificacoes = cenario.Notificacoes.GetItens();
+
+        Assert.NotEmpty(notificacoes);
+
+        // A criação também emite NovaSolicitacao; a asserção de conteúdo vale para todas.
+        Assert.All(notificacoes, notificacao =>
+        {
+            Assert.DoesNotContain("Ana Maria", notificacao.Mensagem);
+            Assert.DoesNotContain("11988888888", notificacao.Mensagem);
+        });
+
+        Assert.Contains(notificacoes, notificacao =>
+            notificacao.Tipo == TipoNotificacao.NovaSolicitacao);
+        Assert.Contains(notificacoes, notificacao =>
+            notificacao.Tipo == TipoNotificacao.SolicitacaoStatus);
+    }
+
+    [Fact]
     public void Aprovar_Restricao_EmiteNotificacaoSemDadoClinico()
     {
         var cenario = Montar();
@@ -587,14 +678,19 @@ public class SolicitacaoServiceTests
 
         var notificacoes = cenario.Notificacoes.GetItens();
 
-        Assert.Equal(4, notificacoes.Count);
+        // Uma emissão de criação (NovaSolicitacao) e quatro transições de status em pares
+        // solicitante/decisor, totalizando 5 notificações nesta solicitação.
+        Assert.Equal(5, notificacoes.Count);
         Assert.All(notificacoes, notificacao =>
         {
-            Assert.Equal(TipoNotificacao.SolicitacaoStatus, notificacao.Tipo);
             Assert.Equal("Solicitacao", notificacao.ReferenciaTipo);
             Assert.Equal(criada.Id, notificacao.ReferenciaId);
             Assert.DoesNotContain("Lactose", notificacao.Mensagem);
         });
+        Assert.Single(notificacoes, notificacao =>
+            notificacao.Tipo == TipoNotificacao.NovaSolicitacao);
+        Assert.Contains(notificacoes, notificacao =>
+            notificacao.Tipo == TipoNotificacao.SolicitacaoStatus);
         Assert.Contains(notificacoes, notificacao => notificacao.Mensagem.Contains("EmAnalise"));
         Assert.Contains(notificacoes, notificacao => notificacao.Mensagem.Contains("Concluida"));
     }

@@ -37,3 +37,9 @@ public sealed record DiagnosticoHierarquiaDTO(
     int EscolasSemUnidade,
     int AlunosSemEscola,
     int UsuariosSemVinculoObrigatorio);
+
+/// <summary>
+/// Unidade ativa exposta pela consulta pública mínima do cadastro (Spec 033). Apenas id e
+/// nome, nunca dados administrativos.
+/// </summary>
+public sealed record UnidadeAtivaDTO(int Id, string Nome);

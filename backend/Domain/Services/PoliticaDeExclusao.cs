@@ -84,7 +84,8 @@ public static class PoliticaDeExclusao
         int solicitanteId,
         int totalAdminSecretaria,
         bool temVinculos,
-        bool temTokens)
+        bool temTokens,
+        bool temNotificacoes = false)
     {
         if (alvoId == solicitanteId)
         {
@@ -104,6 +105,11 @@ public static class PoliticaDeExclusao
         if (temTokens)
         {
             return "Este usuário já emitiu token de cadastro e não pode ser excluído.";
+        }
+
+        if (temNotificacoes)
+        {
+            return "Este usuário possui notificações e não pode ser excluído.";
         }
 
         return null;

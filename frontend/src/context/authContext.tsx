@@ -23,12 +23,17 @@ export type UserSession = {
   unidadeId: number | null;
 };
 
+export type TipoCadastro = "Nutricionista" | "Merendeira" | "Responsavel";
+
 type UserRegister = {
   name: string;
   password: string;
   email: string;
   birthDate: string;
   cpf: string;
+  tipo: TipoCadastro;
+  unidadeId: number;
+  crn?: string | null;
 };
 
 type AuthContextData = {
@@ -114,6 +119,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         dataNascimento: user.birthDate,
         email: user.email,
         senha: user.password,
+        telefone: null,
+        foto: null,
+        tipo: user.tipo,
+        unidadeId: user.unidadeId,
+        crn: user.crn ?? null,
       }),
     });
 

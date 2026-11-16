@@ -18,6 +18,8 @@ public class SolicitacaoTests
         int? cardapioId = null,
         string? restricao = "Lactose",
         string? ingrediente = null,
+        string? alunoNome = "Ana",
+        string? cardapioNome = null,
         string descricao = "Pedido de correção cadastral.") =>
         new(
             tipo,
@@ -30,6 +32,8 @@ public class SolicitacaoTests
             cardapioId,
             restricao,
             ingrediente,
+            alunoNome,
+            cardapioNome,
             Utc);
 
     [Fact]
@@ -83,6 +87,30 @@ public class SolicitacaoTests
         var evento = Assert.Single(solicitacao.Historico);
         Assert.Equal(StatusSolicitacao.Aberta, evento.Status);
         Assert.Equal("Paulo", evento.AutorNome);
+    }
+
+    [Fact]
+    public void Criacao_PreservaSnapshotDosNomes()
+    {
+        var solicitacao = Criar(alunoNome: "Ana", cardapioNome: null);
+
+        Assert.Equal("Ana", solicitacao.AlunoNome);
+        Assert.Null(solicitacao.CardapioNome);
+    }
+
+    [Fact]
+    public void MudancaCardapio_PreservaNomeDoCardapio()
+    {
+        var solicitacao = Criar(
+            TipoSolicitacao.MudancaCardapio,
+            alunoId: null,
+            cardapioId: 5,
+            restricao: null,
+            alunoNome: null,
+            cardapioNome: "Semana 12");
+
+        Assert.Equal("Semana 12", solicitacao.CardapioNome);
+        Assert.Null(solicitacao.AlunoNome);
     }
 
     [Fact]
@@ -162,6 +190,8 @@ public class SolicitacaoTests
             null,
             null,
             null,
+            null,
+            null,
             Utc);
 
         Assert.Throws<ArgumentException>(() =>
@@ -179,6 +209,8 @@ public class SolicitacaoTests
             "Paulo",
             "Correção solicitada pela família.",
             1,
+            null,
+            null,
             null,
             null,
             null,
@@ -205,6 +237,8 @@ public class SolicitacaoTests
             "Paulo",
             "Correção solicitada pela família.",
             1,
+            null,
+            null,
             null,
             null,
             null,

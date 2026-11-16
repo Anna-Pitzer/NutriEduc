@@ -46,7 +46,7 @@ public class ExclusaoApiTests : IClassFixture<ApiFactory>
         var resposta = await admin.PostAsJsonAsync("/api/usuarios", new
         {
             nome = "Conta Exclusão",
-            cpf = "12345678901",
+            cpf = ApiFactory.GerarCpfUnico(),
             dataNascimento = "1990-01-01",
             email,
             senha = "senha12345",
@@ -200,5 +200,42 @@ public class ExclusaoApiTests : IClassFixture<ApiFactory>
         var resposta = await nutricionista.DeleteAsync($"/api/escolas/{escolaId}");
 
         Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Usuario_ComNotificacao_Retorna409_EPreserva()
+    {
+        var admin = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.AdminSecretaria);
+        var escolaId = await CriarEscola(admin);
+        var (id, _) = await CriarUsuario(admin, PapelUsuario.Merendeira, escolaId);
+
+        using (var escopo = _factory.Services.CreateScope())
+        {
+            var notificacoes = escopo.ServiceProvider.GetRequiredService<INotificacaoRepository>();
+            var unidadeDeTrabalho = escopo.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>();
+
+            unidadeDeTrabalho.ExecutarEmTransacao(() => notificacoes.Add(new Notificacao(
+                id,
+                TipoNotificacao.SolicitacaoStatus,
+                "Título válido",
+                "Mensagem válida.",
+                "solicitacao",
+                1,
+                DateTime.UtcNow)));
+        }
+
+        var resposta = await admin.DeleteAsync($"/api/usuarios/{id}");
+
+        Assert.Equal(HttpStatusCode.Conflict, resposta.StatusCode);
+        Assert.Contains("notifica", (await Ler(resposta)).GetProperty("erro").GetString()!);
+
+        using (var escopo = _factory.Services.CreateScope())
+        {
+            var usuarios = escopo.ServiceProvider.GetRequiredService<IUsuarioRepository>();
+            var notificacoes = escopo.ServiceProvider.GetRequiredService<INotificacaoRepository>();
+
+            Assert.NotNull(usuarios.GetById(id));
+            Assert.True(notificacoes.ExistePorDestinatario(id));
+        }
     }
 }

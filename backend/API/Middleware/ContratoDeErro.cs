@@ -57,7 +57,10 @@ public static class ContratoDeErro
             await resposta.WriteAsJsonAsync(new { erro = Mensagem(resposta.StatusCode) });
         });
 
-    private static string Mensagem(int status) => status switch
+    /// <summary>
+    /// Mensagem única por status, compartilhada com o <see cref="ContratoDeErroFilter"/>.
+    /// </summary>
+    internal static string Mensagem(int status) => status switch
     {
         404 => "Recurso não encontrado.",
         405 => "Método não permitido.",
@@ -92,13 +95,7 @@ public sealed class ContratoDeErroFilter : IAlwaysRunResultFilter
 
         var status = detalhes.Status ?? resultado.StatusCode ?? StatusCodes.Status400BadRequest;
 
-        var erro = status switch
-        {
-            404 => "Recurso não encontrado.",
-            405 => "Método não permitido.",
-            415 => "Formato de conteúdo não suportado.",
-            _ => "Requisição inválida."
-        };
+        var erro = ContratoDeErro.Mensagem(status);
 
         contexto.Result = new ObjectResult(new { erro }) { StatusCode = status };
     }

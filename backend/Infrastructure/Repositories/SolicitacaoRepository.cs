@@ -123,4 +123,26 @@ public class SolicitacaoRepository : ISolicitacaoRepository
                 solicitacao.Alteracoes.Any(alteracao => alteracao.Campo == campo))
             .Select(solicitacao => (int?)solicitacao.Id)
             .FirstOrDefault();
+
+    public int? IdDaAbertaParaRestricao(int alunoId, string restricaoNome)
+    {
+        var alvo = (restricaoNome ?? string.Empty).Trim();
+
+        // SQLite compara texto sem remover acento (PEND-032): o recorte por aluno/tipo/status
+        // roda no SQL e a comparação do nome é feita em memória (poucas solicitações abertas).
+        return _context.Solicitacoes
+            .Where(solicitacao =>
+                (solicitacao.Tipo == TipoSolicitacao.InclusaoAlergia ||
+                 solicitacao.Tipo == TipoSolicitacao.AlteracaoRestricao) &&
+                solicitacao.AlunoId == alunoId &&
+                (solicitacao.Status == StatusSolicitacao.Aberta ||
+                 solicitacao.Status == StatusSolicitacao.EmAnalise))
+            .AsEnumerable()
+            .Where(solicitacao => string.Equals(
+                (solicitacao.RestricaoNome ?? string.Empty).Trim(),
+                alvo,
+                StringComparison.OrdinalIgnoreCase))
+            .Select(solicitacao => (int?)solicitacao.Id)
+            .FirstOrDefault();
+    }
 }

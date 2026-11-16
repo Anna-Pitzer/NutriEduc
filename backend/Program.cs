@@ -14,6 +14,9 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls(builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5001");
 
+// Spec 031, RF2/D3: a faixa de regiões do CRN é configuração (Crn__RegioesValidas).
+CrnDeNutricionista.ConfigurarRegioes(builder.Configuration["Crn:RegioesValidas"]);
+
 var connectionString = builder.Configuration.GetConnectionString("Default")
                        ?? "Data Source = database.db";
 
@@ -57,9 +60,17 @@ builder.Services.AddScoped<AlimentoService>();
 
 builder.Services.AddScoped<ICardapioRepository, CardapioRepository>();
 builder.Services.AddScoped<ISolicitacaoRepository, SolicitacaoRepository>();
+builder.Services.AddScoped<ISolicitacaoDeAcessoRepository, SolicitacaoDeAcessoRepository>();
 builder.Services.AddScoped<INotificacaoRepository, NotificacaoRepository>();
 builder.Services.AddScoped<NotificacaoService>();
+builder.Services.AddScoped<NotificacaoDeAcessoService>();
 builder.Services.AddScoped<SolicitacaoService>();
+builder.Services.AddScoped<RegistrarAcessoService>();
+builder.Services.AddScoped<AprovarAcessoService>();
+builder.Services.AddScoped<IOcorrenciaRepository, OcorrenciaRepository>();
+builder.Services.AddScoped<OcorrenciaService>();
+builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
+builder.Services.AddScoped<FeedbackService>();
 builder.Services.AddScoped<CardapioService>();
 builder.Services.AddScoped<ContextoDeRestricoesService>();
 builder.Services.AddScoped<AdaptarCardapioService>();
@@ -217,6 +228,13 @@ builder.Services.AddAuthorization(options =>
     // Catálogo de restrições e alergias: somente a nutrição edita (Spec 010, RF2).
     options.AddPolicy("Nutricionista", politica =>
         politica.RequireRole(nameof(PapelUsuario.Nutricionista)));
+
+    // Seleção de autora de cardápio (Spec 031): leitura usada pela nutrição e pelo ADM
+    // da unidade; o escopo da consulta continua no serviço.
+    options.AddPolicy("SelecaoDeNutricionista", politica =>
+        politica.RequireRole(
+            nameof(PapelUsuario.Nutricionista),
+            nameof(PapelUsuario.AdminSecretaria)));
 });
 
 builder.Services.AddDbContext<ConnectionContext>(options =>

@@ -40,8 +40,14 @@ public class AlunoServiceTests
     /// Catálogo já semeado com as restrições usadas pelos testes: sem isso a validação do
     /// caso de uso recusaria todos os nomes (Spec 010, RF4).
     /// </summary>
-    private static (AlunoService Servico, AlunoRepositoryFake Alunos, RestricaoRepositoryFake Restricoes)
-        CriarServico()
+    private static (
+        AlunoService Servico,
+        AlunoRepositoryFake Alunos,
+        RestricaoRepositoryFake Restricoes,
+        NotificacaoRepositoryFake Notificacoes,
+        VinculoRepositoryFake Vinculos,
+        UsuarioRepositoryFake Usuarios)
+        Montar()
     {
         var alunos = new AlunoRepositoryFake();
         var restricoes = new RestricaoRepositoryFake("APVL", "Diabetes", "Lactose");
@@ -49,17 +55,31 @@ public class AlunoServiceTests
         var unidade = escolas.AddUnidade(new UnidadeEscolar("Unidade Central"));
         escolas.Add(new Escola("Escola Municipal", unidade.Id));
 
-        return (
-            new AlunoService(
-                alunos,
-                restricoes,
-                new UsuarioRepositoryFake(),
-                new HierarquiaService(escolas, alunos, new UsuarioRepositoryFake()),
-                new AutorizacaoService(),
-                new TrilhaAcaoRepositoryFake(),
-                new UnidadeDeTrabalhoFake()),
+        var unidadeDeTrabalho = new UnidadeDeTrabalhoFake();
+        var notificacoes = new NotificacaoRepositoryFake();
+        var usuarios = new UsuarioRepositoryFake();
+        var vinculos = new VinculoRepositoryFake();
+        var notificacaoService = new NotificacaoService(notificacoes, unidadeDeTrabalho);
+
+        var servico = new AlunoService(
             alunos,
-            restricoes);
+            restricoes,
+            usuarios,
+            new HierarquiaService(escolas, alunos, usuarios),
+            new AutorizacaoService(),
+            new TrilhaAcaoRepositoryFake(),
+            unidadeDeTrabalho,
+            vinculos,
+            notificacaoService);
+
+        return (servico, alunos, restricoes, notificacoes, vinculos, usuarios);
+    }
+
+    private static (AlunoService Servico, AlunoRepositoryFake Alunos, RestricaoRepositoryFake Restricoes)
+        CriarServico()
+    {
+        var montado = Montar();
+        return (montado.Servico, montado.Alunos, montado.Restricoes);
     }
 
     [Fact]
@@ -341,5 +361,47 @@ public class AlunoServiceTests
         var (servico, _, _) = CriarServico();
 
         Assert.False(servico.ExcluirAluno(99, Escopo));
+    }
+
+    [Fact]
+    public void AtualizarAluno_NaoNotificaResponsavelDesativado()
+    {
+        var (servico, _, _, notificacoes, vinculos, usuarios) = Montar();
+        var alunoId = servico.CriarAluno(DtoValido(), Escopo).Id;
+
+        usuarios.Add(new Usuario(
+            "Responsável Ativo",
+            "11111111111",
+            new DateOnly(1990, 1, 1),
+            "ativo@teste.com",
+            PapelUsuario.Responsavel,
+            null,
+            1));
+
+        var desativado = new Usuario(
+            "Responsável Desativado",
+            "22222222222",
+            new DateOnly(1990, 1, 1),
+            "desativado@teste.com",
+            PapelUsuario.Responsavel,
+            null,
+            1);
+        desativado.Desativar();
+        usuarios.Add(desativado);
+
+        vinculos.Add(new VinculoResponsavelAluno(alunoId, 1));
+        vinculos.Add(new VinculoResponsavelAluno(alunoId, 2));
+
+        servico.AtualizarAluno(
+            alunoId,
+            DtoValido(nome: "Maria Souza", restricoes: new List<string> { "Diabetes" }),
+            Escopo);
+
+        var destinatarios = notificacoes.GetItens()
+            .Select(item => item.DestinatarioId)
+            .ToList();
+
+        Assert.Contains(1, destinatarios);
+        Assert.DoesNotContain(2, destinatarios);
     }
 }

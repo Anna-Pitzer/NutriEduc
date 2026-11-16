@@ -43,8 +43,9 @@ public class AlunoRepository : IAlunoRepository
     }
 
     /// <summary>
-    /// Filtro de negócio aplicado em SQL (RNF4 da Spec 009): unidade, escola e responsável
-    /// vinculado. O recorte nunca é aplicado em memória (Spec 027, RNF1).
+    /// Filtro de negócio aplicado em SQL (RNF4 da Spec 009): unidade, escola, responsável
+    /// vinculado e busca por nome/série. O recorte nunca é aplicado em memória
+    /// (Spec 027, RNF1).
     /// </summary>
     private IQueryable<Aluno> Filtrar(FiltroAluno filtro)
     {
@@ -67,6 +68,22 @@ public class AlunoRepository : IAlunoRepository
 
             alunos = alunos.Where(aluno =>
                 vinculos.Any(vinculo => vinculo.AlunoId == aluno.Id));
+        }
+
+        // Spec 034: busca por nome e filtro de série são restrições adicionais ao recorte
+        // já autorizado; nunca ampliam o alcance do solicitante.
+        if (!string.IsNullOrWhiteSpace(filtro.Busca))
+        {
+            var termo = filtro.Busca.Trim().ToLowerInvariant();
+
+            alunos = alunos.Where(aluno => aluno.Nome.ToLower().Contains(termo));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filtro.Serie))
+        {
+            var serie = filtro.Serie.Trim().ToLowerInvariant();
+
+            alunos = alunos.Where(aluno => aluno.Turma.Serie.ToLower().Contains(serie));
         }
 
         return alunos;

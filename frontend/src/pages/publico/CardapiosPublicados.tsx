@@ -6,7 +6,7 @@ import {
     type Cardapio,
     type FiltroPublicados,
 } from "../../services/CardapioApi";
-import { listarUnidades, type Unidade } from "../../services/UnidadeApi";
+import { listarUnidadesAtivas, type UnidadeAtiva } from "../../services/UnidadeApi";
 
 /**
  * Leitura pública de cardápios (Spec 012, RF9 e RF13).
@@ -22,7 +22,7 @@ export function CardapiosPublicados({
     unidadeFixa?: number | null;
     titulo: string;
 }) {
-    const [unidades, setUnidades] = useState<Unidade[]>([]);
+    const [unidades, setUnidades] = useState<UnidadeAtiva[]>([]);
     const [unidadeId, setUnidadeId] = useState<number | "">(unidadeFixa ?? "");
     const [data, setData] = useState("");
     const [refeicao, setRefeicao] = useState("");
@@ -33,7 +33,7 @@ export function CardapiosPublicados({
     useEffect(() => {
         async function carregarUnidades() {
             try {
-                setUnidades(await listarUnidades());
+                setUnidades(await listarUnidadesAtivas());
             } catch {
                 setUnidades([]);
             }

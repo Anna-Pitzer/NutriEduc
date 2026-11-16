@@ -34,6 +34,16 @@ public class UsuarioRepository : IUsuarioRepository
         return _context.Usuarios.Any(u => u.Email == email);
     }
 
+    public Usuario? GetByCrn(string crn)
+    {
+        return _context.Usuarios.FirstOrDefault(u => u.Crn == crn);
+    }
+
+    public Usuario? GetByCpf(string cpf)
+    {
+        return _context.Usuarios.FirstOrDefault(u => u.Cpf == cpf);
+    }
+
     public void Update(Usuario usuario)
     {
         _context.Usuarios.Update(usuario);
@@ -79,6 +89,12 @@ public class UsuarioRepository : IUsuarioRepository
 
         return consulta.OrderBy(usuario => usuario.Nome).ToList();
     }
+
+    public List<Usuario> ListarSemPapel() =>
+        _context.Usuarios
+            .Where(usuario => usuario.Papel == null)
+            .OrderBy(usuario => usuario.Nome)
+            .ToList();
 
     public void Delete(Usuario usuario)
     {

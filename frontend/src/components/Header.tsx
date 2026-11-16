@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CircleUserRound } from "lucide-react";
 import { useAuth } from "../context/authContext";
+import { SinoNotificacoes } from "./SinoNotificacoes";
 
 export default function Header() {
     const { logout } = useAuth();
@@ -23,8 +24,10 @@ export default function Header() {
         }
     }
 
+    // Sem `overflow-hidden`: o painel de notificações é maior que o header e precisa poder
+    // escapar da caixa para rolar a lista completa.
     return (
-        <header className="relative p-0 h-60 w-full overflow-hidden ">
+        <header className="relative h-60 w-full">
             {/*
               A faixa rosa precisa de profundidade constante: a versão anterior descia
               até ~30 unidades no canto direito (de 300) e o botão "Sair" ficava abaixo da
@@ -61,7 +64,8 @@ export default function Header() {
                     <p className=" mt-1 text-sm font-light text-white/75 md:text-base">Alimentação que educa, nutrição que transforma</p>
                 </div>
 
-                <div className="flex items-center mt-10 mr-30 gap-2">
+                <div className="flex items-center gap-2">
+                    <SinoNotificacoes />
                     <button
                         type="button"
                         onClick={handleLogout}

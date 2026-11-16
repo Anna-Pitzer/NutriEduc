@@ -24,3 +24,25 @@ export async function listarUnidades(): Promise<Unidade[]> {
 
     return resposta.json();
 }
+
+export interface UnidadeAtiva {
+    id: number;
+    nome: string;
+}
+
+/**
+ * Consulta pública mínima de unidades ativas para o cadastro (Spec 033): anônima, apenas
+ * id e nome.
+ */
+export async function listarUnidadesAtivas(): Promise<UnidadeAtiva[]> {
+    const resposta = await fetch(`${ApiURL}/api/unidades/ativas`);
+
+    if (!resposta.ok) {
+        throw new ErroRequisicao(
+            await extrairErro(resposta, "Erro ao carregar as unidades"),
+            resposta.status,
+        );
+    }
+
+    return resposta.json();
+}

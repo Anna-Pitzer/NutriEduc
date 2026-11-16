@@ -6,6 +6,10 @@ references: V22, V17, ADR-021
 
 # Tasks — Cadastro e autorização de acesso
 
+> **Estado (2026-11-12):** implementação concluída e gates verdes; os checkboxes são projeção
+> do motor SDD e serão marcados por `/spec-implement` quando o PEND-028 for corrigido.
+> A validação manual e a decisão sobre o diagnóstico global (PEND-046) permanecem pendentes.
+
 ## Pré-condição
 
 - [ ] T0: Specs 020 (sessão/erro), 027 (hierarquia), 028 (matriz e trilha) e 031 (CRN)

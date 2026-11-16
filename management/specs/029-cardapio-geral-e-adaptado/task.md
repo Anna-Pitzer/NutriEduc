@@ -9,9 +9,7 @@ references: V18, V20, ADR-022, L7
 ## Pré-condição
 
 - [x] T0: Specs 012, 014 e 015 implementadas ou verificadas; Spec 027 implementada
-  (`Aluno.EscolaId`); gate de CRN das operações de cardápio implementado
-  (`ValidacaoDeNutricionista`). O cadastro obrigatório de CRN pertence à Spec 031, ainda
-  `created`, e permanece como dependência documental dela.
+  (`Aluno.EscolaId`); Spec 031 implementada (CRN obrigatório).
   - Validação: `Cardapio` cria com `nutricionistaId`; aluno devolve `escolaId`;
     nutricionista sem CRN é recusada em criar/adaptar/publicar (RF17).
 
@@ -46,15 +44,15 @@ references: V18, V20, ADR-022, L7
 - [x] T7: exigir `nutricionistaId` e CRN na criação manual e produzir geral + adaptados na
   mesma transação, com snapshot de autoria em todas as versões.
   - Validação: criação sem CRN devolve 400; duas escolas com dois conjuntos geram os
-    adaptados corretos.
+  adaptados corretos.
 - [x] T8: criar `ContextoDeRestricoesService` e a rota de contexto (alunos e restrições por
   escola); aplicar bloqueio de alimento sem substituto e exigir confirmação registrada.
   - Validação: 400 sem confirmação; 400 para alimento sem substituto; confirmação grava
-    autor, data, alimento e grupos.
+  autor, data, alimento e grupos.
 - [x] T9: criar `CardapioServidoService` e a rota `GET /api/aluno/{id}/cardapio` com escola +
   conjunto.
   - Validação: aluno sem restrição recebe o geral; com restrição sem versão publicada recebe
-    `Indisponivel`; aluno de outra escola não usa a versão da primeira; 403 fora do escopo.
+  `Indisponivel`; aluno de outra escola não usa a versão da primeira; 403 fora do escopo.
 - [x] T10: marcar adaptados como `Desatualizado` na edição do geral e bloquear publicação com
   pendente ou desatualizado.
   - Validação: 409 com a lista de versões que bloqueiam.

@@ -10,6 +10,13 @@ public class CriarSolicitacaoDTO
     public int? AlunoId { get; set; }
     public int? CardapioId { get; set; }
     public string? RestricaoNome { get; set; }
+
+    /// <summary>
+    /// Para <c>InclusaoAlergia</c>/<c>AlteracaoRestricao</c>: o solicitante informa que a
+    /// reação é anafilática. Aplicado ao aluno somente na aprovação (Spec 035, revisão).
+    /// </summary>
+    public bool Anafilaxia { get; set; }
+
     public string? Ingrediente { get; set; }
 
     /// <summary>Alterações do tipo <c>DadosCadastrais</c> (Spec 030, RF2).</summary>
@@ -67,6 +74,9 @@ public class SolicitacaoResumoDTO
 public class SolicitacaoDTO : SolicitacaoResumoDTO
 {
     public List<HistoricoSolicitacaoDTO> Historico { get; set; } = new();
+
+    /// <summary>Solicitante informou reação anafilática para a restrição (Spec 035, revisão).</summary>
+    public bool Anafilaxia { get; set; }
 
     /// <summary>Diff do pedido de dados cadastrais (Spec 030, RF12).</summary>
     public List<AlteracaoDeDadosDTO> Alteracoes { get; set; } = new();

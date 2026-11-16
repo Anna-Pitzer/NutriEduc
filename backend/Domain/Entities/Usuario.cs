@@ -20,6 +20,9 @@ public class Usuario {
     /// </summary>
     public string? Crn {get;private set;}
 
+    /// <summary>Indica se o CRN armazenado está em formato válido (RF7/RF10).</summary>
+    public bool CrnValido => CrnDeNutricionista.EhValido(Crn);
+
     /// <summary>
     /// Hash da senha. Interno de propósito (Spec 024, F8): material de autenticação não é
     /// parte do contrato da entidade — o exterior só pergunta <see cref="SenhaConfere"/>.
@@ -61,11 +64,21 @@ public class Usuario {
             throw new ArgumentException("Data de nascimento inválida.");
         }
 
+        // RF6: CRN é exclusivo do papel Nutricionista; qualquer outro papel com CRN é inválido.
+        if (papel is not null && papel != PapelUsuario.Nutricionista &&
+            !string.IsNullOrWhiteSpace(crn))
+        {
+            throw new ArgumentException(CrnDeNutricionista.MensagemSomenteNutricionista);
+        }
+
         AtualizarPerfil(nome, email);
-        Cpf = cpf;
+        Cpf = NormalizarCpf(cpf);
         DataNascimento = dataNascimento;
-        DefinirPapel(papel, escolaId, unidadeId);
+
+        // A regra por papel exige o CRN já definido antes de trocar para Nutricionista;
+        // por isso a ordem aqui é CRN → papel (RF3/RF4).
         DefinirCrn(crn);
+        DefinirPapel(papel, escolaId, unidadeId);
         Ativo = true;
     }   
 
@@ -132,6 +145,21 @@ public class Usuario {
                 break;
         }
 
+        // Regra por papel do CRN (Spec 031, RF4/RF6): só Nutricionista carrega CRN válido.
+        if (papel == PapelUsuario.Nutricionista)
+        {
+            if (!CrnDeNutricionista.EhValido(Crn))
+            {
+                throw new ArgumentException(CrnDeNutricionista.MensagemNutricionistaSemCrn);
+            }
+        }
+        else
+        {
+            // Mudar para outro papel limpa o CRN; o valor anterior é capturado pelo serviço
+            // para a trilha de ação privilegiada (RF11).
+            Crn = null;
+        }
+
         Papel = papel;
         EscolaId = escolaId;
         UnidadeId = unidadeId;
@@ -153,14 +181,13 @@ public class Usuario {
             return;
         }
 
-        var valor = crn.Trim().ToUpperInvariant().Replace(" ", string.Empty);
-
-        if (valor.Length < 3 || valor.Length > 20)
+        // A forma canônica e o formato são regra do objeto de valor (RF1/RF2, RNF1).
+        if (!CrnDeNutricionista.TryParse(crn, null, out var valor, out var erro))
         {
-            throw new ArgumentException("O CRN deve ter entre 3 e 20 caracteres.");
+            throw new ArgumentException(erro);
         }
 
-        Crn = valor;
+        Crn = valor!.Valor;
     }
 
     public void AtualizarPerfil(string nome, string email)
@@ -185,7 +212,24 @@ public class Usuario {
         Nome = nome;
         Email = email;
     }
-    
+
+    /// <summary>
+    /// Normaliza e valida o CPF (Spec 033, RF3/D7): apenas dígitos, exatamente 11. Não
+    /// aplica algoritmo de dígitos verificadores — a spec não o exige — e não impõe
+    /// unicidade, que é decisão do serviço.
+    /// </summary>
+    public static string NormalizarCpf(string? cpf)
+    {
+        var digitos = new string((cpf ?? string.Empty).Where(char.IsDigit).ToArray());
+
+        if (digitos.Length != 11)
+        {
+            throw new ArgumentException("O CPF deve ter 11 dígitos.");
+        }
+
+        return digitos;
+    }
+
     public void AtualizarTelefone(string? telefone)
 {
     if (string.IsNullOrWhiteSpace(telefone))
@@ -269,10 +313,10 @@ public class Usuario {
             throw new ArgumentException("A senha não pode ser vazia.", nameof(senha));
         }
 
-        if (senha.Length < 8)
+        if (senha.Length < 8 || senha.Length > 100)
         {
             throw new ArgumentException(
-                "A senha deve possuir pelo menos 8 caracteres.", nameof(senha));
+                "A senha deve ter entre 8 e 100 caracteres.", nameof(senha));
         }
 
         Senha = HashSenha.Criar(senha).ToString();

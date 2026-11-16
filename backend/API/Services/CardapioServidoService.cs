@@ -4,12 +4,13 @@ using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
 
 /// <summary>
-/// Resolve a versão que cada aluno realmente recebe (Spec 029, RF15).
+/// Resolve as versões visíveis para cada aluno (Spec 029, RF15; revisão do portal dos pais).
 ///
 /// Aluno sem restrição recebe o geral publicado da unidade. Aluno com restrições recebe a
 /// versão adaptada publicada de <c>(origem, escola, conjunto exato)</c>. Sem essa versão o
-/// resultado é <c>Indisponivel</c> com alerta — o geral nunca é usado como fallback e item
-/// bloqueante nunca é servido.
+/// resultado é <c>Indisponivel</c> com alerta — o geral nunca é usado como versão servida e
+/// item bloqueante nunca é servido. O geral publicado continua exposto em
+/// <see cref="CardapioServidoDTO.CardapioGeral"/> para consulta do responsável.
 /// </summary>
 public sealed class CardapioServidoService
 {
@@ -98,10 +99,15 @@ public sealed class CardapioServidoService
             return Resultado<CardapioServidoDTO>.Ok(resposta);
         }
 
+        resposta.RequerAdaptacao = !conjunto.EstaVazio;
+
+        var detalheGeral = CardapioMapper.ParaDetalhe(geral);
+        resposta.CardapioGeral = detalheGeral;
+
         if (conjunto.EstaVazio)
         {
             resposta.Disponivel = true;
-            resposta.Cardapio = CardapioMapper.ParaDetalhe(geral);
+            resposta.Cardapio = detalheGeral;
             return Resultado<CardapioServidoDTO>.Ok(resposta);
         }
 
@@ -119,8 +125,8 @@ public sealed class CardapioServidoService
             return Resultado<CardapioServidoDTO>.Ok(resposta);
         }
 
-        var detalhe = CardapioMapper.ParaDetalhe(adaptado);
-        detalhe.Restricoes = RestricoesDoAluno.DoAluno(aluno, porNome)
+        var detalheAdaptado = CardapioMapper.ParaDetalhe(adaptado);
+        detalheAdaptado.Restricoes = RestricoesDoAluno.DoAluno(aluno, porNome)
             .Select(restricao => new RestricaoDaVersaoDTO
             {
                 Id = restricao.Id,
@@ -129,8 +135,9 @@ public sealed class CardapioServidoService
             })
             .ToList();
 
+        resposta.CardapioAdaptado = detalheAdaptado;
         resposta.Disponivel = true;
-        resposta.Cardapio = detalhe;
+        resposta.Cardapio = detalheAdaptado;
 
         return Resultado<CardapioServidoDTO>.Ok(resposta);
     }

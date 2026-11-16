@@ -71,6 +71,11 @@ public class VinculoService
             return Resultado<bool>.Conflito("O usuário informado não é responsável.");
         }
 
+        if (!usuario.Ativo)
+        {
+            return Resultado<bool>.Conflito("Usuário desativado não pode ser vinculado.");
+        }
+
         if (_vinculos.Existe(alunoId, usuarioId))
         {
             return Resultado<bool>.Conflito(

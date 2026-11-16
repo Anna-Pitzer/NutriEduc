@@ -26,7 +26,13 @@ import { HomeMerendeiras } from "../pages/merendeiras/HomeMerendeiras"
 import { AlteracoesCardapios } from "../pages/merendeiras/AlteracoesCardapios"
 
 // Pais / Responsáveis
-import { HomePais } from "../pages/pais/HomePais"
+import { LayoutPais } from "../pages/pais/LayoutPais"
+import { PainelPais } from "../pages/pais/PainelPais"
+import { CardapiosPais } from "../pages/pais/CardapiosPais"
+import { OcorrenciasPais } from "../pages/pais/OcorrenciasPais"
+import { NovaOcorrenciaPais } from "../pages/pais/NovaOcorrenciaPais"
+import { SolicitacoesPais } from "../pages/pais/SolicitacoesPais"
+import { FeedbackPais } from "../pages/pais/FeedbackPais"
 
 // Secretaria
 import { HomeSecretaria } from "../pages/secretaria/HomeSecretaria"
@@ -39,6 +45,13 @@ import { HomeEscolas } from "../pages/escolas/HomeEscolas"
 
 // Solicitações
 import { SolicitacoesPage } from "../pages/solicitacoes/SolicitacoesPage"
+import { SolicitacoesAcesso } from "../pages/secretaria/SolicitacoesAcesso"
+
+// Ocorrências
+import { OcorrenciasPage } from "../pages/ocorrencias/OcorrenciasPage"
+
+// Feedback
+import { FeedbackPage } from "../pages/feedback/FeedbackPage"
 
 export function Rotas() {
   return (
@@ -92,7 +105,14 @@ export function Rotas() {
         </Route>
 
         <Route element={<ProtegidaPorPapel papeis={["Responsavel"]} />}>
-          <Route path="/pais" element={<HomePais />} />
+          <Route path="/pais" element={<LayoutPais />}>
+            <Route index element={<PainelPais />} />
+            <Route path="cardapios" element={<CardapiosPais />} />
+            <Route path="ocorrencias" element={<OcorrenciasPais />} />
+            <Route path="ocorrencias/nova" element={<NovaOcorrenciaPais />} />
+            <Route path="solicitacoes" element={<SolicitacoesPais />} />
+            <Route path="feedback" element={<FeedbackPais />} />
+          </Route>
         </Route>
 
         <Route element={<ProtegidaPorPapel papeis={["AdminSecretaria"]} />}>
@@ -100,6 +120,7 @@ export function Rotas() {
           <Route path="/secretaria/escolas" element={<Escolas />} />
           <Route path="/secretaria/unidades" element={<Unidades />} />
           <Route path="/secretaria/usuarios" element={<Usuarios />} />
+          <Route path="/secretaria/solicitacoes-acesso" element={<SolicitacoesAcesso />} />
         </Route>
 
         <Route element={<ProtegidaPorPapel papeis={["AdminEscola"]} />}>
@@ -115,6 +136,28 @@ export function Rotas() {
           }
         >
           <Route path="/solicitacoes" element={<SolicitacoesPage />} />
+        </Route>
+
+        {/* Ocorrências — registro e acompanhamento por papel (Spec 016) */}
+        <Route
+          element={
+            <ProtegidaPorPapel
+              papeis={["Nutricionista", "AdminSecretaria", "AdminEscola", "Merendeira", "Responsavel"]}
+            />
+          }
+        >
+          <Route path="/ocorrencias" element={<OcorrenciasPage />} />
+        </Route>
+
+        {/* Feedback — canal de retorno por papel (Spec 018) */}
+        <Route
+          element={
+            <ProtegidaPorPapel
+              papeis={["Nutricionista", "AdminSecretaria", "AdminEscola", "Merendeira", "Responsavel"]}
+            />
+          }
+        >
+          <Route path="/feedbacks" element={<FeedbackPage />} />
         </Route>
 
         {/* Comum */}

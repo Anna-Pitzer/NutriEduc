@@ -25,4 +25,10 @@ public interface ISolicitacaoRepository
     /// o aluno (Spec 030, RF13); nulo quando não existe.
     /// </summary>
     int? IdDaAbertaParaCampo(int alunoId, CampoDeDadoDoAluno campo);
+
+    /// <summary>
+    /// Id da solicitação de inclusão/alteração de restrição aberta ou em análise para o
+    /// mesmo aluno e a mesma restrição (Spec 035, RF20); nulo quando não existe.
+    /// </summary>
+    int? IdDaAbertaParaRestricao(int alunoId, string restricaoNome);
 }

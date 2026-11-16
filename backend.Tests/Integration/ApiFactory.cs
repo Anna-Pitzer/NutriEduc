@@ -50,6 +50,21 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     private (int EscolaId, int UnidadeId)? _padrao;
 
+    private static int _proximoCrn = 100000;
+
+    private static int _proximoCpf = 1;
+
+    /// <summary>
+    /// CRN único por nutricionista de teste. O índice `IX_Usuarios_Crn` (Spec 031) exige
+    /// unicidade; um valor fixo fazia o segundo nutricionista violar a restrição.
+    /// </summary>
+    public static string GerarCrnUnico() =>
+        $"CRN-3-{Interlocked.Increment(ref _proximoCrn)}";
+
+    /// <summary>CPF único (11 dígitos) por usuário de teste; o cadastro verifica unicidade (D7).</summary>
+    public static string GerarCpfUnico() =>
+        $"{Interlocked.Increment(ref _proximoCpf):00000000000}";
+
     public ApiFactory()
     {
         _connection.Open();
@@ -173,12 +188,13 @@ public class ApiFactory : WebApplicationFactory<Program>
         var usuario = usuarios.GetByEmail(email)
             ?? throw new InvalidOperationException($"Usuário {email} não existe.");
 
-        usuario.DefinirPapel(papel, escolaId, unidadeId);
-
+        // CRN antes do papel: DefinirPapel(Nutricionista) exige CRN válido (Spec 031).
         if (papel == PapelUsuario.Nutricionista && string.IsNullOrWhiteSpace(usuario.Crn))
         {
-            usuario.DefinirCrn("CRN-3 12345");
+            usuario.DefinirCrn(GerarCrnUnico());
         }
+
+        usuario.DefinirPapel(papel, escolaId, unidadeId);
 
         scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>()
             .ExecutarEmTransacao(() => usuarios.Update(usuario));
@@ -232,12 +248,13 @@ public class ApiFactory : WebApplicationFactory<Program>
             var usuario = usuarios.GetByEmail(email)
                 ?? throw new InvalidOperationException($"Usuário {email} não foi criado.");
 
-            usuario.DefinirPapel(papel, escolaId, unidadeId);
-
+            // CRN antes do papel: DefinirPapel(Nutricionista) exige CRN válido (Spec 031).
             if (papel == PapelUsuario.Nutricionista && string.IsNullOrWhiteSpace(usuario.Crn))
             {
-                usuario.DefinirCrn("CRN-3 12345");
+                usuario.DefinirCrn(GerarCrnUnico());
             }
+
+            usuario.DefinirPapel(papel, escolaId, unidadeId);
 
             usuarioId = usuario.Id;
             scope.ServiceProvider.GetRequiredService<IUnidadeDeTrabalho>()
@@ -289,12 +306,15 @@ public class ApiFactory : WebApplicationFactory<Program>
         var registro = await client.PostAsJsonAsync("/api/usuario/registrar", new
         {
             nome = "Usuario de Teste",
-            cpf = "12345678901",
+            cpf = GerarCpfUnico(),
             dataNascimento = "1990-01-01",
             email,
             senha = "senha12345",
             telefone = (string?)null,
-            foto = (string?)null
+            foto = (string?)null,
+            tipo = "Responsavel",
+            unidadeId = UnidadeIdPadrao,
+            crn = (string?)null
         });
         registro.EnsureSuccessStatusCode();
 

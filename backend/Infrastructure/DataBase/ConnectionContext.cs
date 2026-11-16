@@ -39,6 +39,10 @@ public class ConnectionContext : DbContext
     public DbSet<SolicitacaoAlteracao> SolicitacaoAlteracoes {get;set;}
     public DbSet<Notificacao> Notificacoes {get;set;}
     public DbSet<TrilhaAcao> TrilhaAcoes {get;set;}
+    public DbSet<Ocorrencia> Ocorrencias {get;set;}
+    public DbSet<HistoricoOcorrencia> HistoricoOcorrencias {get;set;}
+    public DbSet<Feedback> Feedbacks {get;set;}
+    public DbSet<SolicitacaoDeAcesso> SolicitacoesDeAcesso {get;set;}
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -102,6 +106,13 @@ public class ConnectionContext : DbContext
         modelBuilder.Entity<Usuario>()
             .Property(usuario => usuario.Crn)
             .HasMaxLength(20);
+
+        // CRN único entre usuários (Spec 031, RNF3). O índice filtrado permite vários
+        // valores nulos, mas nunca dois registros com o mesmo CRN normalizado.
+        modelBuilder.Entity<Usuario>()
+            .HasIndex(usuario => usuario.Crn)
+            .IsUnique()
+            .HasFilter("\"Crn\" IS NOT NULL");
 
         modelBuilder.Entity<Usuario>()
             .HasOne<Escola>()
@@ -616,6 +627,10 @@ public class ConnectionContext : DbContext
             entity.Property(solicitacao => solicitacao.RestricaoNome)
                 .HasMaxLength(60);
 
+            // Snapshots dos nomes do alvo (RNF3/ADR-009), preservados após renomear/excluir.
+            entity.Property(solicitacao => solicitacao.AlunoNome).HasMaxLength(100);
+            entity.Property(solicitacao => solicitacao.CardapioNome).HasMaxLength(120);
+
             entity.Property(solicitacao => solicitacao.Ingrediente)
                 .HasMaxLength(120);
 
@@ -724,6 +739,139 @@ public class ConnectionContext : DbContext
                 .IsRequired();
         });
 
+        // ---------- Feedback (Spec 018) ----------
+
+        modelBuilder.Entity<Feedback>(entity =>
+        {
+            entity.Property(feedback => feedback.Assunto)
+                .HasMaxLength(Feedback.AssuntoMax)
+                .IsRequired();
+
+            entity.Property(feedback => feedback.Mensagem)
+                .HasMaxLength(Feedback.MensagemMax)
+                .IsRequired();
+
+            entity.Property(feedback => feedback.AutorNome)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(feedback => feedback.AlunoNome)
+                .HasMaxLength(100);
+
+            entity.Property(feedback => feedback.Resposta)
+                .HasMaxLength(Feedback.RespostaMax);
+
+            entity.Property(feedback => feedback.RespondidoPor)
+                .HasMaxLength(100);
+
+            entity.HasIndex(feedback => new { feedback.UnidadeId, feedback.CriadoEmUtc });
+            entity.HasIndex(feedback => new { feedback.EscolaId, feedback.CriadoEmUtc });
+            entity.HasIndex(feedback => new { feedback.AutorId, feedback.CriadoEmUtc });
+            entity.HasIndex(feedback => feedback.AlunoId);
+
+            entity.HasOne<Aluno>()
+                .WithMany()
+                .HasForeignKey(feedback => feedback.AlunoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<UnidadeEscolar>()
+                .WithMany()
+                .HasForeignKey(feedback => feedback.UnidadeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
+
+            entity.HasOne<Escola>()
+                .WithMany()
+                .HasForeignKey(feedback => feedback.EscolaId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---------- Ocorrências (Spec 016) ----------
+
+        modelBuilder.Entity<Ocorrencia>(entity =>
+        {
+            entity.Property(ocorrencia => ocorrencia.Descricao)
+                .HasMaxLength(Ocorrencia.DescricaoMax)
+                .IsRequired();
+
+            entity.Property(ocorrencia => ocorrencia.AutorNome)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            // Snapshots dos nomes do alvo (RNF3/ADR-009), preservados após renomear/excluir.
+            entity.Property(ocorrencia => ocorrencia.AlunoNome).HasMaxLength(100);
+            entity.Property(ocorrencia => ocorrencia.CardapioNome).HasMaxLength(120);
+            entity.Property(ocorrencia => ocorrencia.RefeicaoNome).HasMaxLength(60);
+            entity.Property(ocorrencia => ocorrencia.AlimentoNome).HasMaxLength(100);
+
+            // SQLite devolve DateTime como Unspecified; o "mesmo dia" do cancelamento (RF9)
+            // compara o dia civil em America/Sao_Paulo e exige Kind Utc para não deslocar a
+            // data pela hora local da máquina (falha na fronteira 00:00–03:00 UTC).
+            entity.Property(ocorrencia => ocorrencia.CriadoEmUtc)
+                .HasConversion(valor => valor, valor => DateTime.SpecifyKind(valor, DateTimeKind.Utc));
+            entity.Property(ocorrencia => ocorrencia.AtualizadoEmUtc)
+                .HasConversion(valor => valor, valor => DateTime.SpecifyKind(valor, DateTimeKind.Utc));
+
+            entity.Property(ocorrencia => ocorrencia.Status)
+                .IsConcurrencyToken();
+
+            entity.HasIndex(ocorrencia => new { ocorrencia.UnidadeId, ocorrencia.CriadoEmUtc });
+            entity.HasIndex(ocorrencia => new { ocorrencia.EscolaId, ocorrencia.CriadoEmUtc });
+            entity.HasIndex(ocorrencia => new { ocorrencia.AlunoId, ocorrencia.CriadoEmUtc });
+
+            entity.HasOne<UnidadeEscolar>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.UnidadeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
+
+            entity.HasOne<Escola>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.EscolaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Aluno>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.AlunoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<Cardapio>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.CardapioId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<Refeicao>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.RefeicaoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<Alimento>()
+                .WithMany()
+                .HasForeignKey(ocorrencia => ocorrencia.AlimentoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(ocorrencia => ocorrencia.Historico)
+                .WithOne()
+                .HasForeignKey(historico => historico.OcorrenciaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Navigation(ocorrencia => ocorrencia.Historico)
+                .HasField("_historico")
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+        });
+
+        modelBuilder.Entity<HistoricoOcorrencia>(entity =>
+        {
+            entity.Property(historico => historico.AutorNome)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(historico => historico.Observacao)
+                .HasMaxLength(Ocorrencia.ObservacaoMax);
+
+            entity.HasIndex(historico => new { historico.OcorrenciaId, historico.CriadoEmUtc });
+        });
+
         // ---------- Trilha de ação privilegiada (Spec 028) ----------
         modelBuilder.Entity<TrilhaAcao>(entity =>
         {
@@ -740,6 +888,48 @@ public class ConnectionContext : DbContext
                     valor => DateTime.SpecifyKind(valor, DateTimeKind.Utc));
             entity.HasIndex(acao => new { acao.AlvoTipo, acao.AlvoId });
             entity.HasIndex(acao => acao.EmUtc);
+        });
+
+        // ---------- Solicitação de acesso (Spec 033) ----------
+        modelBuilder.Entity<SolicitacaoDeAcesso>(entity =>
+        {
+            entity.ToTable("SolicitacoesAcesso");
+            entity.HasKey(solicitacao => solicitacao.Id);
+
+            entity.Property(solicitacao => solicitacao.CrnSolicitado).HasMaxLength(20);
+            entity.Property(solicitacao => solicitacao.DecididoPorNome).HasMaxLength(100);
+            entity.Property(solicitacao => solicitacao.Motivo).HasMaxLength(500);
+            entity.Property(solicitacao => solicitacao.JustificativaCorrecaoPapel).HasMaxLength(500);
+
+            // ADR-010: o estado é token de concorrência; decisões simultâneas geram 409.
+            entity.Property(solicitacao => solicitacao.Status).IsConcurrencyToken();
+
+            entity.HasOne<Usuario>()
+                .WithMany()
+                .HasForeignKey(solicitacao => solicitacao.UsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<UnidadeEscolar>()
+                .WithMany()
+                .HasForeignKey(solicitacao => solicitacao.UnidadeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne<Escola>()
+                .WithMany()
+                .HasForeignKey(solicitacao => solicitacao.EscolaConcedidaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // RF11: no máximo uma solicitação pendente por usuário (índice único filtrado).
+            entity.HasIndex(solicitacao => solicitacao.UsuarioId)
+                .IsUnique()
+                .HasFilter("\"Status\" = 0");
+
+            entity.HasIndex(solicitacao => new
+            {
+                solicitacao.UnidadeId,
+                solicitacao.Status,
+                solicitacao.SolicitadoEmUtc
+            });
         });
     }
 }

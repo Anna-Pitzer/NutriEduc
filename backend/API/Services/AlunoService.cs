@@ -27,6 +27,8 @@ public class AlunoService
     private readonly AutorizacaoService _autorizacao;
     private readonly ITrilhaAcaoRepository _trilha;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
+    private readonly IVinculoRepository _vinculos;
+    private readonly NotificacaoService _notificacoes;
 
     public AlunoService(
         IAlunoRepository alunoRepository,
@@ -35,7 +37,9 @@ public class AlunoService
         HierarquiaService hierarquia,
         AutorizacaoService autorizacao,
         ITrilhaAcaoRepository trilha,
-        IUnidadeDeTrabalho unidadeDeTrabalho)
+        IUnidadeDeTrabalho unidadeDeTrabalho,
+        IVinculoRepository vinculos,
+        NotificacaoService notificacoes)
     {
         _alunoRepository = alunoRepository;
         _catalogoRepository = catalogoRepository;
@@ -44,6 +48,8 @@ public class AlunoService
         _autorizacao = autorizacao;
         _trilha = trilha;
         _unidadeDeTrabalho = unidadeDeTrabalho;
+        _vinculos = vinculos;
+        _notificacoes = notificacoes;
     }
 
     /// <summary>
@@ -118,15 +124,18 @@ public class AlunoService
     }
 
     /// <summary>
-    /// Lista apenas o que o escopo do solicitante permite (Spec 027). `escolaId` e
-    /// `unidadeId` da requisição estreitam o recorte; nunca o ampliam (RF13).
+    /// Lista apenas o que o escopo do solicitante permite (Spec 027). `escolaId`,
+    /// `unidadeId`, `busca` e `serie` da requisição estreitam o recorte; nunca o ampliam
+    /// (RF13, Spec 034).
     /// </summary>
     public List<AlunoResposta> ListarAlunos(
         EscopoUsuario escopo,
         int? escolaId = null,
-        int? unidadeId = null)
+        int? unidadeId = null,
+        string? busca = null,
+        string? serie = null)
     {
-        var filtro = FiltrosDeConsulta.ParaAluno(escopo, escolaId, unidadeId);
+        var filtro = FiltrosDeConsulta.ParaAluno(escopo, escolaId, unidadeId, busca, serie);
 
         return _alunoRepository.Listar(filtro).Select(ParaResposta).ToList();
     }
@@ -195,7 +204,18 @@ public class AlunoService
         // Campo ou conjunto inalterado devolve lista vazia e não gera evento (RF3).
         aluno.RegistrarHistorico(alteracoes, adicionadas, removidas, NomeDoAutor(escopo));
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _alunoRepository.UpdateAluno(aluno));
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            _alunoRepository.UpdateAluno(aluno);
+            _notificacoes.NotificarVarios(
+                ResponsaveisDoAluno(aluno.Id),
+                TipoNotificacao.AlunoAtualizado,
+                "Cadastro atualizado",
+                $"O cadastro do aluno \"{aluno.Nome}\" foi atualizado.",
+                "aluno",
+                aluno.Id,
+                DateTime.UtcNow);
+        });
 
         return ParaResposta(aluno);
     }
@@ -296,6 +316,33 @@ public class AlunoService
         return Resultado<Aluno>.Ok(aluno);
     }
 
+    /// <summary>
+    /// Marca a anafilaxia confirmada na análise da solicitação de inclusão de alergia
+    /// (Spec 017/023) e registra o evento no histórico do aluno com a origem. Idempotente:
+    /// se o aluno já está marcado, não cria evento repetido.
+    /// </summary>
+    public Resultado<Aluno> MarcarAnafilaxia(
+        Aluno aluno,
+        string autor,
+        string? origem = null)
+    {
+        if (aluno.Anafilaxia)
+        {
+            return Resultado<Aluno>.Ok(aluno);
+        }
+
+        aluno.MarcarAnafilaxia();
+
+        aluno.RegistrarHistorico(
+            new[] { new AlteracaoDeDado("Anafilaxia", "Não", "Sim") },
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            autor,
+            origem);
+
+        return Resultado<Aluno>.Ok(aluno);
+    }
+
     public bool ExcluirAluno(int id, EscopoUsuario escopo)
     {
         Aluno? aluno = _alunoRepository.Obter(id, FiltrosDeConsulta.ParaAluno(escopo));
@@ -326,6 +373,11 @@ public class AlunoService
 
         return new CatalogoDeRestricoes(entradas).ResolverNomes(informados);
     }
+
+    private IEnumerable<int> ResponsaveisDoAluno(int alunoId) =>
+        _vinculos.ListarPorAluno(alunoId)
+            .Select(vinculo => vinculo.ResponsavelUsuarioId)
+            .Where(id => _usuarioRepository.GetById(id)?.Ativo == true);
 
     /// <summary>Snapshot do autor do evento: o nome é copiado, nunca referenciado por FK.</summary>
     private string NomeDoAutor(EscopoUsuario? escopo)

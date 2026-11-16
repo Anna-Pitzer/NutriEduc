@@ -11,5 +11,14 @@ public enum TipoNotificacao
     SolicitacaoStatus,
     OcorrenciaStatus,
     AlunoAtualizado,
-    FeedbackRespondido
+    FeedbackRespondido,
+
+    /// <summary>Nova solicitação de acesso criada e aguardando decisão do ADM da unidade.</summary>
+    SolicitacaoAcesso,
+
+    /// <summary>Nova solicitação (alergia, cardápio, ingrediente ou dado cadastral) criada.</summary>
+    NovaSolicitacao,
+
+    /// <summary>Nova ocorrência registrada, aguardando análise da equipe responsável.</summary>
+    OcorrenciaRegistrada
 }

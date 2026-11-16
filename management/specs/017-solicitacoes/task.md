@@ -6,6 +6,9 @@ references: V6, V17, V19, ADR-020, ADR-021, ADR-004, L7
 
 # Tasks — Solicitações
 
+> **Estado (2026-11-12):** implementação concluída e gates verdes; os checkboxes são projeção
+> do motor SDD e serão marcados por `/spec-implement` quando o PEND-028 for corrigido.
+
 ## Pré-condição
 
 - [ ] T0: Specs 009, 010, 012, 015, 027, 028 e 030 implementadas.

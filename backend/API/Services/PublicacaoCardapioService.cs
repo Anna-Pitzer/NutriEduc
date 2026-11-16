@@ -16,19 +16,22 @@ public sealed class PublicacaoCardapioService
     private readonly IAlunoRepository _alunos;
     private readonly IUsuarioRepository _usuarios;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
+    private readonly NotificacaoService _notificacoes;
 
     public PublicacaoCardapioService(
         ICardapioRepository cardapios,
         IAlimentoRepository alimentos,
         IAlunoRepository alunos,
         IUsuarioRepository usuarios,
-        IUnidadeDeTrabalho unidadeDeTrabalho)
+        IUnidadeDeTrabalho unidadeDeTrabalho,
+        NotificacaoService notificacoes)
     {
         _cardapios = cardapios;
         _alimentos = alimentos;
         _alunos = alunos;
         _usuarios = usuarios;
         _unidadeDeTrabalho = unidadeDeTrabalho;
+        _notificacoes = notificacoes;
     }
 
     public Resultado<CardapioDTO> Publicar(int id, EscopoUsuario escopo)
@@ -123,6 +126,27 @@ public sealed class PublicacaoCardapioService
             original?.MarcarSubstituido(cardapio.Id, autor, utc);
             cardapio.Publicar(autor, utc);
             _cardapios.Update(cardapio);
+
+            _notificacoes.NotificarVarios(
+                MerendeirasAtivas(cardapio),
+                TipoNotificacao.CardapioPublicado,
+                "Cardápio publicado",
+                $"O cardápio \"{cardapio.Nome}\" foi publicado.",
+                "cardapio",
+                cardapio.Id,
+                utc);
+
+            if (original is not null)
+            {
+                _notificacoes.NotificarVarios(
+                    MerendeirasAtivas(original),
+                    TipoNotificacao.CardapioAlterado,
+                    "Cardápio alterado",
+                    $"O cardápio \"{original.Nome}\" foi substituído.",
+                    "cardapio",
+                    original.Id,
+                    utc);
+            }
         });
 
         return Carregar(cardapio.Id);
@@ -289,6 +313,15 @@ public sealed class PublicacaoCardapioService
                 achado.RefeicaoNome))
             .ToList();
     }
+
+    private IEnumerable<int> MerendeirasAtivas(Cardapio cardapio) =>
+        _usuarios.Listar(new FiltroUsuarios(
+                PapelUsuario.Merendeira,
+                cardapio.Tipo == TipoCardapio.Adaptado ? cardapio.EscolaId : null,
+                cardapio.UnidadeId,
+                true,
+                null))
+            .Select(usuario => usuario.Id);
 
     private string NomeDoAutor(EscopoUsuario escopo) =>
         _usuarios.GetById(escopo.UsuarioId)?.Nome ?? "sistema";

@@ -36,6 +36,16 @@ public class UsuarioRepositoryFake : IUsuarioRepository
         return GetByEmail(email) != null;
     }
 
+    public Usuario? GetByCrn(string crn)
+    {
+        return _usuarios.FirstOrDefault(usuario => usuario.Crn == crn);
+    }
+
+    public Usuario? GetByCpf(string cpf)
+    {
+        return _usuarios.FirstOrDefault(usuario => usuario.Cpf == cpf);
+    }
+
     public void Update(Usuario usuario)
     {
         var indice = _usuarios.FindIndex(item => item.Id == usuario.Id);
@@ -81,6 +91,9 @@ public class UsuarioRepositoryFake : IUsuarioRepository
 
         return consulta.OrderBy(usuario => usuario.Nome).ToList();
     }
+
+    public List<Usuario> ListarSemPapel() =>
+        _usuarios.Where(usuario => usuario.Papel == null).OrderBy(usuario => usuario.Nome).ToList();
 
     public void Delete(Usuario usuario)
     {

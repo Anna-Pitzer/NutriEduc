@@ -232,6 +232,12 @@ public class Aluno
         _restricoes.Add(valor);
     }
 
+    /// <summary>
+    /// Confirma a anafilaxia após a análise de uma solicitação de inclusão de alergia
+    /// (Spec 017/023). Idempotente: marcar de novo não muda o estado nem o histórico.
+    /// </summary>
+    public void MarcarAnafilaxia() => Anafilaxia = true;
+
     public bool RemoverRestricao(string restricao)
     {
         var alvo = (restricao ?? string.Empty).Trim();

@@ -31,12 +31,37 @@ export interface TotalRefeicaoGerada {
     caloriasKcal: number;
 }
 
-/** Resposta de geração (Spec 013, RF10). */
+export interface TentativaRefeicaoGerada {
+    refeicao: string;
+    tentativas: number;
+}
+
+export interface VersaoAdaptadaGerada {
+    id: number;
+    escolaId: number;
+    conjunto: string;
+    status: string;
+    motivo?: string | null;
+}
+
+export interface DiagnosticoRefeicao {
+    refeicao: string;
+    tentativas: number;
+    faixaMinimaAlcancavel: number;
+    faixaMaximaAlcancavel: number;
+    categoriaAusente: number | null;
+    candidatosDisponiveis: number;
+}
+
+/** Resposta de geração (Spec 032, RF12): geral + adaptados, seed, tentativas, totais e diagnóstico. */
 export interface GeracaoCardapio {
-    cardapioId: number;
+    cardapioGeralId: number;
     seed: number;
-    totais: TotalRefeicaoGerada[];
+    tentativasPorRefeicao: TentativaRefeicaoGerada[];
+    totaisPorRefeicao: TotalRefeicaoGerada[];
+    versaoAdaptadaIds: VersaoAdaptadaGerada[];
     avisos: string[];
+    diagnostico: DiagnosticoRefeicao[];
 }
 
 export interface GerarCardapioEntrada {

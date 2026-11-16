@@ -56,6 +56,7 @@ public static class CardapioMapper
 
             refeicoes.Add(new RefeicaoCardapioDTO
             {
+                Id = refeicao.Id,
                 Nome = refeicao.Nome,
                 Ordem = refeicao.Ordem,
                 Itens = itens,
@@ -129,5 +130,6 @@ public static class CardapioMapper
                 cardapio.NutricionistaNome,
                 cardapio.NutricionistaEmail,
                 cardapio.NutricionistaCpf,
-                cardapio.NutricionistaCrn);
+                cardapio.NutricionistaCrn,
+                CrnDeNutricionista.EhValido(cardapio.NutricionistaCrn));
 }

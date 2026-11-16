@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useState, type FormEvent } from "react";
 import { Ban, RotateCcw, Trash2 } from "lucide-react";
 import { useAuth, type PapelUsuario } from "../../context/authContext";
 import { naoAutorizado } from "../../services/erroApi";
@@ -8,16 +8,15 @@ import {
     criarUsuario,
     definirUsuarioAtivo,
     excluirUsuario,
+    exigeAlunos,
     exigeEscola,
     listarUsuarios,
     papeisDisponiveis,
     rotuloPapel,
     type UsuarioResposta,
 } from "../../services/UsuarioAdminApi";
+import { SeletorDeAlunos } from "../../components/SeletorDeAlunos";
 import { LayoutSecretaria } from "./layoutSecretaria";
-
-/** Papel sugerido para uma conta que ainda não tem papel: menor privilégio. */
-const papelInicial: PapelUsuario = "Merendeira";
 
 const usuarioVazio = {
     nome: "",
@@ -29,6 +28,11 @@ const usuarioVazio = {
     escolaId: "" as number | "",
     crn: "",
 };
+
+/** Guia de digitação do CRN; a validação de formato é do servidor (Spec 031, RF13). */
+function normalizarCrn(valor: string): string {
+    return valor.trim().toUpperCase().replace(/[\s.-]+/g, "-");
+}
 
 export function Usuarios() {
     const { userLogin, logout } = useAuth();
@@ -51,9 +55,10 @@ export function Usuarios() {
     const [buscaAplicada, setBuscaAplicada] = useState("");
 
     const [novo, setNovo] = useState(usuarioVazio);
+    const [alunosNovo, setAlunosNovo] = useState<number[]>([]);
 
     // Linha em edição de papel: existe no máximo uma por vez.
-    const [edicao, setEdicao] = useState<{ id: number; papel: PapelUsuario; escolaId: number | ""; unidadeId: number | "" } | null>(null);
+    const [edicao, setEdicao] = useState<{ id: number; papel: PapelUsuario | ""; escolaId: number | ""; unidadeId: number | ""; crn: string; alunos: number[] } | null>(null);
     const [salvandoPapel, setSalvandoPapel] = useState(false);
 
     useEffect(() => {
@@ -117,7 +122,11 @@ export function Usuarios() {
             ...atual,
             papel,
             escolaId: exigeEscola(papel) ? atual.escolaId : "",
+            // RF6: CRN é exclusivo de Nutricionista; não vaza para outro papel.
+            crn: papel === "Nutricionista" ? atual.crn : "",
         }));
+
+        setAlunosNovo((atuais) => (exigeAlunos(papel) ? atuais : []));
     }
 
     async function handleCriar(evento: FormEvent) {
@@ -126,6 +135,16 @@ export function Usuarios() {
 
         if (exigeEscola(novo.papel) && novo.escolaId === "") {
             setErroFormulario("Selecione a escola deste usuário.");
+            return;
+        }
+
+        if (exigeAlunos(novo.papel) && alunosNovo.length === 0) {
+            setErroFormulario("Selecione ao menos um aluno para vincular ao responsável.");
+            return;
+        }
+
+        if (novo.papel === "Nutricionista" && normalizarCrn(novo.crn) === "") {
+            setErroFormulario("Informe o CRN da nutricionista no formato CRN-região-número.");
             return;
         }
 
@@ -140,10 +159,12 @@ export function Usuarios() {
                 senha: novo.senha,
                 papel: novo.papel,
                 escolaId: exigeEscola(novo.papel) && novo.escolaId !== "" ? novo.escolaId : null,
-                crn: novo.crn.trim() === "" ? null : novo.crn.trim(),
+                crn: novo.papel === "Nutricionista" ? normalizarCrn(novo.crn) || null : null,
+                alunosIds: exigeAlunos(novo.papel) ? alunosNovo : undefined,
             });
 
             setNovo(usuarioVazio);
+            setAlunosNovo([]);
             setVersao((atual) => atual + 1);
         } catch (falha) {
             if (naoAutorizado(falha)) {
@@ -196,13 +217,16 @@ export function Usuarios() {
     function iniciarEdicao(usuario: UsuarioResposta) {
         setErroLista("");
 
-        const papel = usuario.papel ?? papelInicial;
+        // Conta sem papel não recebe sugestão de papel: aparece na fila de acesso (Spec 033).
+        const papel = usuario.papel ?? "";
 
         setEdicao({
             id: usuario.id,
             papel,
             escolaId: usuario.escolaId ?? "",
             unidadeId: usuario.unidadeId ?? "",
+            crn: usuario.crn ?? "",
+            alunos: [],
         });
 
         if (papel === "AdminSecretaria") {
@@ -235,8 +259,25 @@ export function Usuarios() {
             return;
         }
 
+        if (edicao.papel === "") {
+            setErroLista("Selecione um papel antes de salvar.");
+            return;
+        }
+
         if (exigeEscola(edicao.papel) && edicao.escolaId === "") {
             setErroLista("Selecione a escola exigida por este papel.");
+            return;
+        }
+
+        const exigeVinculoNovo = exigeAlunos(edicao.papel) && usuario.papel !== "Responsavel";
+
+        if (exigeVinculoNovo && edicao.alunos.length === 0) {
+            setErroLista("Selecione ao menos um aluno para vincular ao responsável.");
+            return;
+        }
+
+        if (edicao.papel === "Nutricionista" && normalizarCrn(edicao.crn) === "") {
+            setErroLista("Informe o CRN da nutricionista no formato CRN-região-número.");
             return;
         }
 
@@ -254,8 +295,10 @@ export function Usuarios() {
                 unidadeId: edicao.papel === "AdminSecretaria" && edicao.unidadeId !== ""
                     ? edicao.unidadeId
                     : null,
-                // Reenviado para não apagar o CRN ao trocar apenas o papel.
-                crn: usuario.crn,
+                // Só é enviado quando o papel final é Nutricionista (RF4/RF6). O valor
+                // anterior é limpo pelo domínio ao trocar para outro papel.
+                crn: edicao.papel === "Nutricionista" ? normalizarCrn(edicao.crn) : null,
+                alunosIds: exigeAlunos(edicao.papel) ? edicao.alunos : undefined,
             });
 
             setUsuarios((atuais) => atuais.map((item) => (item.id === usuario.id ? atualizado : item)));
@@ -392,8 +435,13 @@ export function Usuarios() {
                                 placeholder="Ex.: CRN-3 12345"
                                 value={novo.crn}
                                 onChange={(evento) => atualizarCampo("crn", evento.target.value)}
+                                onBlur={() => atualizarCampo("crn", normalizarCrn(novo.crn))}
+                                aria-describedby="crn-formato"
                                 className="h-11 rounded-2xl border border-gray-200 px-4 text-sm outline-none focus:border-roxo"
                             />
+                            <span id="crn-formato" className="text-xs text-gray-500">
+                                Formato: CRN-região-número (ex.: CRN-3-12345).
+                            </span>
                         </div>
                     )}
 
@@ -415,6 +463,23 @@ export function Usuarios() {
                                     <option key={escola.id} value={escola.id}>{escola.nome}</option>
                                 ))}
                             </select>
+                        </div>
+                    )}
+
+                    {exigeAlunos(novo.papel) && (
+                        <div className="md:col-span-2 xl:col-span-3">
+                            <SeletorDeAlunos
+                                selecionados={alunosNovo}
+                                aoAlternar={(alunoId) =>
+                                    setAlunosNovo((atuais) =>
+                                        atuais.includes(alunoId)
+                                            ? atuais.filter((id) => id !== alunoId)
+                                            : [...atuais, alunoId],
+                                    )
+                                }
+                                escolas={escolas}
+                                titulo="Alunos vinculados ao responsável"
+                            />
                         </div>
                     )}
 
@@ -514,6 +579,7 @@ export function Usuarios() {
                                 <th className="py-2">Nome</th>
                                 <th className="py-2">E-mail</th>
                                 <th className="py-2">Papel</th>
+                                <th className="py-2">CRN</th>
                                 <th className="py-2">Escola / Unidade</th>
                                 <th className="py-2">Situação</th>
                                 <th className="py-2 text-right">Ações</th>
@@ -525,7 +591,8 @@ export function Usuarios() {
                                 const podeEditarPapel = Boolean(usuario.nome && usuario.email);
 
                                 return (
-                                    <tr key={usuario.id} className="border-b border-gray-100 last:border-0">
+                                    <Fragment key={usuario.id}>
+                                    <tr className="border-b border-gray-100 last:border-0">
                                         <td className="py-3 pr-4">{usuario.nome ?? "—"}</td>
                                         <td className="py-3 pr-4 text-gray-600">{usuario.email ?? "—"}</td>
                                         <td className="py-3 pr-4">
@@ -543,6 +610,8 @@ export function Usuarios() {
                                                                 papel,
                                                                 escolaId: exigeEscola(papel) ? edicao.escolaId : "",
                                                                 unidadeId: papel === "AdminSecretaria" ? edicao.unidadeId : "",
+                                                                crn: papel === "Nutricionista" ? edicao.crn : "",
+                                                                alunos: exigeAlunos(papel) ? edicao.alunos : [],
                                                             });
 
                                                             if (papel === "AdminSecretaria") {
@@ -558,6 +627,47 @@ export function Usuarios() {
                                                 </>
                                             ) : (
                                                 usuario.papel ? rotuloPapel[usuario.papel] : "Sem papel"
+                                            )}
+                                        </td>
+                                        <td className="py-3 pr-4 text-gray-600">
+                                            {editando && edicao ? (
+                                                edicao.papel === "Nutricionista" ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <label htmlFor={`crn-${usuario.id}`} className="sr-only">CRN</label>
+                                                        <input
+                                                            id={`crn-${usuario.id}`}
+                                                            maxLength={20}
+                                                            value={edicao.crn}
+                                                            onChange={(evento) => setEdicao({
+                                                                ...edicao,
+                                                                crn: evento.target.value,
+                                                            })}
+                                                            onBlur={() => setEdicao({
+                                                                ...edicao,
+                                                                crn: normalizarCrn(edicao.crn),
+                                                            })}
+                                                            placeholder="CRN-3-12345"
+                                                            aria-describedby={`crn-formato-${usuario.id}`}
+                                                            className="h-9 w-36 rounded-xl border border-gray-200 px-2 text-sm outline-none focus:border-roxo"
+                                                        />
+                                                        <span id={`crn-formato-${usuario.id}`} className="text-xs text-gray-400">
+                                                            CRN-região-número
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    "—"
+                                                )
+                                            ) : usuario.papel === "Nutricionista" && usuario.crn ? (
+                                                <>
+                                                    {usuario.crn}
+                                                    {!usuario.crnValido && (
+                                                        <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                                                            inválido
+                                                        </span>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                "—"
                                             )}
                                         </td>
                                         <td className="py-3 pr-4 text-gray-600">
@@ -590,7 +700,7 @@ export function Usuarios() {
                                                             </select>
                                                         </>
                                                     )
-                                                ) : exigeEscola(edicao.papel) ? (
+                                                ) : edicao.papel !== "" && exigeEscola(edicao.papel) ? (
                                                     <>
                                                         <label htmlFor={`escola-${usuario.id}`} className="sr-only">Escola</label>
                                                         <select
@@ -688,6 +798,27 @@ export function Usuarios() {
                                             </div>
                                         </td>
                                     </tr>
+
+                                    {editando && edicao && edicao.papel === "Responsavel" && (
+                                        <tr className="border-b border-gray-100 bg-gray-50">
+                                            <td colSpan={7} className="px-4 py-4">
+                                                <SeletorDeAlunos
+                                                    selecionados={edicao.alunos}
+                                                    aoAlternar={(alunoId) =>
+                                                        setEdicao({
+                                                            ...edicao,
+                                                            alunos: edicao.alunos.includes(alunoId)
+                                                                ? edicao.alunos.filter((id) => id !== alunoId)
+                                                                : [...edicao.alunos, alunoId],
+                                                        })
+                                                    }
+                                                    escolas={escolas}
+                                                    titulo="Alunos vinculados ao responsável"
+                                                />
+                                            </td>
+                                        </tr>
+                                    )}
+                                    </Fragment>
                                 );
                             })}
                         </tbody>

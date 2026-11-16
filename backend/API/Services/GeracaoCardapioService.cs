@@ -5,9 +5,10 @@ using Ntc.Domain.Interface;
 using Ntc.Domain.Services;
 
 /// <summary>
-/// Caso de uso da geração automática (Spec 013). O serviço só orquestra: carrega parâmetros,
-/// candidatos, alunos e publicados recentes e delega a seleção ao domínio puro. Nenhuma regra
-/// de geração vive aqui (RNF5).
+/// Caso de uso da geração automática (Spec 013; Spec 032). O serviço orquestra o pipeline de
+/// 13 passos: valida parâmetros e nutricionista, carrega catálogo/alunos/escolas uma vez,
+/// gera no domínio, valida o cardápio inteiro e persiste geral + adaptados + trilha na mesma
+/// transação. Nenhuma regra de seleção vive aqui (RNF1).
 /// </summary>
 public sealed class GeracaoCardapioService
 {
@@ -18,6 +19,9 @@ public sealed class GeracaoCardapioService
     private readonly IAlunoRepository _alunos;
     private readonly ICardapioRepository _cardapios;
     private readonly IUsuarioRepository _usuarios;
+    private readonly ICategoriaAlimentoRepository _categorias;
+    private readonly IEscolaRepository _escolas;
+    private readonly IRestricaoRepository _restricoes;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
 
     public GeracaoCardapioService(
@@ -26,6 +30,9 @@ public sealed class GeracaoCardapioService
         IAlunoRepository alunos,
         ICardapioRepository cardapios,
         IUsuarioRepository usuarios,
+        ICategoriaAlimentoRepository categorias,
+        IEscolaRepository escolas,
+        IRestricaoRepository restricoes,
         IUnidadeDeTrabalho unidadeDeTrabalho)
     {
         _parametros = parametros;
@@ -33,6 +40,9 @@ public sealed class GeracaoCardapioService
         _alunos = alunos;
         _cardapios = cardapios;
         _usuarios = usuarios;
+        _categorias = categorias;
+        _escolas = escolas;
+        _restricoes = restricoes;
         _unidadeDeTrabalho = unidadeDeTrabalho;
     }
 
@@ -48,6 +58,18 @@ public sealed class GeracaoCardapioService
 
     public Resultado<ParametroGeracaoDTO> SalvarParametros(int unidadeId, SalvarParametroGeracaoDTO dto)
     {
+        // RF1: categorias obrigatórias existentes e ativas falham no salvamento (400), não na geração.
+        foreach (var categoriaId in dto.CategoriasObrigatorias)
+        {
+            var categoria = _categorias.Obter(categoriaId);
+
+            if (categoria is null || !categoria.Ativa)
+            {
+                return Resultado<ParametroGeracaoDTO>.Invalido(
+                    $"A categoria obrigatória {categoriaId} não existe ou está inativa.");
+            }
+        }
+
         var existente = _parametros.ObterPorUnidade(unidadeId);
 
         ParametroGeracao parametro;
@@ -87,6 +109,7 @@ public sealed class GeracaoCardapioService
 
     public Resultado<GeracaoCardapioDTO> Gerar(GerarCardapioDTO dto)
     {
+        // 1. Parâmetros básicos.
         if (dto.UnidadeId <= 0)
             return Resultado<GeracaoCardapioDTO>.Invalido("Informe a unidade para gerar o cardápio.");
 
@@ -99,34 +122,43 @@ public sealed class GeracaoCardapioService
             return Resultado<GeracaoCardapioDTO>.Invalido(
                 "Parâmetros de geração não configurados para a unidade.");
 
+        // 2. Nutricionista: papel, ativo, mesma unidade e CRN válido (RF2), antes de carregar catálogo.
         if (dto.NutricionistaId <= 0)
             return Resultado<GeracaoCardapioDTO>.Invalido(
                 "Selecione a nutricionista responsável pelo cardápio.");
 
         var nutricionista = _usuarios.GetById(dto.NutricionistaId);
+        var motivoDaNutricionista = ValidacaoDeNutricionista.Motivo(nutricionista, dto.UnidadeId);
 
-        if (nutricionista is null || nutricionista.Papel != PapelUsuario.Nutricionista)
-            return Resultado<GeracaoCardapioDTO>.Invalido(
-                "Selecione uma nutricionista válida para o cardápio.");
+        if (motivoDaNutricionista is not null)
+            return Resultado<GeracaoCardapioDTO>.Invalido(motivoDaNutricionista);
 
-        if (!nutricionista.Ativo)
-            return Resultado<GeracaoCardapioDTO>.Invalido(
-                "A nutricionista selecionada está inativa.");
-
-        // Determinismo: os candidatos são carregados já ordenados por id, antes do embaralhamento.
+        // 3. Catálogo ativo ordenado por id (RF4).
         var alimentos = _alimentos.ListarAtivosComVinculos();
         var candidatos = alimentos
             .Select(alimento => new CandidatoAlimento(alimento.Id, alimento.CategoriaId, alimento.Valores))
             .ToList();
 
+        // 4. Escolas, alunos e restrições da unidade (RF14).
+        var escolas = _escolas.ListarPorUnidade(dto.UnidadeId)
+            .Where(escola => escola.Ativa)
+            .OrderBy(escola => escola.Nome, StringComparer.Ordinal)
+            .ToList();
+
+        var catalogoDeRestricoes = _restricoes.Listar(categoria: null, incluirInativas: true);
+        var porNome = RestricoesDoAluno.PorNomeNormalizado(catalogoDeRestricoes);
+        var restricoesParaAdaptar = catalogoDeRestricoes
+            .Select(restricao => new RestricaoDoCatalogo(restricao.Id, restricao.Nome, restricao.Categoria))
+            .ToList();
+
+        var alunosDaUnidade = _alunos.Listar(new FiltroAluno(UnidadeId: dto.UnidadeId));
+
         var refeicoes = parametros.RefeicoesPadrao
             .Select((nome, indice) => new RefeicaoPadrao(nome, indice + 1))
             .ToList();
 
+        // Bloqueados só pela janela de repetição; restrições individuais ficam na adaptação (RF3/RF4).
         var bloqueados = new HashSet<int>();
-
-        if (parametros.ExcluirAlimentosIncompativeis)
-            bloqueados.UnionWith(CalcularAlimentosBloqueados(alimentos, dto.UnidadeId));
 
         if (parametros.JanelaRepeticaoDias > 0)
         {
@@ -134,6 +166,7 @@ public sealed class GeracaoCardapioService
             bloqueados.UnionWith(_cardapios.ObterAlimentosUsadosDesde(dto.UnidadeId, dataLimite));
         }
 
+        // 5-6. Geração determinística (RF5/RF6). Seed nulo devolve o valor sorteado (RF13).
         var seed = dto.Seed ?? Random.Shared.Next(int.MinValue, int.MaxValue);
 
         var resultado = GeradorCardapioAutomatico.Gerar(new EntradaGeracao(
@@ -143,38 +176,56 @@ public sealed class GeracaoCardapioService
             bloqueados,
             seed));
 
-        var cardapio = MontarCardapio(dto, resultado, nutricionista);
+        var geral = MontarCardapio(dto, resultado, nutricionista);
 
-        _unidadeDeTrabalho.ExecutarEmTransacao(() => _cardapios.Add(cardapio));
+        // 7. Revalida o cardápio inteiro antes de persistir (RF7).
+        var erros = ValidadorDeCardapioGerado.Validar(geral, parametros, alimentos);
 
-        return Resultado<GeracaoCardapioDTO>.Ok(ParaDTO(cardapio.Id, resultado));
-    }
+        if (erros.Count > 0)
+            throw new ValidacaoDeGeracaoException(erros);
 
-    private HashSet<int> CalcularAlimentosBloqueados(List<Alimento> alimentos, int unidadeId)
-    {
-        var itens = alimentos
-            .Select(alimento => new ItemAnalisado(0, "Candidatos", alimento.Id, alimento.Nome))
-            .ToList();
+        // 8-12. Transação: geral + adaptados por (escola, conjunto) + trilha (RF8/RF10).
+        var adaptados = new List<VersaoAdaptadaGeradaDTO>();
 
-        var vinculosPorAlimento = alimentos.ToDictionary(
-            alimento => alimento.Id,
-            alimento => (IReadOnlyList<VinculoAnalisado>)alimento.Vinculos
-                .Where(vinculo => vinculo.Restricao is not null)
-                .Select(vinculo => new VinculoAnalisado(
-                    vinculo.RestricaoId,
-                    vinculo.Restricao!.Nome,
-                    vinculo.Restricao.Categoria))
-                .ToList());
+        _unidadeDeTrabalho.ExecutarEmTransacao(() =>
+        {
+            geral.RegistrarCriacao(nutricionista.Nome ?? "sistema");
+            _cardapios.Add(geral);
 
-        var alunos = _alunos.Listar(new FiltroAluno(UnidadeId: unidadeId))
-            .Select(aluno => new AlunoAnalisado(aluno.Id, aluno.Nome, aluno.Restricoes))
-            .ToList();
+            foreach (var escola in escolas)
+            {
+                var conjuntos = alunosDaUnidade
+                    .Where(aluno => aluno.EscolaId == escola.Id)
+                    .Select(aluno => RestricoesDoAluno.Conjunto(aluno, porNome))
+                    .Where(conjunto => !conjunto.EstaVazio)
+                    .Distinct()
+                    .OrderBy(conjunto => conjunto.Chave, StringComparer.Ordinal)
+                    .ToList();
 
-        var resultado = AnaliseCompatibilidade.Analisar(itens, vinculosPorAlimento, alunos);
+                foreach (var conjunto in conjuntos)
+                {
+                    var adaptacao = AdaptacaoDeCardapio.Adaptar(
+                        geral, escola.Id, conjunto, alimentos, restricoesParaAdaptar);
 
-        return resultado.Bloqueantes
-            .Select(achado => achado.AlimentoId)
-            .ToHashSet();
+                    var adaptado = Cardapio.CriarAdaptado(
+                        geral,
+                        escola.Id,
+                        conjunto,
+                        adaptacao.Refeicoes,
+                        adaptacao.Substituicoes,
+                        adaptacao.Pendencias,
+                        adaptacao.Status);
+
+                    adaptado.RegistrarCriacao(nutricionista.Nome ?? "sistema");
+                    _cardapios.Add(adaptado);
+
+                    adaptados.Add(ParaResumoAdaptado(adaptado, escola.Id, conjunto, adaptacao));
+                }
+            }
+        });
+
+        // 13. Resposta com ids, seed, tentativas, totais e diagnóstico vazio (RF12).
+        return Resultado<GeracaoCardapioDTO>.Ok(ParaDTO(geral.Id, resultado, adaptados));
     }
 
     private static Cardapio MontarCardapio(
@@ -217,17 +268,44 @@ public sealed class GeracaoCardapioService
         RefeicoesPadrao = parametro.RefeicoesPadrao.ToList()
     };
 
-    private static GeracaoCardapioDTO ParaDTO(int cardapioId, ResultadoGeracao resultado) => new()
+    private static VersaoAdaptadaGeradaDTO ParaResumoAdaptado(
+        Cardapio adaptado,
+        int escolaId,
+        ConjuntoDeRestricoes conjunto,
+        ResultadoAdaptacao adaptacao) => new()
     {
-        CardapioId = cardapioId,
+        Id = adaptado.Id,
+        EscolaId = escolaId,
+        Conjunto = conjunto.Chave,
+        Status = adaptado.StatusAdaptacao.ToString(),
+        Motivo = adaptacao.Pendencias.Count == 0
+            ? null
+            : string.Join(" ", adaptacao.Pendencias.Select(pendencia => pendencia.Motivo))
+    };
+
+    private static GeracaoCardapioDTO ParaDTO(
+        int cardapioGeralId,
+        ResultadoGeracao resultado,
+        List<VersaoAdaptadaGeradaDTO> adaptados) => new()
+    {
+        CardapioGeralId = cardapioGeralId,
         Seed = resultado.Seed,
-        Totais = resultado.Refeicoes
+        TentativasPorRefeicao = resultado.TentativasPorRefeicao
+            .Select(tentativa => new TentativaRefeicaoGeradaDTO
+            {
+                Refeicao = tentativa.Refeicao,
+                Tentativas = tentativa.Tentativas
+            })
+            .ToList(),
+        TotaisPorRefeicao = resultado.Refeicoes
             .Select(refeicao => new TotalRefeicaoGeradaDTO
             {
                 Refeicao = refeicao.Refeicao.Nome,
                 CaloriasKcal = refeicao.Itens.Sum(item => item.Valores.CaloriasKcal)
             })
             .ToList(),
-        Avisos = resultado.Avisos.ToList()
+        VersaoAdaptadaIds = adaptados,
+        Avisos = resultado.Avisos.ToList(),
+        Diagnostico = new List<DiagnosticoRefeicaoDTO>()
     };
 }

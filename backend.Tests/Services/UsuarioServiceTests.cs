@@ -2,6 +2,7 @@ using Backend.Tests.Fakes;
 using Backend.Tests.Support;
 using Ntc.Application;
 using Ntc.Application.Seguranca;
+using Ntc.Domain;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
 using Xunit;
@@ -21,7 +22,9 @@ public class UsuarioServiceTests
             new EscolaRepositoryFake(),
             new UnidadeDeTrabalhoFake(),
             new AutorizacaoService(),
-            new TrilhaAcaoRepositoryFake());
+            new TrilhaAcaoRepositoryFake(),
+            new AlunoRepositoryFake(),
+            new VinculoRepositoryFake());
 
     /// <summary>Autenticação é caso de uso próprio desde a Spec 024 (F9).</summary>
     private static AutenticacaoService Autenticacao(IUsuarioRepository repositorio) =>
@@ -158,6 +161,7 @@ public class UsuarioServiceTests
         servico.CriarUsuario(DtoUsuario());
 
         var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
+        usuario.DefinirCrn("CRN-3 12345");
         usuario.DefinirPapel(PapelUsuario.Nutricionista, null, 1);
         usuario.Desativar();
         repositorio.Update(usuario);
@@ -177,6 +181,7 @@ public class UsuarioServiceTests
         servico.CriarUsuario(DtoUsuario());
 
         var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
+        usuario.DefinirCrn("CRN-3 12345");
         usuario.DefinirPapel(PapelUsuario.Nutricionista, null, 1);
         repositorio.Update(usuario);
 
@@ -301,5 +306,178 @@ public class UsuarioServiceTests
 
         Assert.False(valido);
         Assert.Equal("senhaantiga", usuario.Senha);
+    }
+
+    // ------------------------------------------------------------------ CRN (Spec 031)
+
+    private static UsuarioService CriarServico(
+        IUsuarioRepository repositorio,
+        IEscolaRepository escolas,
+        TrilhaAcaoRepositoryFake? trilha = null) =>
+        new(
+            repositorio,
+            escolas,
+            new UnidadeDeTrabalhoFake(),
+            new AutorizacaoService(),
+            trilha ?? new TrilhaAcaoRepositoryFake(),
+            new AlunoRepositoryFake(),
+            new VinculoRepositoryFake());
+
+    private static EscopoUsuario AdminDaUnidade(int unidadeId) =>
+        new(1, PapelUsuario.AdminSecretaria, null, unidadeId);
+
+    private static CriarUsuarioDTO DtoNutricionista(string email, string? crn, int unidadeId) =>
+        new()
+        {
+            Nome = "Nutri Teste",
+            Cpf = "12345678901",
+            DataNascimento = new DateOnly(1990, 1, 1),
+            Email = email,
+            Senha = "12345678",
+            Papel = PapelUsuario.Nutricionista,
+            UnidadeId = unidadeId,
+            Crn = crn
+        };
+
+    [Fact]
+    public void CriarUsuarioAdministrado_CrnDuplicado_Retorna409()
+    {        var repositorio = new UsuarioRepositoryFake();
+        var escolas = new EscolaRepositoryFake();
+        var unidade = escolas.AddUnidade(new UnidadeEscolar("Unidade A"));
+        var servico = CriarServico(repositorio, escolas);
+        var escopo = AdminDaUnidade(unidade.Id);
+
+        var primeiro = servico.CriarUsuarioAdministrado(
+            DtoNutricionista("a@teste.com", "CRN-3 12345", unidade.Id), escopo);
+        var duplicado = servico.CriarUsuarioAdministrado(
+            DtoNutricionista("b@teste.com", "CRN-3-12345", unidade.Id), escopo);
+
+        Assert.Equal(ResultadoStatus.Ok, primeiro.Status);
+        Assert.Equal(ResultadoStatus.Conflito, duplicado.Status);
+        Assert.Equal("Este CRN já está vinculado a outro usuário.", duplicado.Erro);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("CRN-12-12345")]
+    [InlineData("CRN-3-12")]
+    public void CriarUsuarioAdministrado_NutricionistaSemCrnValido_LancaENaoPersiste(
+        string? crn)
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var escolas = new EscolaRepositoryFake();
+        var unidade = escolas.AddUnidade(new UnidadeEscolar("Unidade A"));
+        var servico = CriarServico(repositorio, escolas);
+
+        Assert.Throws<ArgumentException>(() => servico.CriarUsuarioAdministrado(
+            DtoNutricionista("invalido@teste.com", crn, unidade.Id),
+            AdminDaUnidade(unidade.Id)));
+
+        Assert.Null(repositorio.GetByEmail("invalido@teste.com"));
+    }
+
+    [Fact]
+    public void CriarUsuarioAdministrado_CpfDuplicado_Retorna409()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var escolas = new EscolaRepositoryFake();
+        var unidade = escolas.AddUnidade(new UnidadeEscolar("Unidade A"));
+        var servico = CriarServico(repositorio, escolas);
+        var escopo = AdminDaUnidade(unidade.Id);
+
+        var primeiro = servico.CriarUsuarioAdministrado(
+            DtoNutricionista("a@teste.com", "CRN-3 12345", unidade.Id), escopo);
+        var duplicado = servico.CriarUsuarioAdministrado(
+            DtoNutricionista("b@teste.com", "CRN-3 54321", unidade.Id), escopo);
+
+        Assert.Equal(ResultadoStatus.Ok, primeiro.Status);
+        Assert.Equal(ResultadoStatus.Conflito, duplicado.Status);
+        Assert.Equal("CPF já cadastrado.", duplicado.Erro);
+    }
+
+    [Fact]
+    public void DiagnosticarCrn_ListaNutricionistaSemCrn()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var escolas = new EscolaRepositoryFake();
+        var unidade = escolas.AddUnidade(new UnidadeEscolar("Unidade A"));
+        var servico = CriarServico(repositorio, escolas);
+
+        repositorio.Add(new Usuario(
+            "Com CRN", "11111111111", new DateOnly(1990, 1, 1), "com@teste.com",
+            PapelUsuario.Nutricionista, null, unidade.Id, "CRN-3 12345"));
+
+        var semCrn = new Usuario(
+            "Sem CRN", "22222222222", new DateOnly(1990, 1, 1), "sem@teste.com",
+            PapelUsuario.Nutricionista, null, unidade.Id, "CRN-3 12345");
+        PropriedadesPrivadas.Definir(semCrn, nameof(Usuario.Crn), null);
+        repositorio.Add(semCrn);
+
+        var diagnostico = servico.DiagnosticarCrn(AdminDaUnidade(unidade.Id));
+
+        var alvo = Assert.Single(diagnostico);
+        Assert.Equal(semCrn.Id, alvo.Id);
+        Assert.Equal("Sem CRN", alvo.Motivo);
+    }
+
+    [Fact]
+    public void ListarNutricionistas_ExcluiSemCrnValido()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var escolas = new EscolaRepositoryFake();
+        var unidade = escolas.AddUnidade(new UnidadeEscolar("Unidade A"));
+        var servico = CriarServico(repositorio, escolas);
+
+        repositorio.Add(new Usuario(
+            "Com CRN", "11111111111", new DateOnly(1990, 1, 1), "com@teste.com",
+            PapelUsuario.Nutricionista, null, unidade.Id, "CRN-3 12345"));
+
+        var semCrn = new Usuario(
+            "Sem CRN", "22222222222", new DateOnly(1990, 1, 1), "sem@teste.com",
+            PapelUsuario.Nutricionista, null, unidade.Id, "CRN-3 12345");
+        PropriedadesPrivadas.Definir(semCrn, nameof(Usuario.Crn), null);
+        repositorio.Add(semCrn);
+
+        var lista = servico.ListarNutricionistas(AdminDaUnidade(unidade.Id));
+
+        var alvo = Assert.Single(lista);
+        Assert.True(alvo.CrnValido);
+        Assert.Equal("CRN-3-12345", alvo.Crn);
+    }
+
+    [Fact]
+    public void AtualizarUsuario_CrnAlterado_GravaTrilhaComAnteriorENovo()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var escolas = new EscolaRepositoryFake();
+        var unidade = escolas.AddUnidade(new UnidadeEscolar("Unidade A"));
+        var trilha = new TrilhaAcaoRepositoryFake();
+        var servico = CriarServico(repositorio, escolas, trilha);
+        var escopo = new EscopoUsuario(99, PapelUsuario.AdminSecretaria, null, unidade.Id);
+
+        var criado = servico.CriarUsuarioAdministrado(
+            DtoNutricionista("a@teste.com", "CRN-3 12345", unidade.Id), escopo);
+
+        var atualizado = servico.AtualizarUsuario(
+            criado.Valor,
+            new AtualizarUsuarioDTO
+            {
+                Nome = "Nutri Teste",
+                Email = "a@teste.com",
+                Papel = PapelUsuario.Nutricionista,
+                UnidadeId = unidade.Id,
+                Crn = "CRN-3 54321"
+            },
+            escopo);
+
+        Assert.Equal(ResultadoStatus.Ok, atualizado.Status);
+
+        var acao = Assert.Single(
+            trilha.GetAcoes(), item => item.Tipo == "CrnAlterado");
+
+        Assert.Equal("CRN-3-12345", acao.ValorAnterior);
+        Assert.Equal("CRN-3-54321", acao.ValorNovo);
+        Assert.Equal(escopo.UsuarioId, acao.AutorId);
+        Assert.Equal(DateTimeKind.Utc, acao.EmUtc.Kind);
     }
 }
