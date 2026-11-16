@@ -229,7 +229,7 @@ export function VisualizarAlunos() {
   const cancelar = () => { window.history.back(); };
 
   return (
-    <div className="flex flex-col items-center min-h-screen bg-fundo">
+    <div className="flex flex-col items-center min-h-screen bg-fundo ">
 
       <Header />
 
@@ -249,10 +249,11 @@ export function VisualizarAlunos() {
 
 
       <div
-        className="flex w-full max-w-7xl flex-col items-center justify-center bg-[#FAF9F5] mb-30 mx-auto rounded-3xl p-8 shadow-[0_5px_20px_rgba(1,1,1,0.1)]"
+        className="flex w-full max-w-7xl flex-col items-center justify-center bg-white border-4 border-lilaz mb-30 mx-auto rounded-3xl p-8 shadow-[0_5px_20px_rgba(1,1,1,0.1)]
+        duration-300 hover:-translate-y-1.5"
       >
         <div className="flex flex-col justify-start w-full">
-          <h1 className="font-bold text-2xl text-gray-800">Alunos cadastrados</h1>
+          <h1 className="font-bold text-2xl text-verdeClaro">Alunos cadastrados</h1>
           <h2 className="text-lg">Consulte e filtre os alunos por escola, restrição alimentar ou turma!</h2>
 
         </div>

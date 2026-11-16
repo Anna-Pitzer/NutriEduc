@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { KeyRound, Lock, Mail, User } from "lucide-react"
+import { Eye, EyeClosed, EyeDashed, KeyRound, Lock, Mail, User } from "lucide-react"
 import { useAuth } from "../../context/authContext"
 import { homePorPapel } from "../../routes/homePorPapel"
 
@@ -25,6 +25,7 @@ export function LoginPage() {
   const [fullName, setFullName] = useState<string>("")
   const [email, setEmail] = useState<string>("")
   const [password, setPassword] = useState<string>("")
+  const [viewPassword, setViewPassword] = useState<boolean>(false)
   const [cpf, setCpf] = useState<string>("")
   const [birthDate, setBirthDate] = useState<string>("")
   const [cadastrando, setCadastrando] = useState(false)
@@ -133,7 +134,7 @@ export function LoginPage() {
     }
   }
 
-  if (loading){
+  if (loading) {
     return <p role="status">Carregando...</p>
   }
   if (isAuthenticated) {
@@ -148,7 +149,7 @@ export function LoginPage() {
       }}
     >
 
-      <div className="bg-branco w-100 min-h-120 flex 
+      <div className="bg-branco w-100 min-h-110 flex 
       justify-center items-center flex-col
       mx-auto rounded-xl
       shadow-gray shadow-2xl/50
@@ -177,19 +178,27 @@ export function LoginPage() {
                   autoFocus
                 />
               </p>
-              <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
+              <p className="flex text-center items-center border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
                 <Lock color="gray" width={30} height={30} />
                 <input
                   className="text-gray outline-none w-full"
-                  type="password"
+                  type={viewPassword ? "text" : "password"}
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
-                <button
-                  type="button"
-                  className="hover:cursor-pointer text-black/40 ml-auto italic font-extralight text-sm"
-                >Forgot?</button>
+                {password ? <div>
+                  <button
+                    className=" text-black/40 flex hover:cursor-pointer"
+                    type="button"
+                    aria-label={viewPassword ? "Ocultar senha" : "Mostrar senha"} // Acessibilidade
+                    onClick={() => setViewPassword(!viewPassword)}>
+                    {viewPassword ? <Eye /> : <EyeClosed />}
+
+                  </button>
+
+                </div> : ''}
+                
               </p>
 
               <input
@@ -198,14 +207,9 @@ export function LoginPage() {
                 className="text-black bg-white w-[80%] m-auto h-12 rounded-md hover:cursor-pointer hover:bg-verdeMtClaro hover:pb-1"
               />
               <div className="flex items-center justify-between px-4">
-                <label className="text-white flex items-center gap-1 hover:cursor-pointer">
-                  <input
-                    type="checkbox"
-                  />
-                  Remember me
-                </label>
+                
                 <button
-                  className="text-white hover:cursor-pointer"
+                  className="text-white hover:cursor-pointer m-auto"
                   type="button"
                   onClick={() => setIsLoginPage(false)}
 
@@ -217,7 +221,9 @@ export function LoginPage() {
 
             <form
               onSubmit={handleRegister}
-              className="flex flex-col gap-4 w-[90%]"
+              className="flex flex-col gap-4 w-[90%]
+              h-full py-5
+              "
             >
               <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
                 <User color="gray" />
@@ -241,7 +247,7 @@ export function LoginPage() {
                   placeholder="Email"
                 />
               </p>
-              
+
               <p className="flex gap-2 w-full bg-branco p-3 rounded-md">
                 <input
                   type="text"
@@ -256,9 +262,6 @@ export function LoginPage() {
               </p>
 
               <p className="flex flex-col gap-1 w-full bg-branco p-3 rounded-md">
-                <label htmlFor="dataNascimento" className="text-sm text-gray">
-                  Data de nascimento
-                </label>
                 <input
                   id="dataNascimento"
                   type="date"
@@ -283,7 +286,7 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={cadastrando}
-                className="text-black bg-white w-[80%] m-auto h-12 rounded-md hover:cursor-pointer hover:bg-verdeMtClaro disabled:opacity-50"
+                className="text-black bg-white w-[80%] mx-auto h-12 rounded-md hover:cursor-pointer hover:bg-verdeMtClaro disabled:opacity-50"
               >
                 {cadastrando ? "Cadastrando..." : "Register"}
               </button>

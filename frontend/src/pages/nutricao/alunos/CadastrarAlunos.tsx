@@ -337,7 +337,7 @@ export function CadastroAlunos() {
         setTipoMensagem("");
     };
 
-    const cancelar = () => window.history.back();
+    const voltarPagina = () => window.history.back();
 
     if (carregandoAluno) {
         return (
@@ -350,13 +350,13 @@ export function CadastroAlunos() {
     }
 
     return (
-        <div className="relative min-h-screen bg-[#FAF9F5]">
+        <div className="relative min-h-screen bg-fundo">
 
             <Header />
 
             <button
                 type="button"
-                onClick={cancelar}
+                onClick={voltarPagina}
                 className="group mx-auto flex w-full max-w-7xl cursor-pointer items-center justify-start"
             >
                 <ChevronLeft
@@ -365,11 +365,12 @@ export function CadastroAlunos() {
                 />
             </button>
 
-            <div className="flex w-full max-w-7xl flex-col mx-auto mb-10 gap-10">
+            <div className="flex w-full max-w-7xl flex-col mx-auto mb-10 gap-10 ">
 
-                <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                <div className="bg-white border-4 border-lilaz rounded-3xl p-8 shadow-[0_8px_30px_rgba(11,102,25,0.08)] duration-300 hover:-translate-y-1.5">
 
-                    <h2 className="font-bold text-2xl">Informações do aluno</h2>
+                    <h1 className="font-bold text-2xl text-verdeClaro">Cadastrar aluno</h1>
+                    <h2 className="text-lg">Adicione um aluno com suas informações: nome, observações e restrições</h2>
 
                     <div className="my-5 w-full border border-gray-200 rounded-3xl" />
 
@@ -461,11 +462,11 @@ export function CadastroAlunos() {
 
                 </div>
 
-                <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]  gap-y-4">
+                <div className="bg-white border-4 border-lilaz rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)] gap-y-4 duration-300 hover:-translate-y-1.5">
 
-                    <div className="w-full flex flex-col items-center">
+                    <div className="w-full flex flex-col items-center ">
 
-                        <div className="w-full">
+                        <div className="w-full ">
                             <h2 className="text-xl font-bold text-gray-800 mb-4">
                                 Restrições Alimentares
                             </h2>
@@ -554,7 +555,7 @@ export function CadastroAlunos() {
                         </div>
                     </div>
                 </div>
-                <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)] ">
+                <div className="bg-white border-4 border-lilaz rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)] duration-300 hover:-translate-y-1.5">
                     <div className="flex flex-col">
                         <h2 className="font-bold text-2xl">Contato de Emergencia</h2>
                         <div className="my-5 w-full border border-gray-200 rounded-3xl" />
@@ -592,7 +593,7 @@ export function CadastroAlunos() {
                             {modoEdicao ? "Desfazer alterações" : "Limpar campos"}
                         </Button>
 
-                        <Button type="button" variant="cancelar" onClick={cancelar} disabled={carregando}>
+                        <Button type="button" variant="cancelar" onClick={voltarPagina} disabled={carregando}>
                             Cancelar
                         </Button>
                     </div>

@@ -152,144 +152,146 @@ export function HomeSecretaria() {
 
     return (
         <LayoutSecretaria>
-            <h1 className="text-2xl font-bold text-vermelho">Secretaria</h1>
-            <p className="mt-2 text-sm text-gray-500">
-                Gerencie a rede: escolas, unidades, contas de acesso e o cadastro por token.
-            </p>
-
-            {erro && (
-                <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">
-                    {erro}
+            <div className="bg-white">
+                <h1 className="text-2xl font-bold text-vermelho">Secretaria</h1>
+                <p className="mt-2 text-sm text-gray-500">
+                    Gerencie a rede: escolas, unidades, contas de acesso e o cadastro por token.
                 </p>
-            )}
 
-            {carregando ? (
-                <p className="mt-6 text-sm text-gray-500">Carregando...</p>
-            ) : (
-                <>
-                    <section className="mt-6 rounded-2xl bg-white p-6 shadow-[0_5px_20px_rgba(1,1,1,0.1)]">
-                        <div className="flex items-center gap-3">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-roxo/10 text-roxo">
-                                <KeyRound size={20} />
-                            </span>
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-800">
-                                    Cadastro de administrador por token
-                                </h2>
-                                <p className="text-sm text-gray-500">
-                                    Gere um token de <strong>30 minutos</strong> para criar outro
-                                    administrador da sua unidade. O token vale uma única vez.
-                                </p>
+                {erro && (
+                    <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">
+                        {erro}
+                    </p>
+                )}
+
+                {carregando ? (
+                    <p className="mt-6 text-sm text-gray-500">Carregando...</p>
+                ) : (
+                    <>
+                        <section className="mt-6 rounded-2xl bg-white p-6 shadow-[0_5px_20px_rgba(1,1,1,0.1)]">
+                            <div className="flex items-center gap-3">
+                                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-roxo/10 text-roxo">
+                                    <KeyRound size={20} />
+                                </span>
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-800">
+                                        Cadastro de administrador por token
+                                    </h2>
+                                    <p className="text-sm text-gray-500">
+                                        Gere um token de <strong>30 minutos</strong> para criar outro
+                                        administrador da sua unidade. O token vale uma única vez.
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <span
-                                className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${tokenAtivo
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-gray-200 text-gray-600"
-                                    }`}
-                            >
-                                {tokenAtivo ? "Token ativo" : "Sem token válido"}
-                            </span>
-
-                            <div className="flex flex-col items-start gap-2 sm:items-end">
-                                <button
-                                    type="button"
-                                    onClick={gerarToken}
-                                    disabled={tokenAtivo || gerando}
-                                    className={`flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${tokenAtivo
-                                        ? "border-gray-200 text-gray-500"
-                                        : "border-green-200 text-green-700 hover:bg-green-50"
+                            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <span
+                                    className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${tokenAtivo
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-gray-200 text-gray-600"
                                         }`}
                                 >
-                                    <KeyRound size={16} />
-                                    {gerando
-                                        ? "Gerando..."
-                                        : tokenAtivo
-                                            ? `Aguarde ${formatarRestante(restante)}`
-                                            : "Gerar token de 30 minutos"}
-                                </button>
+                                    {tokenAtivo ? "Token ativo" : "Sem token válido"}
+                                </span>
 
-                                <Link
-                                    to="/bootstrap"
-                                    className="text-xs text-roxo underline hover:no-underline"
-                                >
-                                    Abrir a página de cadastro
-                                </Link>
-                            </div>
-                        </div>
-
-                        {tokenGerado !== null && (
-                            <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4">
-                                <p className="text-sm font-medium text-green-800">
-                                    Copie agora: este token não será exibido novamente.
-                                </p>
-
-                                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                                    <code className="min-w-0 flex-1 break-all rounded-xl bg-white px-3 py-2 text-xs text-gray-700">
-                                        {tokenGerado.token}
-                                    </code>
-
+                                <div className="flex flex-col items-start gap-2 sm:items-end">
                                     <button
                                         type="button"
-                                        onClick={copiarToken}
-                                        className="flex items-center justify-center gap-2 rounded-xl border border-green-300 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100"
+                                        onClick={gerarToken}
+                                        disabled={tokenAtivo || gerando}
+                                        className={`flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${tokenAtivo
+                                            ? "border-gray-200 text-gray-500"
+                                            : "border-green-200 text-green-700 hover:bg-green-50"
+                                            }`}
                                     >
-                                        <Copy size={16} />
-                                        {copiado ? "Copiado" : "Copiar"}
+                                        <KeyRound size={16} />
+                                        {gerando
+                                            ? "Gerando..."
+                                            : tokenAtivo
+                                                ? `Aguarde ${formatarRestante(restante)}`
+                                                : "Gerar token de 30 minutos"}
                                     </button>
+
+                                    <Link
+                                        to="/bootstrap"
+                                        className="text-xs text-roxo underline hover:no-underline"
+                                    >
+                                        Abrir a página de cadastro
+                                    </Link>
                                 </div>
-
-                                <p className="mt-2 text-xs text-green-700">
-                                    Válido até{" "}
-                                    {new Date(tokenGerado.expiraEm).toLocaleTimeString("pt-BR", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    })}
-                                    . Depois disso o botão volta a liberar um novo token.
-                                </p>
                             </div>
-                        )}
 
-                        {!tokenAtivo && tokenGerado === null && (
-                            <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                                Com o botão desabilitado, o cadastro fica bloqueado até o token
-                                expirar. Sua conta precisa estar vinculada a uma unidade para gerar.
-                            </p>
-                        )}
-                    </section>
+                            {tokenGerado !== null && (
+                                <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4">
+                                    <p className="text-sm font-medium text-green-800">
+                                        Copie agora: este token não será exibido novamente.
+                                    </p>
 
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        {atalhos.map((atalho) => {
-                            const Icone = atalho.icone;
+                                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <code className="min-w-0 flex-1 break-all rounded-xl bg-white px-3 py-2 text-xs text-gray-700">
+                                            {tokenGerado.token}
+                                        </code>
 
-                            return (
-                                <Link
-                                    key={atalho.caminho}
-                                    to={atalho.caminho}
-                                    className="group flex items-center justify-between rounded-2xl bg-white p-5 shadow-[0_5px_20px_rgba(1,1,1,0.1)] transition-shadow hover:shadow-[0_8px_25px_rgba(1,1,1,0.15)]"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-roxo/10 text-roxo">
-                                            <Icone size={22} />
-                                        </span>
-                                        <div>
-                                            <h2 className="font-semibold text-gray-800">{atalho.titulo}</h2>
-                                            <p className="text-sm text-gray-500">{atalho.descricao}</p>
-                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={copiarToken}
+                                            className="flex items-center justify-center gap-2 rounded-xl border border-green-300 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100"
+                                        >
+                                            <Copy size={16} />
+                                            {copiado ? "Copiado" : "Copiar"}
+                                        </button>
                                     </div>
 
-                                    <ChevronRight
-                                        size={20}
-                                        className="text-gray-300 transition-transform group-hover:translate-x-1 group-hover:text-roxo"
-                                    />
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </>
-            )}
+                                    <p className="mt-2 text-xs text-green-700">
+                                        Válido até{" "}
+                                        {new Date(tokenGerado.expiraEm).toLocaleTimeString("pt-BR", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}
+                                        . Depois disso o botão volta a liberar um novo token.
+                                    </p>
+                                </div>
+                            )}
+
+                            {!tokenAtivo && tokenGerado === null && (
+                                <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                    Com o botão desabilitado, o cadastro fica bloqueado até o token
+                                    expirar. Sua conta precisa estar vinculada a uma unidade para gerar.
+                                </p>
+                            )}
+                        </section>
+
+                        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            {atalhos.map((atalho) => {
+                                const Icone = atalho.icone;
+
+                                return (
+                                    <Link
+                                        key={atalho.caminho}
+                                        to={atalho.caminho}
+                                        className="group flex items-center justify-between rounded-2xl bg-white p-5 shadow-[0_5px_20px_rgba(1,1,1,0.1)] transition-shadow hover:shadow-[0_8px_25px_rgba(1,1,1,0.15)]"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-roxo/10 text-roxo">
+                                                <Icone size={22} />
+                                            </span>
+                                            <div>
+                                                <h2 className="font-semibold text-gray-800">{atalho.titulo}</h2>
+                                                <p className="text-sm text-gray-500">{atalho.descricao}</p>
+                                            </div>
+                                        </div>
+
+                                        <ChevronRight
+                                            size={20}
+                                            className="text-gray-300 transition-transform group-hover:translate-x-1 group-hover:text-roxo"
+                                        />
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+            </div>
         </LayoutSecretaria>
     );
 }

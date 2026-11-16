@@ -24,7 +24,7 @@ export default function Header() {
     }
 
     return (
-        <header className="relative h-60 w-full overflow-hidden">
+        <header className="relative p-0 h-60 w-full overflow-hidden ">
             {/*
               A faixa rosa precisa de profundidade constante: a versão anterior descia
               até ~30 unidades no canto direito (de 300) e o botão "Sair" ficava abaixo da
@@ -55,18 +55,20 @@ export default function Header() {
               O padding direito é maior que o esquerdo de propósito: as ações (Sair/Perfil)
               encostavam na borda direita e na parte mais fina da curva rosa.
             */}
-            <div className="relative z-10 mx-auto flex h-full w-full max-w-7xl items-start justify-between py-8 pl-4 pr-8 md:pl-6 md:pr-12">
-                <div>
+            <div className="relative flex  h-full w-full justify-between items-start md:pl-6 md:pr-12">
+                <div className="mt-10">
                     <h1 className="text-3xl font-bold tracking-tight text-branco md:text-5xl lg:text-6xl">NutriEduc</h1>
                     <p className=" mt-1 text-sm font-light text-white/75 md:text-base">Alimentação que educa, nutrição que transforma</p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center mt-10 mr-30 gap-2">
                     <button
                         type="button"
                         onClick={handleLogout}
                         disabled={saindo}
-                        className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[#D92567] shadow-sm hover:cursor-pointer hover:bg-gray-100 disabled:cursor-wait disabled:opacity-50"
+                        className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-primaria shadow-sm hover:cursor-pointer hover:bg-gray-100 disabled:cursor-wait disabled:opacity-50
+                        duration-300 hover:-translate-y-0.5"
+
                     >
                         {saindo ? "Saindo..." : "Sair"}
                     </button>
@@ -74,7 +76,8 @@ export default function Header() {
                     <Link
                         to="/perfil"
                         aria-label="Abrir perfil"
-                        className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-roxo shadow-sm hover:bg-gray-100"
+                        className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-roxo shadow-sm hover:bg-gray-100
+                        duration-300 hover:-translate-y-0.5"
                     >
                         <CircleUserRound size={16} />
                         Perfil
