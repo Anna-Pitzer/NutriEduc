@@ -1,7 +1,7 @@
 import Footer from "../../../components/Footer";
 import Header from "../../../components/Header";
 import Button from "../../../components/Button";
-import { ChevronLeft, Apple, Candy, CircleHelp, Milk, Wheat } from "lucide-react";
+import { Apple, Candy, CircleHelp, Milk, Wheat } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { atualizarAluno, buscarAlunoPorId, cadastrarAlunos, type AlunoCadastro, type AlunoResposta } from "../../../services/AlunoApi";
@@ -9,6 +9,7 @@ import { listarEscolas, type EscolaResposta } from "../../../services/EscolaApi"
 import { naoAutorizado } from "../../../services/erroApi";
 import { listarUnidades, type Unidade } from "../../../services/UnidadeApi";
 import { useAuth } from "../../../context/authContext";
+import VoltarPaginas from "../../../components/VoltarPaginas";
 
 interface FormularioAluno {
     nome: string;
@@ -354,23 +355,22 @@ export function CadastroAlunos() {
 
             <Header />
 
-            <button
-                type="button"
-                onClick={voltarPagina}
-                className="group mx-auto flex w-full max-w-7xl cursor-pointer items-center justify-start"
-            >
-                <ChevronLeft
-                    size={50}
-                    className="text-roxo transition-transform duration-200 group-hover:-translate-x-2"
-                />
-            </button>
-
             <div className="flex w-full max-w-7xl flex-col mx-auto mb-10 gap-10 ">
 
                 <div className="bg-white border-4 border-lilaz rounded-3xl p-8 shadow-[0_8px_30px_rgba(11,102,25,0.08)] duration-300 hover:-translate-y-1.5">
 
-                    <h1 className="font-bold text-2xl text-verdeClaro">Cadastrar aluno</h1>
-                    <h2 className="text-lg">Adicione um aluno com suas informações: nome, observações e restrições</h2>
+                    <header className="flex mb-6">
+                        <div>
+                            <VoltarPaginas />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-verdeClaro">Cadastrar Aluno</h1>
+                            <p className="mt-1 text-sm text-slate-600">
+                                Adicione um aluno com suas informações: nome, observações e restrições
+                            </p>
+
+                        </div>
+                    </header>
 
                     <div className="my-5 w-full border border-gray-200 rounded-3xl" />
 

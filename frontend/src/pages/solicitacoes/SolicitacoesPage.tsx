@@ -26,6 +26,9 @@ import {
     rotuloStatusSolicitacao as rotuloStatus,
     rotuloTipoSolicitacao as rotuloTipo,
 } from "../../components/ListaSolicitacoes";
+import Header from "../../components/Header";
+import VoltarPaginas from "../../components/VoltarPaginas";
+import Footer from "../../components/Footer";
 
 const statusFinal = new Set<StatusSolicitacao>(["Recusada", "Concluida", "Cancelada"]);
 
@@ -293,479 +296,496 @@ export function SolicitacoesPage() {
         (papel === "AdminSecretaria" || papel === "Nutricionista");
 
     return (
-        <section className="p-6">
-            <header className="mb-6">
-                <h1 className="text-2xl font-bold text-roxo">Solicitações</h1>
-                <p className="mt-1 text-sm text-slate-600">
-                    Pedidos de cardápio, ingrediente, restrição e dados cadastrais, com decisão registrada.
-                </p>
-            </header>
+        <section className="relative min-h-screen bg-fundo">
+            <Header />
+            <section className="
+                flex  w-full max-w-7xl flex-col items-center justify-center bg-white border-4 border-lilaz mb-30 mx-auto rounded-3xl p-8 shadow-[0_5px_20px_rgba(1,1,1,0.1)]
+                duration-300 hover:-translate-y-1.5">
+                <header className="flex w-full">
+                    <div>
+                        <VoltarPaginas />
+                    </div>
 
-            {erro && (
-                <p role="alert" className="mb-4 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">
-                    {erro}
-                </p>
-            )}
+                    <div className="">
+                        <h1 className="text-2xl font-bold text-verdeClaro">Solicitações</h1>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Pedidos de cardápio, ingrediente, restrição e dados cadastrais, com decisão registrada.
+                        </p>
 
-            {sucesso && (
-                <p role="status" className="mb-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-                    {sucesso}
-                </p>
-            )}
+                    </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-                <div className="space-y-5">
-                    {tiposCriaveis.length > 0 && (
-                        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <h2 className="text-lg font-semibold text-roxo">Nova solicitação</h2>
+                </header>
+                {/* divisor */}
+                <div className="my-5 w-full border border-gray-200 rounded-3xl" />
 
-                            <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                <label className="text-sm font-medium text-slate-700">
-                                    Tipo
-                                    <select
-                                        value={tipo}
-                                        onChange={(evento) => setTipo(evento.target.value as TipoSolicitacao | "")}
-                                        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                    >
-                                        <option value="">Selecione</option>
-                                        {tiposCriaveis.map((valor) => (
-                                            <option key={valor} value={valor}>
-                                                {rotuloTipo[valor]}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
 
-                                {precisaAluno && (
+                {erro && (
+                    <p role="alert" className="mb-4 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">
+                        {erro}
+                    </p>
+                )}
+
+                {sucesso && (
+                    <p role="status" className="mb-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+                        {sucesso}
+                    </p>
+                )}
+
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] w-full">
+                    <div className="space-y-5">
+                        {tiposCriaveis.length > 0 && (
+                            <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <h2 className="text-lg font-semibold text-roxo">Nova solicitação</h2>
+
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
                                     <label className="text-sm font-medium text-slate-700">
-                                        Aluno
+                                        Tipo
                                         <select
-                                            value={alunoId}
-                                            onChange={(evento) => setAlunoId(evento.target.value)}
+                                            value={tipo}
+                                            onChange={(evento) => setTipo(evento.target.value as TipoSolicitacao | "")}
                                             className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
                                         >
                                             <option value="">Selecione</option>
-                                            {alunos.map((aluno) => (
-                                                <option key={aluno.id} value={aluno.id}>
-                                                    {aluno.nome}
+                                            {tiposCriaveis.map((valor) => (
+                                                <option key={valor} value={valor}>
+                                                    {rotuloTipo[valor]}
                                                 </option>
                                             ))}
                                         </select>
                                     </label>
-                                )}
 
-                                {precisaCardapio && (
-                                    <label className="text-sm font-medium text-slate-700">
-                                        Cardápio
-                                        <select
-                                            value={cardapioId}
-                                            onChange={(evento) => setCardapioId(evento.target.value)}
-                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                        >
-                                            <option value="">Selecione</option>
-                                            {cardapios.map((cardapio) => (
-                                                <option key={cardapio.id} value={cardapio.id}>
-                                                    {cardapio.nome}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                )}
-
-                                {precisaRestricao && (
-                                    <label className="text-sm font-medium text-slate-700">
-                                        Restrição
-                                        <select
-                                            value={restricaoNome}
-                                            onChange={(evento) => setRestricaoNome(evento.target.value)}
-                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                        >
-                                            <option value="">Selecione</option>
-                                            {restricoes
-                                                .filter((restricao) => restricao.ativa)
-                                                .map((restricao) => (
-                                                    <option key={restricao.id} value={restricao.nome}>
-                                                        {restricao.nome} ({restricao.categoria})
-                                                    </option>
-                                                ))}
-                                        </select>
-                                    </label>
-                                )}
-
-                                {precisaIngrediente && (
-                                    <label className="text-sm font-medium text-slate-700">
-                                        Ingrediente
-                                        <input
-                                            value={ingrediente}
-                                            onChange={(evento) => setIngrediente(evento.target.value)}
-                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                            placeholder="Ex.: leite de coco"
-                                        />
-                                    </label>
-                                )}
-                            </div>
-
-                            {precisaDados && (
-                                <div className="mt-4 space-y-3">
-                                    <p className="text-sm font-medium text-slate-700">Campos a corrigir</p>
-
-                                    {alteracoesDados.map((alteracao, indice) => (
-                                        <div
-                                            key={`${indice}-${alteracao.campo}`}
-                                            className="grid gap-2 md:grid-cols-[220px_1fr_auto]"
-                                        >
+                                    {precisaAluno && (
+                                        <label className="text-sm font-medium text-slate-700">
+                                            Aluno
                                             <select
-                                                value={alteracao.campo}
-                                                onChange={(evento) => setAlteracoesDados((atuais) =>
-                                                    atuais.map((item, posicao) =>
-                                                        posicao === indice
-                                                            ? { ...item, campo: evento.target.value }
-                                                            : item,
-                                                    ),
-                                                )}
-                                                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                                value={alunoId}
+                                                onChange={(evento) => setAlunoId(evento.target.value)}
+                                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
                                             >
-                                                {camposDados.map((campo) => (
-                                                    <option key={campo.chave} value={campo.chave}>
-                                                        {campo.rotulo}
+                                                <option value="">Selecione</option>
+                                                {alunos.map((aluno) => (
+                                                    <option key={aluno.id} value={aluno.id}>
+                                                        {aluno.nome}
                                                     </option>
                                                 ))}
                                             </select>
-
-                                            <input
-                                                value={alteracao.valor}
-                                                onChange={(evento) => setAlteracoesDados((atuais) =>
-                                                    atuais.map((item, posicao) =>
-                                                        posicao === indice
-                                                            ? { ...item, valor: evento.target.value }
-                                                            : item,
-                                                    ),
-                                                )}
-                                                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                                                placeholder="Novo valor"
-                                            />
-
-                                            <button
-                                                type="button"
-                                                disabled={alteracoesDados.length === 1}
-                                                onClick={() => setAlteracoesDados((atuais) =>
-                                                    atuais.filter((_, posicao) => posicao !== indice),
-                                                )}
-                                                className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:opacity-40"
-                                            >
-                                                Remover
-                                            </button>
-                                        </div>
-                                    ))}
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setAlteracoesDados((atuais) => [
-                                            ...atuais,
-                                            { campo: "observacao", valor: "" }
-                                        ])}
-                                        className="rounded-xl border border-roxo/40 px-3 py-2 text-sm font-semibold text-roxo"
-                                    >
-                                        Adicionar campo
-                                    </button>
-                                </div>
-                            )}
-
-                            <label className="mt-3 block text-sm font-medium text-slate-700">
-                                {precisaDados ? "Justificativa" : "Descrição"}
-                                <textarea
-                                    value={descricao}
-                                    onChange={(evento) => setDescricao(evento.target.value)}
-                                    rows={3}
-                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                    placeholder={
-                                        precisaDados
-                                            ? "Explique por que a correção é necessária."
-                                            : "Explique o pedido com o contexto necessário."
-                                    }
-                                />
-                            </label>
-
-                            <button
-                                type="button"
-                                onClick={() => void criar()}
-                                disabled={salvando}
-                                className="mt-4 rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                            >
-                                {salvando ? "Enviando..." : "Enviar solicitação"}
-                            </button>
-                        </article>
-                    )}
-
-                    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <h2 className="text-lg font-semibold text-roxo">Acompanhamento</h2>
-
-                            <div className="flex gap-2">
-                                <select
-                                    value={filtroStatus}
-                                    onChange={(evento) => setFiltroStatus(evento.target.value as StatusSolicitacao | "")}
-                                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todos os status</option>
-                                    {Object.entries(rotuloStatus).map(([valor, rotulo]) => (
-                                        <option key={valor} value={valor}>{rotulo}</option>
-                                    ))}
-                                </select>
-
-                                <select
-                                    value={filtroTipo}
-                                    onChange={(evento) => setFiltroTipo(evento.target.value as TipoSolicitacao | "")}
-                                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todos os tipos</option>
-                                    {Object.entries(rotuloTipo).map(([valor, rotulo]) => (
-                                        <option key={valor} value={valor}>{rotulo}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <ListaSolicitacoes
-                            itens={solicitacoes}
-                            onSelecionar={(id) => void selecionar(id)}
-                            carregando={carregando}
-                            selecionadaId={selecionada?.id ?? null}
-                        />
-                    </article>
-                </div>
-
-                <aside className="space-y-4">
-                    {selecionada ? (
-                        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <div className="flex items-start justify-between gap-3">
-                                <div>
-                                    <h2 className="text-lg font-semibold text-roxo">
-                                        Solicitação #{selecionada.id}
-                                    </h2>
-                                    <p className="text-sm text-slate-500">{rotuloTipo[selecionada.tipo]}</p>
-                                </div>
-
-                                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${corStatus[selecionada.status]}`}>
-                                    {rotuloStatus[selecionada.status]}
-                                </span>
-                            </div>
-
-                            <dl className="mt-4 space-y-2 text-sm">
-                                <div>
-                                    <dt className="font-medium text-slate-500">
-                                        {selecionada.tipo === "DadosCadastrais" ? "Justificativa" : "Descrição"}
-                                    </dt>
-                                    <dd className="text-slate-800">{selecionada.descricao}</dd>
-                                </div>
-
-                                {selecionada.alteracoes.length > 0 && (
-                                    <div>
-                                        <dt className="font-medium text-slate-500">Alterações pedidas</dt>
-                                        <dd className="text-slate-800">
-                                            <ul className="space-y-1">
-                                                {selecionada.alteracoes.map((alteracao, indice) => (
-                                                    <li key={`${alteracao.campo}-${indice}`}>
-                                                        <span className="font-medium">
-                                                            {rotuloCampo[alteracao.campo] ?? alteracao.campo}:
-                                                        </span>{" "}
-                                                        {alteracao.valorNoPedido || "(vazio)"} →{" "}
-                                                        {alteracao.valorSolicitado || "(vazio)"}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </dd>
-                                    </div>
-                                )}
-
-                                {selecionada.aluno && (
-                                    <div>
-                                        <dt className="font-medium text-slate-500">Aluno</dt>
-                                        <dd className="text-slate-800">{selecionada.aluno}</dd>
-                                    </div>
-                                )}
-
-                                {selecionada.cardapio && (
-                                    <div>
-                                        <dt className="font-medium text-slate-500">Cardápio</dt>
-                                        <dd className="text-slate-800">{selecionada.cardapio}</dd>
-                                    </div>
-                                )}
-
-                                {selecionada.restricaoNome && (
-                                    <div>
-                                        <dt className="font-medium text-slate-500">Restrição</dt>
-                                        <dd className="text-slate-800">{selecionada.restricaoNome}</dd>
-                                    </div>
-                                )}
-
-                                {selecionada.anafilaxia && (
-                                    <div>
-                                        <dt className="font-medium text-slate-500">Anafilaxia</dt>
-                                        <dd className="font-semibold text-amber-800">
-                                            Informada pelo responsável no pedido
-                                        </dd>
-                                    </div>
-                                )}
-
-                                {selecionada.ingrediente && (
-                                    <div>
-                                        <dt className="font-medium text-slate-500">Ingrediente</dt>
-                                        <dd className="text-slate-800">{selecionada.ingrediente}</dd>
-                                    </div>
-                                )}
-
-                                {selecionada.resposta && (
-                                    <div>
-                                        <dt className="font-medium text-slate-500">Resposta</dt>
-                                        <dd className="text-slate-800">
-                                            {selecionada.resposta}
-                                            {selecionada.respondidoPor
-                                                ? ` — ${selecionada.respondidoPor}`
-                                                : ""}
-                                        </dd>
-                                    </div>
-                                )}
-                            </dl>
-
-                            {selecionada.aviso && (
-                                <p className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-xs text-sky-800">
-                                    {selecionada.aviso}
-                                </p>
-                            )}
-
-                            {(podeDecidir || podeMarcarAnafilaxia) && !statusFinal.has(selecionada.status) && (
-                                <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
-                                    {podeDecidir && selecionada.status === "EmAnalise" && (
-                                        <label className="block text-sm font-medium text-slate-700">
-                                            Resposta da decisão
-                                            <textarea
-                                                value={resposta}
-                                                onChange={(evento) => setResposta(evento.target.value)}
-                                                rows={2}
-                                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                            />
                                         </label>
                                     )}
 
-                                    <div className="flex flex-wrap gap-2">
-                                        {podeMarcarAnafilaxia && (
-                                            <button
-                                                type="button"
-                                                disabled={salvando}
-                                                onClick={() => {
-                                                    const confirmado = window.confirm(
-                                                        "Confirmar que o aluno tem anafilaxia? A marcação fica registrada no histórico do aluno.",
-                                                    );
-
-                                                    if (!confirmado) return;
-
-                                                    void executar(
-                                                        () => marcarAnafilaxia(selecionada.id),
-                                                        "Anafilaxia registrada para o aluno.",
-                                                    );
-                                                }}
-                                                className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50"
+                                    {precisaCardapio && (
+                                        <label className="text-sm font-medium text-slate-700">
+                                            Cardápio
+                                            <select
+                                                value={cardapioId}
+                                                onChange={(evento) => setCardapioId(evento.target.value)}
+                                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
                                             >
-                                                Marcar anafilaxia
-                                            </button>
-                                        )}
+                                                <option value="">Selecione</option>
+                                                {cardapios.map((cardapio) => (
+                                                    <option key={cardapio.id} value={cardapio.id}>
+                                                        {cardapio.nome}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    )}
 
-                                        {podeDecidir && selecionada.status === "Aberta" && (
-                                            <button
-                                                type="button"
-                                                disabled={salvando}
-                                                onClick={() => void executar(
-                                                    () => analisarSolicitacao(selecionada.id),
-                                                    "Solicitação em análise.",
-                                                )}
-                                                className="rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                    {precisaRestricao && (
+                                        <label className="text-sm font-medium text-slate-700">
+                                            Restrição
+                                            <select
+                                                value={restricaoNome}
+                                                onChange={(evento) => setRestricaoNome(evento.target.value)}
+                                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
                                             >
-                                                Iniciar análise
-                                            </button>
-                                        )}
+                                                <option value="">Selecione</option>
+                                                {restricoes
+                                                    .filter((restricao) => restricao.ativa)
+                                                    .map((restricao) => (
+                                                        <option key={restricao.id} value={restricao.nome}>
+                                                            {restricao.nome} ({restricao.categoria})
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        </label>
+                                    )}
 
-                                        {podeDecidir && selecionada.status === "EmAnalise" && (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    disabled={salvando}
-                                                    onClick={() => void executar(
-                                                        () => aprovarSolicitacao(selecionada.id, resposta),
-                                                        "Solicitação aprovada.",
-                                                    )}
-                                                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                                                >
-                                                    Aprovar
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    disabled={salvando}
-                                                    onClick={() => void executar(
-                                                        () => recusarSolicitacao(selecionada.id, resposta),
-                                                        "Solicitação recusada.",
-                                                    )}
-                                                    className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                                                >
-                                                    Recusar
-                                                </button>
-                                            </>
-                                        )}
-
-                                        {podeDecidir && selecionada.status === "Aprovada" && (
-                                            <button
-                                                type="button"
-                                                disabled={salvando}
-                                                onClick={() => void executar(
-                                                    () => concluirSolicitacao(selecionada.id),
-                                                    "Solicitação concluída.",
-                                                )}
-                                                className="rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                                            >
-                                                Concluir
-                                            </button>
-                                        )}
-                                    </div>
+                                    {precisaIngrediente && (
+                                        <label className="text-sm font-medium text-slate-700">
+                                            Ingrediente
+                                            <input
+                                                value={ingrediente}
+                                                onChange={(evento) => setIngrediente(evento.target.value)}
+                                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                                                placeholder="Ex.: leite de coco"
+                                            />
+                                        </label>
+                                    )}
                                 </div>
-                            )}
 
-                            {podeCancelar && (
+                                {precisaDados && (
+                                    <div className="mt-4 space-y-3">
+                                        <p className="text-sm font-medium text-slate-700">Campos a corrigir</p>
+
+                                        {alteracoesDados.map((alteracao, indice) => (
+                                            <div
+                                                key={`${indice}-${alteracao.campo}`}
+                                                className="grid gap-2 md:grid-cols-[220px_1fr_auto]"
+                                            >
+                                                <select
+                                                    value={alteracao.campo}
+                                                    onChange={(evento) => setAlteracoesDados((atuais) =>
+                                                        atuais.map((item, posicao) =>
+                                                            posicao === indice
+                                                                ? { ...item, campo: evento.target.value }
+                                                                : item,
+                                                        ),
+                                                    )}
+                                                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                                >
+                                                    {camposDados.map((campo) => (
+                                                        <option key={campo.chave} value={campo.chave}>
+                                                            {campo.rotulo}
+                                                        </option>
+                                                    ))}
+                                                </select>
+
+                                                <input
+                                                    value={alteracao.valor}
+                                                    onChange={(evento) => setAlteracoesDados((atuais) =>
+                                                        atuais.map((item, posicao) =>
+                                                            posicao === indice
+                                                                ? { ...item, valor: evento.target.value }
+                                                                : item,
+                                                        ),
+                                                    )}
+                                                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                                    placeholder="Novo valor"
+                                                />
+
+                                                <button
+                                                    type="button"
+                                                    disabled={alteracoesDados.length === 1}
+                                                    onClick={() => setAlteracoesDados((atuais) =>
+                                                        atuais.filter((_, posicao) => posicao !== indice),
+                                                    )}
+                                                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:opacity-40"
+                                                >
+                                                    Remover
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setAlteracoesDados((atuais) => [
+                                                ...atuais,
+                                                { campo: "observacao", valor: "" }
+                                            ])}
+                                            className="rounded-xl border border-roxo/40 px-3 py-2 text-sm font-semibold text-roxo"
+                                        >
+                                            Adicionar campo
+                                        </button>
+                                    </div>
+                                )}
+
+                                <label className="mt-3 block text-sm font-medium text-slate-700">
+                                    {precisaDados ? "Justificativa" : "Descrição"}
+                                    <textarea
+                                        value={descricao}
+                                        onChange={(evento) => setDescricao(evento.target.value)}
+                                        rows={3}
+                                        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                                        placeholder={
+                                            precisaDados
+                                                ? "Explique por que a correção é necessária."
+                                                : "Explique o pedido com o contexto necessário."
+                                        }
+                                    />
+                                </label>
+
                                 <button
                                     type="button"
+                                    onClick={() => void criar()}
                                     disabled={salvando}
-                                    onClick={() => void executar(
-                                        () => cancelarSolicitacao(selecionada.id),
-                                        "Solicitação cancelada.",
-                                    )}
-                                    className="mt-4 rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+                                    className="mt-4 rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                                 >
-                                    Cancelar solicitação
+                                    {salvando ? "Enviando..." : "Enviar solicitação"}
                                 </button>
-                            )}
+                            </article>
+                        )}
 
-                            <div className="mt-5 border-t border-slate-100 pt-4">
-                                <h3 className="text-sm font-semibold text-slate-700">Histórico</h3>
-                                <ol className="mt-2 space-y-2">
-                                    {selecionada.historico.map((evento, indice) => (
-                                        <li key={`${evento.status}-${indice}`} className="text-xs text-slate-600">
-                                            <span className="font-semibold text-slate-800">
-                                                {rotuloStatus[evento.status]}
-                                            </span>{" "}
-                                            por {evento.autor} em {formatarData(evento.criadoEm)}
-                                            {evento.resposta ? ` — ${evento.resposta}` : ""}
-                                        </li>
-                                    ))}
-                                </ol>
+                        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <h2 className="text-lg font-semibold text-roxo">Acompanhamento</h2>
+
+                                <div className="flex gap-2">
+                                    <select
+                                        value={filtroStatus}
+                                        onChange={(evento) => setFiltroStatus(evento.target.value as StatusSolicitacao | "")}
+                                        className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                    >
+                                        <option value="">Todos os status</option>
+                                        {Object.entries(rotuloStatus).map(([valor, rotulo]) => (
+                                            <option key={valor} value={valor}>{rotulo}</option>
+                                        ))}
+                                    </select>
+
+                                    <select
+                                        value={filtroTipo}
+                                        onChange={(evento) => setFiltroTipo(evento.target.value as TipoSolicitacao | "")}
+                                        className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                    >
+                                        <option value="">Todos os tipos</option>
+                                        {Object.entries(rotuloTipo).map(([valor, rotulo]) => (
+                                            <option key={valor} value={valor}>{rotulo}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
+
+                            <ListaSolicitacoes
+                                itens={solicitacoes}
+                                onSelecionar={(id) => void selecionar(id)}
+                                carregando={carregando}
+                                selecionadaId={selecionada?.id ?? null}
+                            />
                         </article>
-                    ) : (
-                        <article className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-5 text-sm text-slate-500">
-                            Selecione uma solicitação para ver o detalhe, o histórico e as ações.
-                        </article>
-                    )}
-                </aside>
-            </div>
+                    </div>
+
+                    <aside className="space-y-4">
+                        {selecionada ? (
+                            <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <h2 className="text-lg font-semibold text-roxo">
+                                            Solicitação #{selecionada.id}
+                                        </h2>
+                                        <p className="text-sm text-slate-500">{rotuloTipo[selecionada.tipo]}</p>
+                                    </div>
+
+                                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${corStatus[selecionada.status]}`}>
+                                        {rotuloStatus[selecionada.status]}
+                                    </span>
+                                </div>
+
+                                <dl className="mt-4 space-y-2 text-sm">
+                                    <div>
+                                        <dt className="font-medium text-slate-500">
+                                            {selecionada.tipo === "DadosCadastrais" ? "Justificativa" : "Descrição"}
+                                        </dt>
+                                        <dd className="text-slate-800">{selecionada.descricao}</dd>
+                                    </div>
+
+                                    {selecionada.alteracoes.length > 0 && (
+                                        <div>
+                                            <dt className="font-medium text-slate-500">Alterações pedidas</dt>
+                                            <dd className="text-slate-800">
+                                                <ul className="space-y-1">
+                                                    {selecionada.alteracoes.map((alteracao, indice) => (
+                                                        <li key={`${alteracao.campo}-${indice}`}>
+                                                            <span className="font-medium">
+                                                                {rotuloCampo[alteracao.campo] ?? alteracao.campo}:
+                                                            </span>{" "}
+                                                            {alteracao.valorNoPedido || "(vazio)"} →{" "}
+                                                            {alteracao.valorSolicitado || "(vazio)"}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </dd>
+                                        </div>
+                                    )}
+
+                                    {selecionada.aluno && (
+                                        <div>
+                                            <dt className="font-medium text-slate-500">Aluno</dt>
+                                            <dd className="text-slate-800">{selecionada.aluno}</dd>
+                                        </div>
+                                    )}
+
+                                    {selecionada.cardapio && (
+                                        <div>
+                                            <dt className="font-medium text-slate-500">Cardápio</dt>
+                                            <dd className="text-slate-800">{selecionada.cardapio}</dd>
+                                        </div>
+                                    )}
+
+                                    {selecionada.restricaoNome && (
+                                        <div>
+                                            <dt className="font-medium text-slate-500">Restrição</dt>
+                                            <dd className="text-slate-800">{selecionada.restricaoNome}</dd>
+                                        </div>
+                                    )}
+
+                                    {selecionada.anafilaxia && (
+                                        <div>
+                                            <dt className="font-medium text-slate-500">Anafilaxia</dt>
+                                            <dd className="font-semibold text-amber-800">
+                                                Informada pelo responsável no pedido
+                                            </dd>
+                                        </div>
+                                    )}
+
+                                    {selecionada.ingrediente && (
+                                        <div>
+                                            <dt className="font-medium text-slate-500">Ingrediente</dt>
+                                            <dd className="text-slate-800">{selecionada.ingrediente}</dd>
+                                        </div>
+                                    )}
+
+                                    {selecionada.resposta && (
+                                        <div>
+                                            <dt className="font-medium text-slate-500">Resposta</dt>
+                                            <dd className="text-slate-800">
+                                                {selecionada.resposta}
+                                                {selecionada.respondidoPor
+                                                    ? ` — ${selecionada.respondidoPor}`
+                                                    : ""}
+                                            </dd>
+                                        </div>
+                                    )}
+                                </dl>
+
+                                {selecionada.aviso && (
+                                    <p className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                                        {selecionada.aviso}
+                                    </p>
+                                )}
+
+                                {(podeDecidir || podeMarcarAnafilaxia) && !statusFinal.has(selecionada.status) && (
+                                    <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                                        {podeDecidir && selecionada.status === "EmAnalise" && (
+                                            <label className="block text-sm font-medium text-slate-700">
+                                                Resposta da decisão
+                                                <textarea
+                                                    value={resposta}
+                                                    onChange={(evento) => setResposta(evento.target.value)}
+                                                    rows={2}
+                                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                                                />
+                                            </label>
+                                        )}
+
+                                        <div className="flex flex-wrap gap-2">
+                                            {podeMarcarAnafilaxia && (
+                                                <button
+                                                    type="button"
+                                                    disabled={salvando}
+                                                    onClick={() => {
+                                                        const confirmado = window.confirm(
+                                                            "Confirmar que o aluno tem anafilaxia? A marcação fica registrada no histórico do aluno.",
+                                                        );
+
+                                                        if (!confirmado) return;
+
+                                                        void executar(
+                                                            () => marcarAnafilaxia(selecionada.id),
+                                                            "Anafilaxia registrada para o aluno.",
+                                                        );
+                                                    }}
+                                                    className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50"
+                                                >
+                                                    Marcar anafilaxia
+                                                </button>
+                                            )}
+
+                                            {podeDecidir && selecionada.status === "Aberta" && (
+                                                <button
+                                                    type="button"
+                                                    disabled={salvando}
+                                                    onClick={() => void executar(
+                                                        () => analisarSolicitacao(selecionada.id),
+                                                        "Solicitação em análise.",
+                                                    )}
+                                                    className="rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                                >
+                                                    Iniciar análise
+                                                </button>
+                                            )}
+
+                                            {podeDecidir && selecionada.status === "EmAnalise" && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        disabled={salvando}
+                                                        onClick={() => void executar(
+                                                            () => aprovarSolicitacao(selecionada.id, resposta),
+                                                            "Solicitação aprovada.",
+                                                        )}
+                                                        className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                                    >
+                                                        Aprovar
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={salvando}
+                                                        onClick={() => void executar(
+                                                            () => recusarSolicitacao(selecionada.id, resposta),
+                                                            "Solicitação recusada.",
+                                                        )}
+                                                        className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                                    >
+                                                        Recusar
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {podeDecidir && selecionada.status === "Aprovada" && (
+                                                <button
+                                                    type="button"
+                                                    disabled={salvando}
+                                                    onClick={() => void executar(
+                                                        () => concluirSolicitacao(selecionada.id),
+                                                        "Solicitação concluída.",
+                                                    )}
+                                                    className="rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                                >
+                                                    Concluir
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {podeCancelar && (
+                                    <button
+                                        type="button"
+                                        disabled={salvando}
+                                        onClick={() => void executar(
+                                            () => cancelarSolicitacao(selecionada.id),
+                                            "Solicitação cancelada.",
+                                        )}
+                                        className="mt-4 rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+                                    >
+                                        Cancelar solicitação
+                                    </button>
+                                )}
+
+                                <div className="mt-5 border-t border-slate-100 pt-4">
+                                    <h3 className="text-sm font-semibold text-slate-700">Histórico</h3>
+                                    <ol className="mt-2 space-y-2">
+                                        {selecionada.historico.map((evento, indice) => (
+                                            <li key={`${evento.status}-${indice}`} className="text-xs text-slate-600">
+                                                <span className="font-semibold text-slate-800">
+                                                    {rotuloStatus[evento.status]}
+                                                </span>{" "}
+                                                por {evento.autor} em {formatarData(evento.criadoEm)}
+                                                {evento.resposta ? ` — ${evento.resposta}` : ""}
+                                            </li>
+                                        ))}
+                                    </ol>
+                                </div>
+                            </article>
+                        ) : (
+                            <article className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-5 text-sm text-slate-500">
+                                Selecione uma solicitação para ver o detalhe, o histórico e as ações.
+                            </article>
+                        )}
+                    </aside>
+                </div>
+            </section>
+            <Footer />
         </section>
     );
 }

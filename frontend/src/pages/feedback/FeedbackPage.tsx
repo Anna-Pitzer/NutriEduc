@@ -8,6 +8,8 @@ import {
   responderFeedback,
 } from "../../services/FeedbackApi";
 import { ListaFeedback } from "../../components/ListaFeedback";
+import VoltarPaginas from "../../components/VoltarPaginas";
+import Header from "../../components/Header";
 
 /**
  * Tela de feedback (Spec 018): merendeira/responsável/escola enviam, nutrição/escola
@@ -84,80 +86,101 @@ export function FeedbackPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-      <h1 className="text-2xl font-bold text-roxo">Feedback</h1>
+    <section className="relative min-h-screen bg-fundo">
+      <Header />
 
-      {erro && (
-        <p className="rounded-lg border border-vermelho bg-vermelho/10 px-4 py-2 text-sm text-vermelho">
-          {erro}
-        </p>
-      )}
+      <div className="
+        max-w-7xl mx-auto
+      bg-white border-4 border-lilaz rounded-3xl p-8 shadow-[0_8px_30px_rgba(11,102,25,0.08)] duration-300 hover:-translate-y-1.5">
+        <header className="flex mb-6">
+          <div>
+            <VoltarPaginas />
+          </div>
 
-      {podeCriar && (
-        <form
-          className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-          onSubmit={(evento) => {
-            evento.preventDefault();
-            void enviar();
-          }}
-        >
-          <h2 className="text-lg font-semibold text-roxo">Enviar feedback</h2>
-          <input
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
-            placeholder="Assunto (5–120 caracteres)"
-            value={assunto}
-            onChange={(evento) => setAssunto(evento.target.value)}
-          />
-          <textarea
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
-            placeholder="Mensagem (5–1000 caracteres)"
-            value={mensagem}
-            onChange={(evento) => setMensagem(evento.target.value)}
-          />
-          <button
-            type="submit"
-            className="rounded-lg bg-verdeClaro px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          <div>
+            <h1 className="text-2xl font-bold text-verdeClaro">FeedBacks</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Area de recebimento dos feedbacks da plataforma.
+            </p>
+
+          </div>
+
+        </header>
+
+        {erro && (
+          <p className="rounded-lg border border-vermelho bg-vermelho/10 px-4 py-2 text-sm text-vermelho">
+            {erro}
+          </p>
+        )}
+
+        {podeCriar && (
+          <form
+            className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            onSubmit={(evento) => {
+              evento.preventDefault();
+              void enviar();
+            }}
           >
-            Enviar
-          </button>
-        </form>
-      )}
+            <h2 className="text-lg font-semibold text-roxo">Enviar feedback</h2>
+            <input
+              className="w-full rounded-lg border border-gray-300 px-3 py-2"
+              placeholder="Assunto (5–120 caracteres)"
+              value={assunto}
+              onChange={(evento) => setAssunto(evento.target.value)}
+            />
+            <textarea
+              className="w-full rounded-lg border border-gray-300 px-3 py-2"
+              placeholder="Mensagem (5–1000 caracteres)"
+              value={mensagem}
+              onChange={(evento) => setMensagem(evento.target.value)}
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-verdeClaro px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            >
+              Enviar
+            </button>
+          </form>
+        )}
 
-      <ListaFeedback
-        itens={itens}
-        onEncerrar={(id) => void encerrar(id)}
-        renderAcoes={(feedback) =>
-          feedback.podeResponder ? (
-            <div className="mt-3 space-y-2">
-              <label
-                htmlFor={`resposta-${feedback.id}`}
-                className="text-sm font-medium text-gray-700"
-              >
-                Resposta
-              </label>
-              <textarea
-                id={`resposta-${feedback.id}`}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                placeholder="Resposta (5–1000 caracteres)"
-                value={respostas[feedback.id] ?? ""}
-                onChange={(evento) =>
-                  setRespostas((atuais) => ({
-                    ...atuais,
-                    [feedback.id]: evento.target.value,
-                  }))
-                }
-              />
-              <button
-                type="button"
-                className="rounded-lg bg-verdeClaro px-3 py-1 text-sm font-semibold text-white hover:opacity-90"
-                onClick={() => void responder(feedback.id)}
-              >
-                Responder
-              </button>
-            </div>
-          ) : null
-        }
-      />
-    </div>
+        <ListaFeedback
+          itens={itens}
+          onEncerrar={(id) => void encerrar(id)}
+          renderAcoes={(feedback) =>
+            feedback.podeResponder ? (
+              <div className="mt-3 space-y-2">
+                <label
+                  htmlFor={`resposta-${feedback.id}`}
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Resposta
+                </label>
+                <textarea
+                  id={`resposta-${feedback.id}`}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="Resposta (5–1000 caracteres)"
+                  value={respostas[feedback.id] ?? ""}
+                  onChange={(evento) =>
+                    setRespostas((atuais) => ({
+                      ...atuais,
+                      [feedback.id]: evento.target.value,
+                    }))
+                  }
+                />
+                <button
+                  type="button"
+                  className="rounded-lg bg-verdeClaro px-3 py-1 text-sm font-semibold text-white hover:opacity-90"
+                  onClick={() => void responder(feedback.id)}
+                >
+                  Responder
+                </button>
+              </div>
+            ) : null
+          }
+        />
+
+      </div>
+
+    </section>
   );
 }
