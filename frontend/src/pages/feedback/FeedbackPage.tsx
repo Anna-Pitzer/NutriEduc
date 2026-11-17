@@ -11,6 +11,8 @@ import {
   responderFeedback,
 } from "../../services/FeedbackApi";
 import { ListaFeedback } from "../../components/ListaFeedback";
+import VoltarPaginas from "../../components/VoltarPaginas";
+import Header from "../../components/Header";
 
 /**
  * Tela de feedback (Spec 018): merendeira/responsável/escola enviam, nutrição/escola

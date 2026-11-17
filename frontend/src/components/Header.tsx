@@ -65,10 +65,6 @@ export default function Header() {
             ">
                 <div className="">
                     <div className="relative inline-block">
-                        {/* Clarão atrás do texto */}
-                        <div className="absolute -inset-6 bg-white/80 blur-2xl opacity-30" />
-
-                        {/* Texto */}
                         <div className="relative z-10">
                             <b className="bg-verdeEscuro bg-clip-text text-transparent text-7xl">
                                 Nutri

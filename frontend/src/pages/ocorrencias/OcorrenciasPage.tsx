@@ -26,6 +26,8 @@ import {
     rotuloStatusOcorrencia as rotuloStatus,
     rotuloTipoOcorrencia as rotuloTipo,
 } from "../../components/ListaOcorrencias";
+import VoltarPaginas from "../../components/VoltarPaginas";
+import Header from "../../components/Header";
 
 function tiposDeCriacao(papel: string | null): TipoOcorrencia[] {
     if (papel === "Responsavel") {

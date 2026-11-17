@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import Button from "../../components/Button";
-import { useAuth } from "../../context/authContext";
-import { homePorPapel } from "../../routes/homePorPapel";
 import {
     exportarRelatorio,
     previsualizarRelatorio,
     type RelatorioPreview,
     type TipoDeRelatorio,
 } from "../../services/RelatorioApi";
+import VoltarPaginas from "../../components/VoltarPaginas";
 
 const TIPOS: { valor: TipoDeRelatorio; rotulo: string }[] = [
     { valor: "Cardapios", rotulo: "Cardápios" },
@@ -26,8 +23,6 @@ const TIPOS: { valor: TipoDeRelatorio; rotulo: string }[] = [
  * pré-visualização e baixa o XLSX. Nenhum total é recalculado aqui.
  */
 export function RelatoriosPage() {
-    const navigate = useNavigate();
-    const { userLogin } = useAuth();
     const [tipo, setTipo] = useState<TipoDeRelatorio>("Cardapios");
     const [de, setDe] = useState("");
     const [ate, setAte] = useState("");
@@ -80,25 +75,32 @@ export function RelatoriosPage() {
     }
 
     return (
-        <div className="relative min-h-screen bg-[#FAF9F5]">
+        <div className="relative min-h-screen bg-fundo">
             <Header />
 
-            <button
-                type="button"
-                onClick={() => navigate(userLogin?.papel ? homePorPapel[userLogin.papel] : "/")}
-                aria-label="Voltar ao menu central"
-                className="group mx-auto flex w-full max-w-7xl cursor-pointer items-center justify-start"
-            >
-                <ChevronLeft
-                    size={50}
-                    className="text-roxo transition-transform duration-200 group-hover:-translate-x-2"
-                />
-            </button>
 
-            <main className="mx-auto mb-10 flex w-full max-w-7xl flex-col gap-6 px-4">
-                <h1 className="text-3xl font-bold text-roxo">Relatórios</h1>
+            <main className=" 
+            max-w-7xl mx-auto mb-10
+             bg-white border-4 border-lilaz rounded-3xl p-8 shadow-[0_8px_30px_rgba(11,102,25,0.08)] 
+            duration-300 hover:-translate-y-1.5">
+                <header className="flex mb-6">
+                    <div>
+                        <VoltarPaginas />
+                    </div>
 
-                <section className="rounded-3xl bg-white p-6 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                    <div>
+                        <h1 className="text-2xl font-bold text-verdeClaro">Relatórios</h1>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Area de recebimento dos feedbacks da plataforma.
+                        </p>
+
+                    </div>
+
+                </header>
+                {/* divisor */}
+                <div className="my-5 w-full border border-gray-200 rounded-3xl" />
+
+                <section className="rounded-3xl bg-white p-6 ">
                     <div className="grid gap-4 md:grid-cols-4">
                         <div className="flex flex-col md:col-span-2">
                             <label htmlFor="tipoRelatorio">Relatório</label>
@@ -172,7 +174,7 @@ export function RelatoriosPage() {
                 </section>
 
                 {preview && (
-                    <section className="overflow-hidden rounded-3xl bg-white shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                    <section className="overflow-hidden rounded-3xl bg-white ">
                         <div className="border-b border-gray-100 px-6 py-4">
                             <h2 className="text-xl font-bold">{preview.titulo}</h2>
                             {preview.rodape && (

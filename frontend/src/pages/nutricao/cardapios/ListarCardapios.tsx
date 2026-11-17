@@ -5,7 +5,6 @@ import { ToastContainer, Zoom, toast } from "react-toastify";
 import Footer from "../../../components/Footer";
 import Header from "../../../components/Header";
 import { useAuth } from "../../../context/authContext";
-import { homePorPapel } from "../../../routes/homePorPapel";
 import {
     excluirCardapio,
     listarCardapios,
@@ -14,6 +13,7 @@ import {
     type SituacaoCardapio,
 } from "../../../services/CardapioApi";
 import { listarUnidades, type Unidade } from "../../../services/UnidadeApi";
+import VoltarPaginas from "../../../components/VoltarPaginas";
 
 const situacoes: { valor: SituacaoCardapio | ""; rotulo: string }[] = [
     { valor: "", rotulo: "Todas as situações" },
@@ -42,7 +42,6 @@ export function ListarCardapios() {
     const { userLogin } = useAuth();
     const navigate = useNavigate();
     const ehNutricionista = userLogin?.papel === "Nutricionista";
-    const inicio = userLogin?.papel ? homePorPapel[userLogin.papel] : "/";
 
     const [pagina, setPagina] = useState<PaginaCardapios<CardapioResumo> | null>(null);
     const [unidades, setUnidades] = useState<Unidade[]>([]);
@@ -123,20 +122,6 @@ export function ListarCardapios() {
         <div className="flex flex-col items-center min-h-screen bg-fundo">
             <Header />
 
-            <div className="mx-auto w-full max-w-7xl">
-                <button
-                    type="button"
-                    onClick={() => navigate(inicio)}
-                    aria-label="Voltar ao início"
-                    title="Voltar ao início"
-                    className="group flex cursor-pointer items-center justify-center"
-                >
-                    <ChevronLeft
-                        size={50}
-                        className="text-roxo transition-transform duration-200 group-hover:-translate-x-2"
-                    />
-                </button>
-            </div>
 
             <div className="flex w-full max-w-7xl flex-col items-center justify-center 
             bg-white border-4 border-lilaz mb-30 mx-auto rounded-3xl p-8 shadow-[0_5px_20px_rgba(1,1,1,0.1)]
@@ -144,10 +129,18 @@ export function ListarCardapios() {
             ">
                 <div className="flex w-full flex-col justify-start gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h1 className="font-bold text-2xl text-verdeClaro">Cardápios</h1>
-                        <h2 className="text-lg">
-                            Consulte por unidade, data e situação, e monte o cardápio por refeição.
-                        </h2>
+                        <header className="flex ">
+                            <div>
+                                <VoltarPaginas />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-bold text-verdeClaro">Cardápios</h1>
+                                <p className="mt-1 text-sm text-slate-600">
+                                    Consulte por unidade, data e situação, e monte o cardápio por refeição.
+                                </p>
+
+                            </div>
+                        </header>
                     </div>
 
                     {ehNutricionista && (
@@ -290,8 +283,8 @@ export function ListarCardapios() {
                                                         cardapio.statusAdaptacao === "Atualizado"
                                                             ? "rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800"
                                                             : cardapio.statusAdaptacao === "Desatualizado"
-                                                              ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
-                                                              : "rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700"
+                                                                ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
+                                                                : "rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700"
                                                     }
                                                 >
                                                     {cardapio.statusAdaptacao === "PendenteDeRevisao"
