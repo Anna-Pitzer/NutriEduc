@@ -55,7 +55,7 @@ references: V6, V16, V17, ADR-020, ADR-021, ADR-004, L7
 ## Conformidade
 
 - [ ] T9: cobrir as células da matriz da Spec 028 para ocorrências (ADM `R`, Escola
-  `RW`, Nutricionista `RW`, Merendeira `RC`, Responsável `RC`).
+  `RW`, Nutricionista `R`, Merendeira `RC`, Responsável `RC`).
   - Validação: `MatrizPermissoesTests` passa para o recurso `Ocorrencia`; filtro de
   `escolaId`/`unidadeId` fora do escopo devolve 403.
 

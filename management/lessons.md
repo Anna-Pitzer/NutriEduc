@@ -237,5 +237,27 @@ execução é o build atual (timestamp de `bin/Debug/net10.0/backend.dll` ≥ fo
 build está no ar. `dotnet test` usa outro binário e não prova o processo em execução; builds com
 `-p:OutDir=...` existem justamente para não disputar o arquivo bloqueado.
 
+---
+
+## L17: A matriz (Spec 028) é autoritativa — spec que diverge dela é bug de documentação
+
+**Observado:** na auditoria da Spec 016 (ocorrências), os requisitos (RF1/RF3/RF5), o design
+(tabela de API) e o task (T9) descreviam a `Nutricionista` como capaz de registrar e mudar status
+de ocorrência (`RW`). A matriz auditada (Spec 028) concede `R` (somente leitura) a `Nutricionista`
+em `Recurso.Ocorrencia`; a implementação (`PodeCriar` exclui Nutricionista; `PodeMudarStatus` só
+`AdminEscola`) e os testes (`Nutricionista_NaoRegistraOcorrencia_403`,
+`Nutricionista_NaoMudaStatus_403`) já seguiam a matriz. O mesmo erro estava replicado no
+`README.md` (tabela de endpoints).
+
+**Lição:** quando uma spec de recurso é planejada antes de a matriz ser finalizada, seus RFs
+podem prometer mais acesso do que a matriz concede. Na auditoria, a matriz auditada vence: o
+código e os testes estavam corretos, e o conserto foi alinhar os documentos — nunca alterar a
+matriz nem o código.
+
+**Regra:** ao auditar uma spec de recurso, conferir cada RF de escrita/status contra a célula da
+matriz (`MatrizDePermissoes.Nivel`) antes de julgar o código. Divergência entre spec e matriz é
+corrigida na documentação da spec (e no `README.md`), com nota de revisão — a matriz auditada é
+imutável.
+
 
 

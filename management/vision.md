@@ -5,7 +5,7 @@ entregável e as specs que o entregam. A visão é estável; as specs evoluem.
 
 Fontes: `correcoes.md`, `implementacoes.md`, `README.md` e verificação do código.
 
-## Estado consolidado (2026-11-13)
+## Estado consolidado (2026-11-17)
 
 | Bloco | Entrega | Status |
 | --- | --- | --- |
@@ -23,10 +23,12 @@ Fontes: `correcoes.md`, `implementacoes.md`, `README.md` e verificação do cód
 | V22 | cadastro com intenção e aprovação com escopo | entregue (033, implemented) |
 | V23 | vínculo responsável↔aluno obrigatório e busca | entregue (034, audited) |
 | V24 | portal dos pais/responsáveis | entregue (035, audited); validação manual no navegador em PEND-050 |
+| V25 | cardápio semanal com dias | planejado (037) |
+| V26 | merendeira operando integralmente no próprio escopo | implementado (039) |
 
 `implemented` = código e testes verdes, sem certificação `/spec-test`; `audited` = código, testes
-e documentação auditados (034 e 035 em 2026-11-13). A promoção automática continua bloqueada
-pelo PEND-028.
+e documentação auditados. A Spec 016 foi auditada e a 039 implementada em 2026-11-17. A promoção
+automática continua bloqueada pelo PEND-028.
 
 ---
 
@@ -310,7 +312,6 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 **Delivered by:** Spec 035 (portal-pais-responsaveis)
 
 ### V25: Cardápio semanal com dias
-
 **Problema:** o cardápio guarda um único conjunto de refeições válido para todo o período. O modelo oficial do PNAE é uma grade semanal: cada dia tem o próprio conteúdo. Hoje a geração repete o mesmo prato em todos os dias e o relatório da Spec 019 só consegue replicar as colunas.
 
 **Valor entregue:** o cardápio passa a ter dias. O cabeçalho continua sendo o período, a unidade, a escola (quando adaptado), a nutricionista, a situação e a versão; abaixo dele, cada dia carrega as próprias refeições (com horário opcional) e itens. A geração automática produz um conjunto por dia, a adaptação por restrição acompanha cada dia, a publicação versiona o cardápio inteiro e o portal passa a mostrar o dia consultado. O relatório de cardápios passa a representar o documento real, sem repetição.
@@ -324,3 +325,14 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 `frontend/src/pages/nutricao/cardapios/DetalheCardapio.tsx`
 
 **Delivered by:** Spec 037 (cardapio-com-dias)
+
+### V26: Merendeira operando integralmente no próprio escopo
+**Problema:** a merendeira tem permissões e escopo corretos no backend (matriz, escopo por escola e derivação automática da escola), mas a área dela não expõe navegação — a página inicial monta apenas `Header` e `Footer`, sem `Navbar`, então as telas de cardápio, solicitação, feedback e ocorrência (já autorizadas) ficam inalcançáveis. A invariante de escopo (escola → unidade) é implícita e não testada, e a guarda de rota expõe a escrita de alimentos a um papel que a matriz só permite ler.
+
+**Valor entregue:** a merendeira opera integralmente dentro da própria escola — visualiza os cardápios da própria escola (o geral da unidade e a versão adaptada da escola), visualiza e cria solicitações de cardápio/ingrediente vinculadas automaticamente à escola e ao usuário autenticado, e recebe e visualiza os feedbacks do seu perfil/escola. O isolamento entre escolas vale no frontend e no backend, inclusive contra requisições diretas à API (403 na mesma unidade/outra escola, 404 em outra unidade).
+
+**Regra derivada:** a escola de destino de uma solicitação é sempre a da sessão (o contrato de criação não expõe `escolaId`/`unidadeId`); a unidade da merendeira é sempre derivada da escola; a guarda de rota nunca expõe escrita onde a matriz dá somente leitura.
+
+**Canonical creation path:** `frontend/src/pages/merendeiras/HomeMerendeiras.tsx`, `frontend/src/routes/routes.tsx`, `backend/API/Services/UsuarioService.cs`, `backend/API/Services/AprovarAcessoService.cs`, `backend.Tests/Integration/MerendeiraIsolamentoTests.cs`
+
+**Delivered by:** Spec 039 (funcionalidades-permissoes-merendeira)

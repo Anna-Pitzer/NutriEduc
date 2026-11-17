@@ -175,45 +175,45 @@ malformado, `404` de rota, `405` e `415`). `401` e `403` saem dos eventos do coo
 | Exclusão definitiva sem auditoria | `DELETE` remove o registro; resta o log da requisição | ADR-014; avaliar se auditoria é exigida |
 | SQLite sem decimal/collation/date/concorrência reais | PEND-029 a PEND-037 | Migrar de provedor |
 
-## 10. Estado atual verificado (2026-11-13)
+## 10. Estado atual verificado (2026-11-17)
 
 | Verificação | Resultado |
 | --- | --- |
-| `dotnet test backend.Tests` | 830 testes, 830 aprovados, 0 falhas |
+| `dotnet test backend.Tests` | 870 testes, 870 aprovados, 0 falhas |
 | Build backend | 0 erros; avisos de nulabilidade pré-existentes em `GeracaoCardapioService` |
 | `npm run build` / `npm run lint` | build OK; lint 0 erros e 21 avisos pré-existentes |
 | Migrations | 29, aplicadas no startup por `Database.Migrate()` |
 | Superfície HTTP | 20 controllers (19 de recurso + `RespostaController` base) |
 | Serviços de aplicação | 27 (inclui `NotificacaoDeAcessoService` e `ConfiguracaoDeBootstrap`) |
 | Domínio implementado | aluno, usuário/papéis/CRN, escola/unidade, vínculo, restrições, alimentos, cardápio/refeições/adaptação/publicação, geração, ocorrências, solicitações (com anafilaxia informada), solicitações de acesso, feedback, notificações, trilha |
-| Specs | `audited`: 001–009, 013–015, 020–022, 027, 028, 030, 034, 035. `implemented`: 010–012, 016–018, 023, 024, 031–033. `in-progress`: 029. `created`: 019. `planned`: 025, 026 |
-| Pendências | `management/pending-items.md`; PEND-028 bloqueia o motor; 019 e 029 incompletas; PEND-047 e PEND-050 aguardam validação manual |
+| Specs | `audited`: 001–016, 019–022, 024, 025, 027, 028, 030, 031, 034, 035. `implemented`: 017, 018, 023, 032, 033, 039. `in-progress`: 029. `planned`: 026, 037, 038 |
+| Pendências | `management/pending-items.md`; PEND-028 bloqueia o motor; 029 incompleta (frontend, PEND-042); PEND-047 e PEND-050 aguardam validação manual |
 
-Estado formal: o roadmap tem 35 linhas. As Specs 034 e 035 foram auditadas manualmente em
-2026-11-13 (código, testes e documentação); a promoção automática pelo `/spec-test` continua
-bloqueada pelo PEND-028.
+Estado formal: o roadmap tem 38 linhas. As Specs 016, 034 e 035 foram auditadas (código, testes
+e documentação); a 039 foi implementada em 2026-11-17. A promoção automática pelo `/spec-test`
+continua bloqueada pelo PEND-028.
 
-## 11. Mapa de módulos especificados (009–035)
+## 11. Mapa de módulos especificados (009–039)
 
 | Spec | Módulo | Entidades / tipos principais | Superfície HTTP | Status |
 | --- | --- | --- | --- | --- |
 | 009 | Identidade e estrutura escolar | `Escola`, `UnidadeEscolar`, `VinculoResponsavelAluno`, `PapelUsuario` | `EscolaController`, `UnidadeController`, `VinculoController`, `UsuarioController` | audited |
-| 010 | Restrições e alergias | `RestricaoAlimentar`, histórico do aluno | `RestricaoController`, histórico em `AlunoController` | implemented |
-| 011 | Catálogo de alimentos | `CategoriaAlimento`, `Alimento`, `AlimentoRestricao`, `ValoresNutricionais` | `AlimentoController`, `CategoriaAlimentoController` | implemented |
-| 012 | Cardápio | `Cardapio`, `Refeicao`, `ItemRefeicao`, `PeriodoVigencia` | `CardapioController` (interno + público) | implemented |
+| 010 | Restrições e alergias | `RestricaoAlimentar`, histórico do aluno | `RestricaoController`, histórico em `AlunoController` | audited |
+| 011 | Catálogo de alimentos | `CategoriaAlimento`, `Alimento`, `AlimentoRestricao`, `ValoresNutricionais` | `AlimentoController`, `CategoriaAlimentoController` | audited |
+| 012 | Cardápio | `Cardapio`, `Refeicao`, `ItemRefeicao`, `PeriodoVigencia` | `CardapioController` (interno + público) | audited |
 | 013 | Geração automática | `ParametroGeracao`, `GeradorCardapioAutomatico` | `GeracaoController` | audited |
 | 014 | Compatibilidade | `AnaliseCompatibilidade` (função pura) | rota em `CardapioController` | audited |
 | 015 | Publicação e histórico | `HistoricoCardapio`, transições de `Cardapio` | `CardapioController` | audited |
-| 016 | Ocorrências | `Ocorrencia`, `HistoricoOcorrencia` | `OcorrenciaController` | implemented |
+| 016 | Ocorrências | `Ocorrencia`, `HistoricoOcorrencia` | `OcorrenciaController` | audited |
 | 017 | Solicitações | `Solicitacao`, `HistoricoSolicitacao` | `SolicitacaoController` | implemented |
 | 018 | Feedback e notificações | `Feedback`, `Notificacao` | `FeedbackController`, `NotificacaoController` | implemented |
-| 019 | Relatórios e exportação | `RelatorioGerado`, exportadores | `RelatorioController` (não existe) | created |
+| 019 | Relatórios e exportação | `RelatorioGerado`, exportadores | `RelatorioController` | audited |
 | 020 | Contrato de rotas | middleware de erro e padronização | `ContratoDeErro`, controllers | audited |
 | 021 | Telas de secretaria | nenhuma entidade nova | consome escolas, unidades e usuários | audited |
 | 022 | Bootstrap por token | `ConsumoBootstrap`, `TokenDeCadastro` | `BootstrapController`, `UnidadeController` | audited |
 | 023 | Histórico do aluno | `HistoricoAluno` | `AlunoController` | implemented |
-| 024 | Fronteiras DDD | DTOs, filtros, unidade de trabalho | todos os controllers | implemented |
-| 025 | Painel por papel | agregações de leitura | `PainelController` (planejado) | planned |
+| 024 | Fronteiras DDD | DTOs, filtros, unidade de trabalho | todos os controllers | audited |
+| 025 | Painel por papel | agregações de leitura | `PainelController` | audited |
 | 026 | Substituição assistida por IA | sugestão determinística + provedor plugável | rotas de substituição (planejadas) | planned |
 | 027 | Hierarquia | `Escola.UnidadeId`, `Aluno.EscolaId`, `Aluno.UnidadeId` derivado | `EscolaController`, `UnidadeController`, `VinculoController` | audited |
 | 028 | Matriz de permissões | `MatrizDePermissoes`, `AutorizacaoService`, `FiltroDeEscopo`, `TrilhaAcao` | transversal | audited |
@@ -224,6 +224,9 @@ bloqueada pelo PEND-028.
 | 033 | Cadastro e autorização | `SolicitacaoDeAcesso`, `PoliticaDeAprovacao` | `SolicitacaoAcessoController`, `UsuarioController` | implemented |
 | 034 | Vínculo responsável↔aluno | `FiltroAluno`, `VinculoResponsavelAluno` | `AlunoController`, `VinculoController`, `UsuarioAdminController` | audited |
 | 035 | Portal dos pais/responsáveis | `Feedback.AlunoId`/`AlunoNome`; `Solicitacao.Anafilaxia`; componentes de cardápio, ocorrência, solicitação e feedback | `AlunoController`, `OcorrenciaController`, `SolicitacaoController`, `FeedbackController` (reuso) | audited |
+| 037 | Cardápio com dias | `DiaDeCardapio` | `CardapioController`, `GeracaoController` | planned |
+| 038 | Ações do nutricionista | — | — | planned |
+| 039 | Perfil da merendeira | navegação e isolamento da merendeira | `CardapioController`, `SolicitacaoController`, `OcorrenciaController`, `FeedbackController` (reuso) | implemented |
 
 **Regra de dependência entre módulos:** o fluxo principal é
 `009 → 010 → 011 → 012 → 014 → {013, 015} → 016 → 017 → 018 → 019`, com 027/028/033/034
@@ -580,4 +583,29 @@ vínculo. Status: auditada em 2026-11-13; T14 (validação manual no navegador) 
 **Implementação:** `frontend/src/pages/pais/` (layout com cinco abas e rotas aninhadas),
 componentes compartilhados em `components/` reutilizados por ocorrências/solicitações/feedback,
 `FeedbackApi` com filtro por aluno e o checkbox de anafilaxia no formulário de solicitação. Os
-gates passaram: backend 830/830, `npm run build` e `npm run lint` sem erro.
+gates passaram: backend 870/870, `npm run build` e `npm run lint` sem erro.
+
+## Spec 039 — funcionalidades-permissoes-merendeira
+
+**Canonical creation path:** `frontend/src/pages/merendeiras/HomeMerendeiras.tsx`,
+`frontend/src/components/Navbar.tsx`, `frontend/src/routes/routes.tsx`,
+`backend.Tests/Integration/MerendeiraEscopoTests.cs`.
+
+**Problema estrutural:** a merendeira tem permissões e escopo corretos no backend, mas a área
+dela não expõe navegação — a home monta apenas `Header`/`Footer`, sem `Navbar`, então as telas
+de cardápio, solicitação, ocorrência e feedback ficavam inalcançáveis. A invariante de escopo
+(escola → unidade) era implícita e não testada, e a guarda de rota expunha a escrita de alimentos
+à merendeira.
+
+**Decisão:** expor o menu à merendeira com exatamente 4 abas (Cardápio, Solicitações, Ocorrências
+e Feedback), restringir a rota `/alimentos` à nutrição e consolidar por teste a derivação de
+`UnidadeId` a partir da escola (sem mudança de produção). A merendeira continua `R` em catálogos
+na matriz, mas o frontend não expõe o catálogo de alimentos.
+
+**Regra derivada:** a escola de destino de uma solicitação é sempre a da sessão (o DTO não expõe
+`escolaId`/`unidadeId`); a unidade da merendeira é derivada da escola; a guarda de rota nunca
+expõe escrita onde a matriz dá somente leitura. Status: implementada em 2026-11-17.
+
+**Implementação:** `Navbar` com 4 entradas para `Merendeira`, `HomeMerendeiras` montando
+`<Navbar />`, rotas de alimentos exclusivas da nutrição e `MerendeiraEscopoTests` (8 testes de
+conformidade/isolamento). Gates: backend 870/870, `npm run build` e `npm run lint` sem erro.

@@ -134,8 +134,8 @@ memória.
 |---|---|---|
 | `GET` | `/api/ocorrencias?status=&tipo=&alunoId=&unidadeId=&escolaId=&de=&ate=&pagina=&tamanho=` | sessão, escopo por papel |
 | `GET` | `/api/ocorrencias/{id}` | sessão, escopo por papel |
-| `POST` | `/api/ocorrencias` | `Merendeira`, `Responsavel`, `Nutricionista`, `AdminEscola` |
-| `POST` | `/api/ocorrencias/{id}/status` | `Nutricionista`, `AdminEscola` |
+| `POST` | `/api/ocorrencias` | `Merendeira`, `Responsavel`, `AdminEscola` |
+| `POST` | `/api/ocorrencias/{id}/status` | `AdminEscola` |
 | `POST` | `/api/ocorrencias/{id}/cancelar` | autor da ocorrência |
 
 ```json

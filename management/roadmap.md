@@ -13,13 +13,16 @@
 | `audited` | Final stage — certified by /spec-test, the sole owner of the implemented → audited transition. Feature is live. |
 | `discarded` | Intentionally abandoned |
 
-> **Estado em 2026-11-13.** `implemented` = código completo e gates verdes, ainda sem
+> **Estado em 2026-11-17.** `implemented` = código completo e gates verdes, ainda sem
 > certificação `/spec-test`; `audited` = código, testes e documentação auditados; `created` =
-> documentos sem implementação; `in-progress` = implementação parcial. Lacunas atuais: 019
-> (relatórios) sem implementação; 029 com backend pronto e frontend pendente (PEND-042); 025/026
-> planejadas.
-> As Specs 034 e 035 foram auditadas manualmente em 2026-11-13; a validação manual no navegador
-> segue em PEND-047 (034) e PEND-050 (035).
+> documentos sem implementação; `in-progress` = implementação parcial. Lacunas atuais: 029 com
+> backend pronto e frontend pendente (PEND-042); 026/037/038 planejadas.
+> A Spec 016 (ocorrências) foi auditada em 2026-11-17: documentação alinhada à matriz — a
+> `Nutricionista` é `R` (somente leitura) em `Ocorrencia`. A Spec 039 (perfil da merendeira) foi
+> implementada em 2026-11-17: navegação com 4 abas (cardápio, solicitações, ocorrências e
+> feedback), guarda de rota de alimentos restrita à nutrição e testes de conformidade/isolamento.
+> As Specs 034 e 035 foram auditadas manualmente; a validação manual no navegador segue em
+> PEND-047 (034) e PEND-050 (035).
 > A promoção automática pelo `/spec-test` continua bloqueada pelo PEND-028; as auditorias
 > registradas foram manuais.
 
@@ -44,7 +47,7 @@
 | 013 | geracao-automatica-cardapios | audited | V6; ADR-004; L7 |
 | 014 | compatibilidade-cardapio-restricoes | audited | V6; ADR-004; L5 |
 | 015 | publicacao-historico-cardapio | audited | V6; ADR-004; L7 |
-| 016 | ocorrencias | implemented | V6; V17; ADR-020; ADR-021; ADR-004; L7 |
+| 016 | ocorrencias | audited | V6; V17; ADR-020; ADR-021; ADR-004; L7 |
 | 017 | solicitacoes | implemented | V6; V17; V19; ADR-020; ADR-021; ADR-004; L7 |
 | 018 | feedback-e-notificacoes | implemented | V6; V17; ADR-020; ADR-021; ADR-004; L7 |
 | 019 | relatorios-e-exportacao | audited | V6; V16; V17; V18; ADR-020; ADR-021; ADR-022; ADR-004; L6 |
@@ -66,6 +69,7 @@
 | 035 | portal-pais-responsaveis | audited | V24; V6; V17; V23; Spec 010; Spec 016; Spec 017; Spec 018; Spec 025; Spec 029; ADR-009; ADR-021 |
 | 037 | cardapio-com-dias | planned | V25; ADR-027; ADR-022; Spec 012; Spec 013; Spec 029; Spec 015; Spec 019 |
 | 038 | acoes-do-nutricionista | planned | V6; V17; Spec 016; Spec 017; Spec 028; ADR-021 |
+| 039 | funcionalidades-permissoes-merendeira | audited | V26; V14; V17; Spec 009; Spec 012; Spec 015; Spec 016; Spec 017; Spec 018; Spec 025; Spec 027; Spec 028; Spec 029; Spec 031; Spec 033; ADR-002; ADR-004; ADR-020; ADR-021 |
 
 ---
 
@@ -86,5 +90,6 @@
 016, 019, 025 ───────────────────► 028 (matriz ajusta escopo)
 027, 028, 033 ───────────────────► 034 (vínculo obrigatório e busca de alunos)
 016, 017, 018, 025, 029, 034 ────► 035 (portal dos pais/responsáveis)
+009, 012, 015, 016, 017, 018, 025, 027, 028, 029, 033 ──► 039 (área da merendeira: navegação e isolamento)
 ```
 

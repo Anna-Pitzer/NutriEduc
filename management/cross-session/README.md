@@ -335,6 +335,26 @@ conversation history alone is not durable memory.
 - **Evidência:** `dotnet test` **830/830** (`SolicitacaoComAnafilaxia_Aprovada_MarcaOAluno`);
   `npm run build` OK; `npm run lint` 0 erros.
 
+## Spec 039 — implementada; Spec 016 — auditada; menu da merendeira (2026-11-17)
+
+- **Spec 039 (perfil da merendeira):** criada, verificada e implementada. Frontend: `Navbar`
+  exposto na `HomeMerendeiras` (antes só montava `Header`/`Footer`) e rotas `/alimentos/novo` e
+  `/alimentos/editar/:id` restritas à nutrição. Backend: sem mudança de produção — a derivação de
+  `UnidadeId` a partir da escola já existia (`ResolucaoEscopo` e `AprovarAcessoService`); foram
+  adicionados testes de conformidade/isolamento (`MerendeiraEscopoTests`, 8 testes).
+- **Menu da merendeira restrito a 4 abas** (Cardápio, Solicitações, Ocorrências e Feedback):
+  removidos "Catálogo de alimentos" e "Merendeiras" do `Navbar`, e `Merendeira` retirada da guarda
+  de `/alimentos`. A merendeira continua `R` em `CatalogoDeAlimentos` na matriz, mas o frontend não
+  expõe mais o catálogo.
+- **Spec 016 (ocorrências) auditada:** documentação alinhada à matriz — `Nutricionista` é `R`
+  (somente leitura) em `Ocorrencia`. RF1/RF3/RF5, design (tabela de API), task (T9) e `README.md`
+  foram corrigidos; nenhum código de produção mudou (a implementação e os testes já seguiam a
+  matriz). Lição registrada como L17.
+- **Gates:** `dotnet test` **870/870**; `npm run build` OK; `npm run lint` 0 erros (26 avisos
+  pré-existentes de `react-hooks`).
+- **Pendências vivas:** PEND-025 (merendeira sem trilha de restrições por aluno) continua aberto
+  — T5 da 039 é opcional e não foi implementada; PEND-028 segue bloqueando o motor SDD.
+
 
 
 

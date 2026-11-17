@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Header from "../../components/Header";
+import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import { useAuth } from "../../context/authContext";
 import { naoAutorizado } from "../../services/erroApi";
@@ -52,6 +53,8 @@ export function HomeMerendeiras() {
         <div className="relative min-h-screen bg-[#FAF9F5]">
             <div className="relative z-20 flex min-h-screen flex-col">
                 <Header />
+
+                <Navbar />
 
                 <AlertaAlunosIndisponiveis unidadeId={unidadeId} />
 
