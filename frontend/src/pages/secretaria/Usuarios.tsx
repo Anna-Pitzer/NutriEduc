@@ -573,7 +573,7 @@ export function Usuarios() {
                     <p className="mt-6 text-sm text-gray-500">Nenhum usuário encontrado.</p>
                 ) : (
                     <div className="mt-6 w-full overflow-x-auto">
-                    <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
+                    <table className="w-full min-w-176 border-collapse text-left text-sm">
                         <thead>
                             <tr className="border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500">
                                 <th className="py-2">Nome</th>

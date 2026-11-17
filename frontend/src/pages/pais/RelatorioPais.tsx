@@ -138,7 +138,7 @@ export function RelatorioPais() {
             </header>
 
             <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="min-w-[200px]">
+                <div className="min-w-50">
                     <SeletorDeFilho
                         filhos={filhos}
                         value={alunoId}

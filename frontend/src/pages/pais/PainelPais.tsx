@@ -79,7 +79,7 @@ export function PainelPais() {
     }
 
     return (
-        <section>
+        <section className="w-full">
             <header className="mb-5">
                 <h1 className="text-2xl font-bold text-roxo">Meus filhos</h1>
                 <p className="mt-1 text-sm text-slate-600">
@@ -87,7 +87,7 @@ export function PainelPais() {
                 </p>
             </header>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 w-full">
                 {filhos.map((filho) => (
                     <article
                         key={filho.id}
@@ -160,38 +160,7 @@ export function PainelPais() {
                 ))}
             </div>
 
-            <nav aria-label="Atalhos da área dos pais" className="mt-5 flex flex-wrap gap-2">
-                <Link
-                    to="/pais/relatorio"
-                    className="rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-roxo/40"
-                >
-                    Relatório do filho
-                </Link>
-                <Link
-                    to="/pais/cardapios"
-                    className="rounded-xl border border-roxo/40 px-4 py-2 text-sm font-semibold text-roxo focus:outline-none focus-visible:ring-2 focus-visible:ring-roxo/40"
-                >
-                    Ver cardápios
-                </Link>
-                <Link
-                    to="/pais/ocorrencias"
-                    className="rounded-xl border border-roxo/40 px-4 py-2 text-sm font-semibold text-roxo focus:outline-none focus-visible:ring-2 focus-visible:ring-roxo/40"
-                >
-                    Ocorrências
-                </Link>
-                <Link
-                    to="/pais/solicitacoes"
-                    className="rounded-xl border border-roxo/40 px-4 py-2 text-sm font-semibold text-roxo focus:outline-none focus-visible:ring-2 focus-visible:ring-roxo/40"
-                >
-                    Solicitar alergia
-                </Link>
-                <Link
-                    to="/pais/feedback"
-                    className="rounded-xl border border-roxo/40 px-4 py-2 text-sm font-semibold text-roxo focus:outline-none focus-visible:ring-2 focus-visible:ring-roxo/40"
-                >
-                    Feedback
-                </Link>
-            </nav>
+
         </section>
     );
 }

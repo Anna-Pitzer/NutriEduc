@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Eye, EyeClosed, KeyRound, Lock, Mail, User } from "lucide-react"
+import { Eye, EyeClosed, Lock, Mail, User } from "lucide-react"
 import { useAuth, type TipoCadastro } from "../../context/authContext"
 import { homePorPapel } from "../../routes/homePorPapel"
 import { listarUnidadesAtivas, type UnidadeAtiva } from "../../services/UnidadeApi"
@@ -198,7 +198,7 @@ export function LoginPage() {
         backgroundImage: `url(${background})`,
       }}
     >
-      <div className="bg-branco w-100 min-h-120 flex justify-center items-center flex-col mx-auto rounded-xl shadow-gray shadow-2xl/50">
+      <div className="bg-branco w-100 min-h-110 flex justify-center items-center flex-col mx-auto rounded-xl shadow-gray shadow-2xl/50">
         <h1 className="text-4xl font-semibold p-4">
           <b className="bg-verdeEscuro bg-clip-text text-transparent ">Nutri</b>
           <b className="bg-linear-to-r from-verdeClaro/90 to-verdeClaro bg-clip-text text-transparent ">Educ</b>
@@ -238,7 +238,7 @@ export function LoginPage() {
                   </button>
 
                 </div> : ''}
-                
+
               </p>
 
               <input
@@ -247,15 +247,12 @@ export function LoginPage() {
                 className="text-black bg-white w-[80%] m-auto h-12 rounded-md hover:cursor-pointer hover:bg-verdeMtClaro hover:pb-1"
               />
               <div className="flex items-center justify-between px-4">
-                <label className="text-white flex items-center gap-1 hover:cursor-pointer">
-                  <input type="checkbox" />
-                  Remember me
-                </label>
+
                 <button
                   className="text-white hover:cursor-pointer m-auto"
                   type="button"
                   onClick={() => { setIsLoginPage(false); setEtapaCadastro(1); }}
-                >New here? <strong>Register!</strong></button>
+                >Novo aqui? <strong>Cadastre-se!</strong></button>
               </div>
             </form>
           ) : etapaCadastro === 1 ? (
@@ -281,8 +278,8 @@ export function LoginPage() {
                 className="text-white hover:cursor-pointer"
                 onClick={() => setIsLoginPage(true)}
               >
-                Already have an account?
-                <b className="ml-1">Log in</b>
+                Já tem uma conta?
+                <b className="ml-1">Entre!</b>
               </button>
             </form>
           ) : (
@@ -332,7 +329,6 @@ export function LoginPage() {
               </p>
 
               <p className="flex flex-col gap-1 w-full bg-branco p-3 rounded-md">
-                <label htmlFor="dataNascimento" className="text-sm text-gray">Data de nascimento</label>
                 <input
                   id="dataNascimento"
                   type="date"
@@ -344,7 +340,6 @@ export function LoginPage() {
               </p>
 
               <p className="flex flex-col gap-1 w-full bg-branco p-3 rounded-md">
-                <label htmlFor="unidade" className="text-sm text-gray">Unidade de destino</label>
                 <select
                   id="unidade"
                   value={unidadeId}
@@ -371,15 +366,27 @@ export function LoginPage() {
                 </p>
               )}
 
-              <p className="flex border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
-                <KeyRound color="gray" />
+              <p className="flex text-center items-center border-b border-white gap-2 w-full bg-branco p-3 rounded-md">
+                <Lock color="gray" width={30} height={30} />
                 <input
-                  type="password"
+                  className="text-gray outline-none w-full"
+                  type={viewPassword ? "text" : "password"}
+                  placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="outline-none w-full text-gray"
-                  placeholder="Password"
                 />
+                {password ? <div>
+                  <button
+                    className=" text-black/40 flex hover:cursor-pointer"
+                    type="button"
+                    aria-label={viewPassword ? "Ocultar senha" : "Mostrar senha"} // Acessibilidade
+                    onClick={() => setViewPassword(!viewPassword)}>
+                    {viewPassword ? <Eye /> : <EyeClosed />}
+
+                  </button>
+
+                </div> : ''}
+
               </p>
 
               <button
@@ -395,11 +402,13 @@ export function LoginPage() {
                 className="text-white hover:cursor-pointer"
                 onClick={() => setIsLoginPage(true)}
               >
-                Already have an account?
-                <b className="ml-1">Log in</b>
+                Já tem uma conta?
+                <b className="ml-1">Entre!</b>
               </button>
             </form>
+            
           )}
+          
         </div>
       </div>
     </section>
