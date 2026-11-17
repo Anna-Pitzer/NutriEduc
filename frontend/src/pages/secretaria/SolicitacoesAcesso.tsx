@@ -244,7 +244,7 @@ export function SolicitacoesAcesso() {
                                         <button
                                             type="button"
                                             onClick={() => void prepararAprovacao(solicitacao)}
-                                            className="rounded-lg bg-verdeEscuro px-4 py-2 text-sm font-medium text-white"
+                                            className="rounded-lg bg-verdeClaro px-4 py-2 text-sm font-medium text-white"
                                         >
                                             Aprovar
                                         </button>
@@ -306,7 +306,7 @@ export function SolicitacoesAcesso() {
                                             <button
                                                 type="submit"
                                                 disabled={salvando}
-                                                className="rounded-lg bg-verdeEscuro px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                                                className="rounded-lg bg-verdeClaro px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                                             >
                                                 {salvando ? "Salvando…" : "Confirmar"}
                                             </button>

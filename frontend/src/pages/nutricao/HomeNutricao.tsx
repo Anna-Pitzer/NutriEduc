@@ -62,7 +62,7 @@ export function HomeNutricao() {
 
 
   return (
-    <div className="relative min-h-screen bg-[#FAF9F5]">
+    <div className="relative min-h-screen bg-fundo">
       <div
         className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-60"
         style={{

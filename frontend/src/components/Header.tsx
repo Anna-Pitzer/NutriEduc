@@ -58,13 +58,32 @@ export default function Header() {
               O padding direito é maior que o esquerdo de propósito: as ações (Sair/Perfil)
               encostavam na borda direita e na parte mais fina da curva rosa.
             */}
-            <div className="relative flex  h-full w-full justify-between items-start md:pl-6 md:pr-12">
-                <div className="mt-10">
-                    <h1 className="text-3xl font-bold tracking-tight text-branco md:text-5xl lg:text-6xl">NutriEduc</h1>
+            <div className="
+            relative flex h-full md:pl-6 md:pr-12
+            justify-between items-start
+            pt-10 mr-20
+            ">
+                <div className="">
+                    <div className="relative inline-block">
+                        {/* Clarão atrás do texto */}
+                        <div className="absolute -inset-6 bg-white/80 blur-2xl opacity-30" />
+
+                        {/* Texto */}
+                        <div className="relative z-10">
+                            <b className="bg-verdeEscuro bg-clip-text text-transparent text-7xl">
+                                Nutri
+                            </b>
+
+                            <b className="bg-linear-to-r from-verdeClaro/90 to-verdeClaro bg-clip-text text-transparent text-7xl text-shadow-lg">
+                                Educ
+                            </b>
+                        </div>
+                    </div>
+
                     <p className=" mt-1 text-sm font-light text-white/75 md:text-base">Alimentação que educa, nutrição que transforma</p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-2">
                     <SinoNotificacoes />
                     <button
                         type="button"
