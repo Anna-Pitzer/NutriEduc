@@ -50,7 +50,7 @@ function tiposDeCriacao(papel: string | null): TipoSolicitacao[] {
         return ["InclusaoAlergia", "AlteracaoRestricao", "DadosCadastrais"];
     }
 
-    if (papel === "Merendeira" || papel === "AdminEscola" || papel === "Nutricionista") {
+    if (papel === "Merendeira" || papel === "AdminEscola") {
         return ["MudancaCardapio", "Ingrediente", "FaltaIngrediente"];
     }
 
@@ -285,12 +285,12 @@ export function SolicitacoesPage() {
 
     const podeDecidir = selecionada !== null && ehDecisor(papel, selecionada.tipo);
 
-    // Anafilaxia é marcada pelo ADM da unidade (dono da decisão) ou pelo Nutricionista
-    // da unidade (responsável clínico), enquanto a inclusão de alergia está em aberto.
+    // Anafilaxia é marcada pelo ADM da unidade (dono da decisão), enquanto a inclusão
+    // de alergia está em aberto.
     const podeMarcarAnafilaxia =
         selecionada !== null &&
         selecionada.tipo === "InclusaoAlergia" &&
-        (papel === "AdminSecretaria" || papel === "Nutricionista");
+        papel === "AdminSecretaria";
 
     return (
         <section className="p-6">
@@ -636,7 +636,10 @@ export function SolicitacoesPage() {
 
                             {(podeDecidir || podeMarcarAnafilaxia) && !statusFinal.has(selecionada.status) && (
                                 <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
-                                    {podeDecidir && selecionada.status === "EmAnalise" && (
+                                    {podeDecidir &&
+                                        (selecionada.status === "EmAnalise" ||
+                                            (selecionada.status === "Aberta" &&
+                                                papel === "Nutricionista")) && (
                                         <label className="block text-sm font-medium text-slate-700">
                                             Resposta da decisão
                                             <textarea
@@ -671,7 +674,9 @@ export function SolicitacoesPage() {
                                             </button>
                                         )}
 
-                                        {podeDecidir && selecionada.status === "Aberta" && (
+                                        {podeDecidir &&
+                                            selecionada.status === "Aberta" &&
+                                            papel !== "Nutricionista" && (
                                             <button
                                                 type="button"
                                                 disabled={salvando}
@@ -685,7 +690,10 @@ export function SolicitacoesPage() {
                                             </button>
                                         )}
 
-                                        {podeDecidir && selecionada.status === "EmAnalise" && (
+                                        {podeDecidir &&
+                                            (selecionada.status === "EmAnalise" ||
+                                                (selecionada.status === "Aberta" &&
+                                                    papel === "Nutricionista")) && (
                                             <>
                                                 <button
                                                     type="button"
@@ -713,7 +721,9 @@ export function SolicitacoesPage() {
                                             </>
                                         )}
 
-                                        {podeDecidir && selecionada.status === "Aprovada" && (
+                                        {podeDecidir &&
+                                            papel !== "Nutricionista" &&
+                                            selecionada.status === "Aprovada" && (
                                             <button
                                                 type="button"
                                                 disabled={salvando}

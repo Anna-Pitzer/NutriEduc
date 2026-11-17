@@ -29,7 +29,7 @@ function tiposDeCriacao(papel: string | null): TipoOcorrencia[] {
         return ["Aluno"];
     }
 
-    if (papel === "Merendeira" || papel === "AdminEscola" || papel === "Nutricionista") {
+    if (papel === "Merendeira" || papel === "AdminEscola") {
         return ["Aluno", "Refeicao", "Alimento", "Outro"];
     }
 
@@ -37,7 +37,7 @@ function tiposDeCriacao(papel: string | null): TipoOcorrencia[] {
 }
 
 function podeMudarStatus(papel: string | null): boolean {
-    return papel === "Nutricionista" || papel === "AdminEscola";
+    return papel === "AdminEscola";
 }
 
 export function OcorrenciasPage() {
@@ -528,7 +528,7 @@ export function OcorrenciasPage() {
                                 </div>
                             )}
 
-                            {selecionada.podeCancelar && (
+                            {selecionada.podeCancelar && papel !== "Nutricionista" && (
                                 <button
                                     type="button"
                                     disabled={salvando}

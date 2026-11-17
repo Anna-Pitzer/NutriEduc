@@ -140,7 +140,7 @@ public class OcorrenciaApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Nutricionista_RegistraOutro_SemAluno_EscolaNula()
+    public async Task Nutricionista_NaoRegistraOcorrencia_403()
     {
         var cenario = await PrepararAsync();
 
@@ -150,14 +150,11 @@ public class OcorrenciaApiTests : IClassFixture<ApiFactory>
             descricao = "Problema geral da unidade."
         });
 
-        Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
-
-        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(JsonValueKind.Null, corpo.GetProperty("escolaId").ValueKind);
+        Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
     }
 
     [Fact]
-    public async Task Nutricionista_RegistraAluno_EscolaDerivadaDoAluno()
+    public async Task Nutricionista_NaoRegistraOcorrenciaDeAluno_403()
     {
         var cenario = await PrepararAsync();
 
@@ -168,11 +165,7 @@ public class OcorrenciaApiTests : IClassFixture<ApiFactory>
             alunoId = cenario.AlunoId
         });
 
-        Assert.Equal(HttpStatusCode.Created, resposta.StatusCode);
-
-        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(cenario.EscolaId, corpo.GetProperty("escolaId").GetInt32());
-        Assert.Equal(cenario.AlunoId, corpo.GetProperty("alunoId").GetInt32());
+        Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
     }
 
     [Fact]
@@ -239,7 +232,7 @@ public class OcorrenciaApiTests : IClassFixture<ApiFactory>
             PapelUsuario.Nutricionista, unidadeId: outraUnidade);
 
         var ocorrenciaId = await CriarOcorrenciaAsync(
-            cenario.Nutricionista, "Outro", "Ocorrência da unidade A.");
+            cenario.Merendeira, "Outro", "Ocorrência da unidade A.");
 
         var detalhe = await nutriOutra.GetAsync($"/api/ocorrencias/{ocorrenciaId}");
 
@@ -262,14 +255,14 @@ public class OcorrenciaApiTests : IClassFixture<ApiFactory>
     // ---------- Status e cancelamento ----------
 
     [Fact]
-    public async Task MudarStatus_Nutricionista_GravaHistorico()
+    public async Task MudarStatus_AdminEscola_GravaHistorico()
     {
         var cenario = await PrepararAsync();
 
         var ocorrenciaId = await CriarOcorrenciaAsync(
             cenario.Merendeira, "Outro", "Ocorrência para análise.");
 
-        var mudanca = await cenario.Nutricionista.PostAsJsonAsync(
+        var mudanca = await cenario.AdminEscola.PostAsJsonAsync(
             $"/api/ocorrencias/{ocorrenciaId}/status",
             new { status = "EmAnalise", observacao = "Encaminhado à nutrição." });
 
@@ -288,7 +281,7 @@ public class OcorrenciaApiTests : IClassFixture<ApiFactory>
         var ocorrenciaId = await CriarOcorrenciaAsync(
             cenario.Merendeira, "Outro", "Ocorrência aberta.");
 
-        var resposta = await cenario.Nutricionista.PostAsJsonAsync(
+        var resposta = await cenario.AdminEscola.PostAsJsonAsync(
             $"/api/ocorrencias/{ocorrenciaId}/status",
             new { status = "Resolvida", observacao = "Tentativa inválida." });
 
@@ -419,7 +412,7 @@ public class OcorrenciaApiTests : IClassFixture<ApiFactory>
         var nomeOriginal = $"Aluno Snapshot {Guid.NewGuid():N}";
         var novoAlunoId = await CriarAlunoAsync(cenario.Admin, cenario.EscolaId, nomeOriginal);
 
-        var criacao = await cenario.Nutricionista.PostAsJsonAsync("/api/ocorrencias", new
+        var criacao = await cenario.Merendeira.PostAsJsonAsync("/api/ocorrencias", new
         {
             tipo = "Aluno",
             descricao = "Aluno passou mal após o lanche.",
@@ -457,7 +450,7 @@ public class OcorrenciaApiTests : IClassFixture<ApiFactory>
         var nomeOriginal = $"Aluno Original {Guid.NewGuid():N}";
         var alunoId = await CriarAlunoAsync(cenario.Admin, cenario.EscolaId, nomeOriginal);
 
-        var criacao = await cenario.Nutricionista.PostAsJsonAsync("/api/ocorrencias", new
+        var criacao = await cenario.Merendeira.PostAsJsonAsync("/api/ocorrencias", new
         {
             tipo = "Aluno",
             descricao = "Aluno passou mal após o lanche.",
@@ -502,6 +495,21 @@ public class OcorrenciaApiTests : IClassFixture<ApiFactory>
             tipo = "Outro",
             descricao = "Tentativa indevida do ADM."
         });
+
+        Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+    }
+
+    [Fact]
+    public async Task Nutricionista_NaoMudaStatus_403()
+    {
+        var cenario = await PrepararAsync();
+
+        var ocorrenciaId = await CriarOcorrenciaAsync(
+            cenario.Merendeira, "Outro", "Ocorrência para leitura.");
+
+        var resposta = await cenario.Nutricionista.PostAsJsonAsync(
+            $"/api/ocorrencias/{ocorrenciaId}/status",
+            new { status = "EmAnalise", observacao = "Tentativa indevida." });
 
         Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
     }
