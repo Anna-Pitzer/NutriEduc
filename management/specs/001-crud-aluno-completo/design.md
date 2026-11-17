@@ -1,6 +1,6 @@
 ---
 name: crud-aluno-completo
-status: created
+status: audited
 references: V2, L8
 ---
 

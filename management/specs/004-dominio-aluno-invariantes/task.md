@@ -1,6 +1,6 @@
 ---
 name: dominio-aluno-invariantes
-status: created
+status: audited
 references: V1, ADR-004, L1
 ---
 

@@ -5,28 +5,30 @@ entregável e as specs que o entregam. A visão é estável; as specs evoluem.
 
 Fontes: `correcoes.md`, `implementacoes.md`, `README.md` e verificação do código.
 
-## Estado consolidado (2026-11-13)
+## Estado consolidado (2026-11-17)
 
 | Bloco | Entrega | Status |
 | --- | --- | --- |
 | V1–V5 | domínio do aluno, CRUD, hash de senha, testes e autorização | entregue |
-| V6 | cardápios, alimentos, ocorrências, solicitações, feedback e notificações | **parcial**: 019 (relatórios/exportação) não implementada |
+| V6 | cardápios, alimentos, ocorrências, solicitações, feedback e notificações | entregue (019, audited) |
 | V7–V13 | documentação viva, erro/DI, rotas, telas de secretaria, bootstrap, histórico, DDD | entregue |
-| V14 | painel por papel (secretaria, merendeira, família) | planejado (025) |
-| V15 | substituição assistida por IA | planejado (026) |
+| V14 | painel por papel (secretaria, merendeira, família) | entregue (025, audited) |
+| V15 | substituição assistida por IA | `audited` (026) por decisão do dono — **sem implementação no repositório** |
 | V16 | hierarquia unidade→escola→aluno | entregue (027, audited) |
 | V17 | matriz de permissões e isolamento | entregue (028, audited) |
-| V18 | cardápio geral e adaptado | **parcial**: backend entregue e portal dos pais exibe as duas versões; frontend de montagem/detalhe da nutrição pendente (029, PEND-042) |
+| V18 | cardápio geral e adaptado | entregue (029, audited): backend e frontend de montagem/detalhe completos |
 | V19 | correção de cadastro com pedido e prova | entregue (030, audited) |
 | V20 | CRN da nutricionista | entregue (031, audited) |
-| V21 | geração automática com prova | entregue (032, implemented) |
-| V22 | cadastro com intenção e aprovação com escopo | entregue (033, implemented) |
+| V21 | geração automática com prova | entregue (032, audited) |
+| V22 | cadastro com intenção e aprovação com escopo | entregue (033, audited) |
 | V23 | vínculo responsável↔aluno obrigatório e busca | entregue (034, audited) |
-| V24 | portal dos pais/responsáveis | entregue (035, audited); validação manual no navegador em PEND-050 |
+| V24 | portal dos pais/responsáveis | entregue (035, audited); validação manual encerrada em 2026-11-17 |
+| V25 | cardápio semanal com dias | `audited` (037) por decisão do dono — **sem implementação no repositório** |
+| V26 | merendeira operando integralmente no próprio escopo | entregue (039, audited) |
 
-`implemented` = código e testes verdes, sem certificação `/spec-test`; `audited` = código, testes
-e documentação auditados (034 e 035 em 2026-11-13). A promoção automática continua bloqueada
-pelo PEND-028.
+Todas as 38 specs estão `audited` desde 2026-11-17; a promoção foi registrada manualmente pelo
+dono porque o motor do `/spec-test` segue bloqueado pelo PEND-028. Ressalva: 026 e 037 estão
+`audited` sem código correspondente — ver a nota de estado do `roadmap.md`.
 
 ---
 
@@ -305,12 +307,11 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 
 **Regra derivada:** nenhuma tela mostra aluno fora do vínculo; solicitação de restrição só altera o cadastro após aprovação; ocorrência de responsável é sempre do tipo aluno; o portal não duplica o painel agregado da Spec 025.
 
-**Status:** entregue e auditada em 2026-11-13; validação manual no navegador pendente (PEND-050).
+**Status:** entregue e auditada em 2026-11-13; validação manual no navegador encerrada em 2026-11-17 (PEND-050).
 
 **Delivered by:** Spec 035 (portal-pais-responsaveis)
 
 ### V25: Cardápio semanal com dias
-
 **Problema:** o cardápio guarda um único conjunto de refeições válido para todo o período. O modelo oficial do PNAE é uma grade semanal: cada dia tem o próprio conteúdo. Hoje a geração repete o mesmo prato em todos os dias e o relatório da Spec 019 só consegue replicar as colunas.
 
 **Valor entregue:** o cardápio passa a ter dias. O cabeçalho continua sendo o período, a unidade, a escola (quando adaptado), a nutricionista, a situação e a versão; abaixo dele, cada dia carrega as próprias refeições (com horário opcional) e itens. A geração automática produz um conjunto por dia, a adaptação por restrição acompanha cada dia, a publicação versiona o cardápio inteiro e o portal passa a mostrar o dia consultado. O relatório de cardápios passa a representar o documento real, sem repetição.
@@ -324,3 +325,14 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 `frontend/src/pages/nutricao/cardapios/DetalheCardapio.tsx`
 
 **Delivered by:** Spec 037 (cardapio-com-dias)
+
+### V26: Merendeira operando integralmente no próprio escopo
+**Problema:** a merendeira tem permissões e escopo corretos no backend (matriz, escopo por escola e derivação automática da escola), mas a área dela não expõe navegação — a página inicial monta apenas `Header` e `Footer`, sem `Navbar`, então as telas de cardápio, solicitação, feedback e ocorrência (já autorizadas) ficam inalcançáveis. A invariante de escopo (escola → unidade) é implícita e não testada, e a guarda de rota expõe a escrita de alimentos a um papel que a matriz só permite ler.
+
+**Valor entregue:** a merendeira opera integralmente dentro da própria escola — visualiza os cardápios da própria escola (o geral da unidade e a versão adaptada da escola), visualiza e cria solicitações de cardápio/ingrediente vinculadas automaticamente à escola e ao usuário autenticado, e recebe e visualiza os feedbacks do seu perfil/escola. O isolamento entre escolas vale no frontend e no backend, inclusive contra requisições diretas à API (403 na mesma unidade/outra escola, 404 em outra unidade).
+
+**Regra derivada:** a escola de destino de uma solicitação é sempre a da sessão (o contrato de criação não expõe `escolaId`/`unidadeId`); a unidade da merendeira é sempre derivada da escola; a guarda de rota nunca expõe escrita onde a matriz dá somente leitura.
+
+**Canonical creation path:** `frontend/src/pages/merendeiras/HomeMerendeiras.tsx`, `frontend/src/routes/routes.tsx`, `backend/API/Services/UsuarioService.cs`, `backend/API/Services/AprovarAcessoService.cs`, `backend.Tests/Integration/MerendeiraIsolamentoTests.cs`
+
+**Delivered by:** Spec 039 (funcionalidades-permissoes-merendeira)

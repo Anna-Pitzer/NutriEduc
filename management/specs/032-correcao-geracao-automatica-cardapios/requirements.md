@@ -1,6 +1,6 @@
 ---
 name: correcao-geracao-automatica-cardapios
-status: created
+status: audited
 references: V21, V18, ADR-022, ADR-011, ADR-004, L7
 ---
 

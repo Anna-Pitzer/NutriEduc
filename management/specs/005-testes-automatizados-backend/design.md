@@ -1,6 +1,6 @@
 ---
 name: testes-automatizados-backend
-status: created
+status: audited
 references: V4, L7
 ---
 

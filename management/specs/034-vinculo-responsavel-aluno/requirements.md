@@ -1,6 +1,6 @@
 ---
 name: vinculo-responsavel-aluno
-status: created
+status: audited
 references: V23; V17; ADR-020; ADR-021; Spec 027; Spec 028; Spec 033
 ---
 

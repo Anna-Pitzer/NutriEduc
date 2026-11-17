@@ -1,6 +1,6 @@
 ---
 name: padronizacao-contrato-rotas
-status: created
+status: audited
 references: V9, V8, ADR-005, L6, L7
 ---
 

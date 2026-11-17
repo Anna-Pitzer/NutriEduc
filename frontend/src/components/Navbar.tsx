@@ -1,4 +1,4 @@
-import { Users, UserRound, Utensils, ChevronRight, CircleUserRound, Building2, School, Apple, HeartHandshake, Salad, ClipboardList, TriangleAlert, MessageSquare, FileSpreadsheet } from "lucide-react"
+import { Users, UserRound, Utensils, ChevronRight, CircleUserRound, Building2, School, HeartHandshake, Salad, ClipboardList, TriangleAlert, MessageSquare, FileSpreadsheet } from "lucide-react"
 import { Link } from "react-router-dom";
 import { useAuth, type PapelUsuario } from "../context/authContext";
 
@@ -23,7 +23,7 @@ export default function Navbar() {
             nome: "Catálogo de alimentos",
             caminho: "/alimentos",
             icone: Salad,
-            papeis: ["Nutricionista", "Merendeira"],
+            papeis: ["Nutricionista"],
         },
         {
             nome: "Cardápio",
@@ -60,12 +60,6 @@ export default function Navbar() {
             caminho: "/relatorios",
             icone: FileSpreadsheet,
             papeis: ["Nutricionista", "AdminSecretaria", "AdminEscola"],
-        },
-        {
-            nome: "Merendeiras",
-            caminho: "/merendeiras",
-            icone: Apple,
-            papeis: ["Merendeira"],
         },
         {
             nome: "Pais",

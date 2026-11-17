@@ -1,6 +1,6 @@
 ---
 name: portal-pais-responsaveis
-status: created
+status: audited
 references: V24; V6; V17; V23; Spec 010; Spec 016; Spec 017; Spec 018; Spec 025; Spec 029; Spec 033; Spec 034; ADR-009; ADR-021
 ---
 
@@ -319,10 +319,9 @@ aluno com vínculo ativo com o responsável autenticado.
 
 ## Dependencies
 
-- Implementadas: 010, 016, 017, 018, 027, 028, 029 (backend), 033, 034.
-- Planejada: 025 (não é dependência da 035; a agregação futura pertence à 025).
-- Pendências: PEND-042 (frontend da 029), PEND-047 (validação manual da 034), PEND-048
-  (matriz × cardápio), PEND-028 (motor SDD), PEND-049 (testes de frontend).
+- Entregues e auditadas: 010, 016, 017, 018, 025, 027, 028, 029, 033, 034.
+- Pendências abertas: PEND-048 (matriz × cardápio), PEND-049 (testes de frontend) e PEND-028
+  (motor SDD). PEND-042 e PEND-047 foram encerrados em 2026-11-17.
 - Nenhuma biblioteca nova.
 
 ## Traceability

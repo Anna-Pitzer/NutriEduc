@@ -1,6 +1,6 @@
 ---
 name: portal-pais-responsaveis
-status: created
+status: audited
 references: Spec 035
 ---
 

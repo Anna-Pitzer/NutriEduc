@@ -1,6 +1,6 @@
 ---
 name: hierarquia-unidade-escola-aluno
-status: implemented
+status: audited
 references: V16, ADR-020, L11
 ---
 

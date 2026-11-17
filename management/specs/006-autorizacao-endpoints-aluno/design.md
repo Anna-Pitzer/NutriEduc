@@ -1,6 +1,6 @@
 ---
 name: autorizacao-endpoints-aluno
-status: created
+status: audited
 references: V5, ADR-002, L6
 ---
 

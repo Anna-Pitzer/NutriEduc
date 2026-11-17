@@ -1,6 +1,6 @@
 ---
 name: catalogo-alimentos
-status: created
+status: audited
 references: V6, ADR-004, L2, L9
 ---
 

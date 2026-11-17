@@ -1,6 +1,6 @@
 ---
 name: padronizacao-contrato-rotas
-status: created
+status: audited
 references: V9, V8, ADR-005, L6, L7
 ---
 
@@ -136,4 +136,5 @@ Executado em 2026-10-30. Sem migration e sem mudança de schema.
 
 **Pendências**
 
-Nenhuma task pendente. O status no roadmap continua `planned`; a promoção é do pipeline.
+Nenhuma task pendente. O status no roadmap é `audited` desde 2026-11-17 (promoção registrada
+manualmente pelo dono; o motor do `/spec-test` segue bloqueado pelo PEND-028).

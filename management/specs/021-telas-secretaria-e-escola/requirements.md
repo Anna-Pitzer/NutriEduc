@@ -1,6 +1,6 @@
 ---
 name: telas-secretaria-e-escola
-status: created
+status: audited
 references: V10, V6, ADR-002
 ---
 

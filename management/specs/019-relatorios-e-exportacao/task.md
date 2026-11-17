@@ -1,6 +1,6 @@
 ---
 name: relatorios-e-exportacao
-status: created
+status: audited
 references: V6, V16, V17, V18, ADR-020, ADR-021, ADR-022, ADR-004, L6
 ---
 

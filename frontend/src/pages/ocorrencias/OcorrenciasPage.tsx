@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import Footer from "../../components/Footer";
+import Header from "../../components/Header";
+import Navbar from "../../components/Navbar";
 import { useAuth } from "../../context/authContext";
 import { buscarAlunos, type AlunoResposta } from "../../services/AlunoApi";
 import { listarAlimentos, type Alimento } from "../../services/AlimentoApi";
@@ -31,7 +34,7 @@ function tiposDeCriacao(papel: string | null): TipoOcorrencia[] {
         return ["Aluno"];
     }
 
-    if (papel === "Merendeira" || papel === "AdminEscola" || papel === "Nutricionista") {
+    if (papel === "Merendeira" || papel === "AdminEscola") {
         return ["Aluno", "Refeicao", "Alimento", "Outro"];
     }
 
@@ -39,7 +42,7 @@ function tiposDeCriacao(papel: string | null): TipoOcorrencia[] {
 }
 
 function podeMudarStatus(papel: string | null): boolean {
-    return papel === "Nutricionista" || papel === "AdminEscola";
+    return papel === "AdminEscola";
 }
 
 export function OcorrenciasPage() {
@@ -239,352 +242,349 @@ export function OcorrenciasPage() {
     const observacaoValida = observacao.trim().length >= 2;
 
     return (
-        <section className="flex flex-col items-center min-h-screen bg-fundo">
-            <Header />
+        <div className="relative min-h-screen bg-fundo">
+            <div className="relative z-20 flex min-h-screen flex-col">
+                <Header />
 
-            <section 
-            className="flex w-full max-w-7xl flex-col items-center justify-center bg-white border-4 border-lilaz mb-30 mx-auto rounded-3xl p-8 shadow-[0_5px_20px_rgba(1,1,1,0.1)]
-                duration-300 hover:-translate-y-1.5">
-                <header className="flex w-full">
-                    <div>
-                        <VoltarPaginas />
+                <div className="mx-auto flex w-full max-w-350 flex-1 flex-col items-stretch gap-6 px-4 pb-8 md:px-8 lg:flex-row lg:items-start">
+                    <div className="shrink-0 lg:sticky lg:top-6">
+                        <Navbar />
                     </div>
 
-                    <div className="">
-                        <h1 className="text-2xl font-bold text-verdeClaro">Ocorrências</h1>
-                        <p className="mt-1 text-sm text-slate-600">
-                            Registro e acompanhamento de problemas de aluno, refeição e alimento.
-                        </p>
+                    <main className="min-w-0 flex-1">
+                        <section className="rounded-2xl border-4 border-lilaz bg-white p-6 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                            <header className="mb-6">
+                                <h1 className="text-2xl font-bold text-roxo">Ocorrências</h1>
+                                <p className="mt-1 text-sm text-slate-600">
+                                    Registro e acompanhamento de problemas de aluno, refeição e alimento.
+                                </p>
+                            </header>
 
-                    </div>
+                            {erro && (
+                                <p role="alert" className="mb-4 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">
+                                    {erro}
+                                </p>
+                            )}
 
-                </header>
-                {/* divisor */}
-                <div className="my-5 w-full border border-gray-200 rounded-3xl" />
+                            {sucesso && (
+                                <p role="status" className="mb-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+                                    {sucesso}
+                                </p>
+                            )}
 
+                            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+                                <div className="space-y-5">
+                                    {tiposCriaveis.length > 0 && (
+                                        <article className="rounded-2xl bg-white p-6 shadow-[0_5px_20px_rgba(1,1,1,0.1)]">
+                                            <h2 className="text-lg font-semibold text-roxo">Nova ocorrência</h2>
 
-                {erro && (
-                    <p role="alert" className="mb-4 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">
-                        {erro}
-                    </p>
-                )}
+                                            <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                                <label className="text-sm font-medium text-slate-700">
+                                                    Tipo
+                                                    <select
+                                                        value={tipo}
+                                                        onChange={(evento) => setTipo(evento.target.value as TipoOcorrencia | "")}
+                                                        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                                                    >
+                                                        <option value="">Selecione</option>
+                                                        {tiposCriaveis.map((valor) => (
+                                                            <option key={valor} value={valor}>
+                                                                {rotuloTipo[valor]}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </label>
 
-                {sucesso && (
-                    <p role="status" className="mb-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-                        {sucesso}
-                    </p>
-                )}
+                                                {precisaAluno && (
+                                                    <label className="text-sm font-medium text-slate-700">
+                                                        Aluno
+                                                        <select
+                                                            value={alunoId}
+                                                            onChange={(evento) => setAlunoId(evento.target.value)}
+                                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                                                        >
+                                                            <option value="">Selecione</option>
+                                                            {alunos.map((aluno) => (
+                                                                <option key={aluno.id} value={aluno.id}>
+                                                                    {aluno.nome}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </label>
+                                                )}
 
-                <div className="grid w-full gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-                    <div className="space-y-5">
-                        {tiposCriaveis.length > 0 && (
-                            <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                <h2 className="text-lg font-semibold text-roxo">Nova ocorrência</h2>
+                                                {precisaRefeicao && (
+                                                    <>
+                                                        <label className="text-sm font-medium text-slate-700">
+                                                            Cardápio
+                                                            <select
+                                                                value={cardapioId}
+                                                                onChange={(evento) => void trocarCardapio(evento.target.value)}
+                                                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                                                            >
+                                                                <option value="">Selecione</option>
+                                                                {cardapios.map((cardapio) => (
+                                                                    <option key={cardapio.id} value={cardapio.id}>
+                                                                        {cardapio.nome}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </label>
 
-                                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                    <label className="text-sm font-medium text-slate-700">
-                                        Tipo
-                                        <select
-                                            value={tipo}
-                                            onChange={(evento) => setTipo(evento.target.value as TipoOcorrencia | "")}
-                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                        >
-                                            <option value="">Selecione</option>
-                                            {tiposCriaveis.map((valor) => (
-                                                <option key={valor} value={valor}>
-                                                    {rotuloTipo[valor]}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
+                                                        <label className="text-sm font-medium text-slate-700">
+                                                            Refeição
+                                                            <select
+                                                                value={refeicaoId}
+                                                                onChange={(evento) => setRefeicaoId(evento.target.value)}
+                                                                disabled={!cardapioId}
+                                                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 disabled:opacity-50"
+                                                            >
+                                                                <option value="">Selecione</option>
+                                                                {refeicoes.map((refeicao) => (
+                                                                    <option key={refeicao.id} value={refeicao.id}>
+                                                                        {refeicao.nome}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </label>
+                                                    </>
+                                                )}
 
-                                    {precisaAluno && (
-                                        <label className="text-sm font-medium text-slate-700">
-                                            Aluno
-                                            <select
-                                                value={alunoId}
-                                                onChange={(evento) => setAlunoId(evento.target.value)}
-                                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                            >
-                                                <option value="">Selecione</option>
-                                                {alunos.map((aluno) => (
-                                                    <option key={aluno.id} value={aluno.id}>
-                                                        {aluno.nome}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </label>
-                                    )}
+                                                {precisaAlimento && (
+                                                    <label className="text-sm font-medium text-slate-700">
+                                                        Alimento
+                                                        <select
+                                                            value={alimentoId}
+                                                            onChange={(evento) => setAlimentoId(evento.target.value)}
+                                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                                                        >
+                                                            <option value="">Selecione</option>
+                                                            {alimentos.map((alimento) => (
+                                                                <option key={alimento.id} value={alimento.id}>
+                                                                    {alimento.nome}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </label>
+                                                )}
+                                            </div>
 
-                                    {precisaRefeicao && (
-                                        <>
-                                            <label className="text-sm font-medium text-slate-700">
-                                                Cardápio
-                                                <select
-                                                    value={cardapioId}
-                                                    onChange={(evento) => void trocarCardapio(evento.target.value)}
+                                            <label className="mt-3 block text-sm font-medium text-slate-700">
+                                                Descrição
+                                                <textarea
+                                                    value={descricao}
+                                                    onChange={(evento) => setDescricao(evento.target.value)}
+                                                    rows={3}
                                                     className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                                >
-                                                    <option value="">Selecione</option>
-                                                    {cardapios.map((cardapio) => (
-                                                        <option key={cardapio.id} value={cardapio.id}>
-                                                            {cardapio.nome}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                    placeholder="Descreva o ocorrido com o contexto necessário."
+                                                />
                                             </label>
 
-                                            <label className="text-sm font-medium text-slate-700">
-                                                Refeição
-                                                <select
-                                                    value={refeicaoId}
-                                                    onChange={(evento) => setRefeicaoId(evento.target.value)}
-                                                    disabled={!cardapioId}
-                                                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 disabled:opacity-50"
-                                                >
-                                                    <option value="">Selecione</option>
-                                                    {refeicoes.map((refeicao) => (
-                                                        <option key={refeicao.id} value={refeicao.id}>
-                                                            {refeicao.nome}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-                                        </>
-                                    )}
-
-                                    {precisaAlimento && (
-                                        <label className="text-sm font-medium text-slate-700">
-                                            Alimento
-                                            <select
-                                                value={alimentoId}
-                                                onChange={(evento) => setAlimentoId(evento.target.value)}
-                                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                                            <button
+                                                type="button"
+                                                onClick={() => void criar()}
+                                                disabled={salvando}
+                                                className="mt-4 rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                                             >
-                                                <option value="">Selecione</option>
-                                                {alimentos.map((alimento) => (
-                                                    <option key={alimento.id} value={alimento.id}>
-                                                        {alimento.nome}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </label>
+                                                {salvando ? "Enviando..." : "Registrar ocorrência"}
+                                            </button>
+                                        </article>
                                     )}
+
+                                    <article className="rounded-2xl bg-white p-6 shadow-[0_5px_20px_rgba(1,1,1,0.1)]">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <h2 className="text-lg font-semibold text-roxo">Acompanhamento</h2>
+
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={filtroStatus}
+                                                    onChange={(evento) => setFiltroStatus(evento.target.value as StatusOcorrencia | "")}
+                                                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                                >
+                                                    <option value="">Todos os status</option>
+                                                    {Object.entries(rotuloStatus).map(([valor, rotulo]) => (
+                                                        <option key={valor} value={valor}>{rotulo}</option>
+                                                    ))}
+                                                </select>
+
+                                                <select
+                                                    value={filtroTipo}
+                                                    onChange={(evento) => setFiltroTipo(evento.target.value as TipoOcorrencia | "")}
+                                                    className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                                >
+                                                    <option value="">Todos os tipos</option>
+                                                    {Object.entries(rotuloTipo).map(([valor, rotulo]) => (
+                                                        <option key={valor} value={valor}>{rotulo}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <ListaOcorrencias
+                                            itens={ocorrencias}
+                                            onSelecionar={(id) => void selecionar(id)}
+                                            carregando={carregando}
+                                            selecionadaId={selecionada?.id ?? null}
+                                        />
+                                    </article>
                                 </div>
 
-                                <label className="mt-3 block text-sm font-medium text-slate-700">
-                                    Descrição
-                                    <textarea
-                                        value={descricao}
-                                        onChange={(evento) => setDescricao(evento.target.value)}
-                                        rows={3}
-                                        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                        placeholder="Descreva o ocorrido com o contexto necessário."
-                                    />
-                                </label>
+                                <aside className="space-y-4">
+                                    {selecionada ? (
+                                        <article className="rounded-2xl bg-white p-6 shadow-[0_5px_20px_rgba(1,1,1,0.1)]">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <h2 className="text-lg font-semibold text-roxo">
+                                                        Ocorrência #{selecionada.id}
+                                                    </h2>
+                                                    <p className="text-sm text-slate-500">{rotuloTipo[selecionada.tipo]}</p>
+                                                </div>
 
-                                <button
-                                    type="button"
-                                    onClick={() => void criar()}
-                                    disabled={salvando}
-                                    className="mt-4 rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                                >
-                                    {salvando ? "Enviando..." : "Registrar ocorrência"}
-                                </button>
-                            </article>
-                        )}
+                                                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${corStatus[selecionada.status]}`}>
+                                                    {rotuloStatus[selecionada.status]}
+                                                </span>
+                                            </div>
 
-                        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <h2 className="text-lg font-semibold text-roxo">Acompanhamento</h2>
+                                            <dl className="mt-4 space-y-2 text-sm">
+                                                <div>
+                                                    <dt className="font-medium text-slate-500">Descrição</dt>
+                                                    <dd className="text-slate-800">{selecionada.descricao}</dd>
+                                                </div>
 
-                                <div className="flex gap-2">
-                                    <select
-                                        value={filtroStatus}
-                                        onChange={(evento) => setFiltroStatus(evento.target.value as StatusOcorrencia | "")}
-                                        className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                                    >
-                                        <option value="">Todos os status</option>
-                                        {Object.entries(rotuloStatus).map(([valor, rotulo]) => (
-                                            <option key={valor} value={valor}>{rotulo}</option>
-                                        ))}
-                                    </select>
+                                                {selecionada.aluno && (
+                                                    <div>
+                                                        <dt className="font-medium text-slate-500">Aluno</dt>
+                                                        <dd className="text-slate-800">{selecionada.aluno}</dd>
+                                                    </div>
+                                                )}
 
-                                    <select
-                                        value={filtroTipo}
-                                        onChange={(evento) => setFiltroTipo(evento.target.value as TipoOcorrencia | "")}
-                                        className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                                    >
-                                        <option value="">Todos os tipos</option>
-                                        {Object.entries(rotuloTipo).map(([valor, rotulo]) => (
-                                            <option key={valor} value={valor}>{rotulo}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
+                                                {selecionada.cardapio && (
+                                                    <div>
+                                                        <dt className="font-medium text-slate-500">Cardápio</dt>
+                                                        <dd className="text-slate-800">{selecionada.cardapio}</dd>
+                                                    </div>
+                                                )}
 
-                            <ListaOcorrencias
-                                itens={ocorrencias}
-                                onSelecionar={(id) => void selecionar(id)}
-                                carregando={carregando}
-                                selecionadaId={selecionada?.id ?? null}
-                            />
-                        </article>
-                    </div>
+                                                {selecionada.refeicao && (
+                                                    <div>
+                                                        <dt className="font-medium text-slate-500">Refeição</dt>
+                                                        <dd className="text-slate-800">{selecionada.refeicao}</dd>
+                                                    </div>
+                                                )}
 
-                    <aside className="space-y-4">
-                        {selecionada ? (
-                            <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <h2 className="text-lg font-semibold text-roxo">
-                                            Ocorrência #{selecionada.id}
-                                        </h2>
-                                        <p className="text-sm text-slate-500">{rotuloTipo[selecionada.tipo]}</p>
-                                    </div>
+                                                {selecionada.alimento && (
+                                                    <div>
+                                                        <dt className="font-medium text-slate-500">Alimento</dt>
+                                                        <dd className="text-slate-800">{selecionada.alimento}</dd>
+                                                    </div>
+                                                )}
 
-                                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${corStatus[selecionada.status]}`}>
-                                        {rotuloStatus[selecionada.status]}
-                                    </span>
-                                </div>
+                                                <div>
+                                                    <dt className="font-medium text-slate-500">Autor</dt>
+                                                    <dd className="text-slate-800">{selecionada.autor}</dd>
+                                                </div>
+                                            </dl>
 
-                                <dl className="mt-4 space-y-2 text-sm">
-                                    <div>
-                                        <dt className="font-medium text-slate-500">Descrição</dt>
-                                        <dd className="text-slate-800">{selecionada.descricao}</dd>
-                                    </div>
+                                            {podeDecidir && !["Resolvida", "Arquivada", "Cancelada"].includes(selecionada.status) && (
+                                                <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                                                    <label className="block text-sm font-medium text-slate-700">
+                                                        Observação
+                                                        <textarea
+                                                            value={observacao}
+                                                            onChange={(evento) => setObservacao(evento.target.value)}
+                                                            rows={2}
+                                                            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                                                        />
+                                                    </label>
 
-                                    {selecionada.aluno && (
-                                        <div>
-                                            <dt className="font-medium text-slate-500">Aluno</dt>
-                                            <dd className="text-slate-800">{selecionada.aluno}</dd>
-                                        </div>
-                                    )}
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {selecionada.status === "Aberta" && (
+                                                            <button
+                                                                type="button"
+                                                                disabled={salvando || !observacaoValida}
+                                                                onClick={() => void executar(
+                                                                    () => mudarStatusOcorrencia(selecionada.id, "EmAnalise", observacao),
+                                                                    "Ocorrência em análise.",
+                                                                )}
+                                                                className="rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                                            >
+                                                                Iniciar análise
+                                                            </button>
+                                                        )}
 
-                                    {selecionada.cardapio && (
-                                        <div>
-                                            <dt className="font-medium text-slate-500">Cardápio</dt>
-                                            <dd className="text-slate-800">{selecionada.cardapio}</dd>
-                                        </div>
-                                    )}
+                                                        {selecionada.status === "EmAnalise" && (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={salvando || !observacaoValida}
+                                                                    onClick={() => void executar(
+                                                                        () => mudarStatusOcorrencia(selecionada.id, "Resolvida", observacao),
+                                                                        "Ocorrência resolvida.",
+                                                                    )}
+                                                                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                                                >
+                                                                    Resolver
+                                                                </button>
 
-                                    {selecionada.refeicao && (
-                                        <div>
-                                            <dt className="font-medium text-slate-500">Refeição</dt>
-                                            <dd className="text-slate-800">{selecionada.refeicao}</dd>
-                                        </div>
-                                    )}
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={salvando || !observacaoValida}
+                                                                    onClick={() => void executar(
+                                                                        () => mudarStatusOcorrencia(selecionada.id, "Aberta", observacao),
+                                                                        "Ocorrência reaberta.",
+                                                                    )}
+                                                                    className="rounded-xl border border-roxo/40 px-4 py-2 text-sm font-semibold text-roxo disabled:opacity-50"
+                                                                >
+                                                                    Reabrir
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
 
-                                    {selecionada.alimento && (
-                                        <div>
-                                            <dt className="font-medium text-slate-500">Alimento</dt>
-                                            <dd className="text-slate-800">{selecionada.alimento}</dd>
-                                        </div>
-                                    )}
-
-                                    <div>
-                                        <dt className="font-medium text-slate-500">Autor</dt>
-                                        <dd className="text-slate-800">{selecionada.autor}</dd>
-                                    </div>
-                                </dl>
-
-                                {podeDecidir && !["Resolvida", "Arquivada", "Cancelada"].includes(selecionada.status) && (
-                                    <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
-                                        <label className="block text-sm font-medium text-slate-700">
-                                            Observação
-                                            <textarea
-                                                value={observacao}
-                                                onChange={(evento) => setObservacao(evento.target.value)}
-                                                rows={2}
-                                                className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-                                            />
-                                        </label>
-
-                                        <div className="flex flex-wrap gap-2">
-                                            {selecionada.status === "Aberta" && (
+                                            {selecionada.podeCancelar && papel !== "Nutricionista" && (
                                                 <button
                                                     type="button"
-                                                    disabled={salvando || !observacaoValida}
+                                                    disabled={salvando}
                                                     onClick={() => void executar(
-                                                        () => mudarStatusOcorrencia(selecionada.id, "EmAnalise", observacao),
-                                                        "Ocorrência em análise.",
+                                                        () => cancelarOcorrencia(selecionada.id),
+                                                        "Ocorrência cancelada.",
                                                     )}
-                                                    className="rounded-xl bg-roxo px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                                    className="mt-4 rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
                                                 >
-                                                    Iniciar análise
+                                                    Cancelar ocorrência
                                                 </button>
                                             )}
 
-                                            {selecionada.status === "EmAnalise" && (
-                                                <>
-                                                    <button
-                                                        type="button"
-                                                        disabled={salvando || !observacaoValida}
-                                                        onClick={() => void executar(
-                                                            () => mudarStatusOcorrencia(selecionada.id, "Resolvida", observacao),
-                                                            "Ocorrência resolvida.",
-                                                        )}
-                                                        className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                                                    >
-                                                        Resolver
-                                                    </button>
-
-                                                    <button
-                                                        type="button"
-                                                        disabled={salvando || !observacaoValida}
-                                                        onClick={() => void executar(
-                                                            () => mudarStatusOcorrencia(selecionada.id, "Aberta", observacao),
-                                                            "Ocorrência reaberta.",
-                                                        )}
-                                                        className="rounded-xl border border-roxo/40 px-4 py-2 text-sm font-semibold text-roxo disabled:opacity-50"
-                                                    >
-                                                        Reabrir
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {selecionada.podeCancelar && (
-                                    <button
-                                        type="button"
-                                        disabled={salvando}
-                                        onClick={() => void executar(
-                                            () => cancelarOcorrencia(selecionada.id),
-                                            "Ocorrência cancelada.",
-                                        )}
-                                        className="mt-4 rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
-                                    >
-                                        Cancelar ocorrência
-                                    </button>
-                                )}
-
-                                <div className="mt-5 border-t border-slate-100 pt-4">
-                                    <h3 className="text-sm font-semibold text-slate-700">Histórico</h3>
-                                    <ol className="mt-2 space-y-2">
-                                        {selecionada.historico.map((evento, indice) => (
-                                            <li key={`${evento.status}-${indice}`} className="text-xs text-slate-600">
-                                                <span className="font-semibold text-slate-800">
-                                                    {rotuloStatus[evento.status]}
-                                                </span>{" "}
-                                                por {evento.autor} em {formatarData(evento.criadoEm)}
-                                                {evento.observacao ? ` — ${evento.observacao}` : ""}
-                                            </li>
-                                        ))}
-                                    </ol>
-                                </div>
-                            </article>
-                        ) : (
-                            <article className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-5 text-sm text-slate-500">
-                                Selecione uma ocorrência para ver o detalhe, o histórico e as ações.
-                            </article>
-                        )}
-                    </aside>
+                                            <div className="mt-5 border-t border-slate-100 pt-4">
+                                                <h3 className="text-sm font-semibold text-slate-700">Histórico</h3>
+                                                <ol className="mt-2 space-y-2">
+                                                    {selecionada.historico.map((evento, indice) => (
+                                                        <li key={`${evento.status}-${indice}`} className="text-xs text-slate-600">
+                                                            <span className="font-semibold text-slate-800">
+                                                                {rotuloStatus[evento.status]}
+                                                            </span>{" "}
+                                                            por {evento.autor} em {formatarData(evento.criadoEm)}
+                                                            {evento.observacao ? ` — ${evento.observacao}` : ""}
+                                                        </li>
+                                                    ))}
+                                                </ol>
+                                            </div>
+                                        </article>
+                                    ) : (
+                                        <article className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-5 text-sm text-slate-500">
+                                            Selecione uma ocorrência para ver o detalhe, o histórico e as ações.
+                                        </article>
+                                    )}
+                                </aside>
+                            </div>
+                        </section>
+                    </main>
                 </div>
 
-            </section>
-
-        </section>
+                <Footer />
+            </div>
+        </div>
     );
 }

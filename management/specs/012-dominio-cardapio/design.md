@@ -1,6 +1,6 @@
 ---
 name: dominio-cardapio
-status: created
+status: audited
 references: V6, ADR-004, L10
 ---
 

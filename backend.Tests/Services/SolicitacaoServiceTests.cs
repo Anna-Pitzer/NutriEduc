@@ -347,7 +347,6 @@ public class SolicitacaoServiceTests
             },
             Merendeira(cenario.UnidadeId, cenario.EscolaId)).Valor!;
 
-        cenario.Servico.Analisar(criada.Id, Nutricionista(cenario.UnidadeId));
         var aprovada = cenario.Servico.Aprovar(
             criada.Id,
             new DecidirSolicitacaoDTO { Resposta = "Aplicar na próxima edição." },
@@ -357,10 +356,79 @@ public class SolicitacaoServiceTests
         Assert.Equal(StatusSolicitacao.Concluida, aprovada.Valor!.Status);
         Assert.Contains("Spec 015", aprovada.Valor.Aviso);
 
+        Assert.Equal(
+            new[]
+            {
+                StatusSolicitacao.Aberta,
+                StatusSolicitacao.EmAnalise,
+                StatusSolicitacao.Aprovada,
+                StatusSolicitacao.Concluida
+            },
+            aprovada.Valor.Historico.Select(item => item.Status));
+
         var depois = cenario.Cardapios.ObterComRefeicoes(cenario.CardapioId)!;
         Assert.Equal(antes.Nome, depois.Nome);
         Assert.Equal(antes.Situacao, depois.Situacao);
         Assert.Equal(antes.Refeicoes.Count, depois.Refeicoes.Count);
+    }
+
+    [Fact]
+    public void Criar_MudancaCardapio_ComoNutricionista_Proibido()
+    {
+        var cenario = Montar();
+
+        var resultado = cenario.Servico.Criar(
+            new CriarSolicitacaoDTO
+            {
+                Tipo = TipoSolicitacao.MudancaCardapio,
+                CardapioId = cenario.CardapioId,
+                Descricao = "Trocar o arroz por macarrão na sexta."
+            },
+            Nutricionista(cenario.UnidadeId));
+
+        Assert.Equal(ResultadoStatus.Proibido, resultado.Status);
+        Assert.Empty(cenario.Solicitacoes.GetItens());
+    }
+
+    [Fact]
+    public void Analisar_ComoNutricionista_Proibido()
+    {
+        var cenario = Montar();
+
+        var criada = cenario.Servico.Criar(
+            new CriarSolicitacaoDTO
+            {
+                Tipo = TipoSolicitacao.MudancaCardapio,
+                CardapioId = cenario.CardapioId,
+                Descricao = "Trocar o arroz por macarrão na sexta."
+            },
+            Merendeira(cenario.UnidadeId, cenario.EscolaId)).Valor!;
+
+        var resultado = cenario.Servico.Analisar(
+            criada.Id, Nutricionista(cenario.UnidadeId));
+
+        Assert.Equal(ResultadoStatus.Proibido, resultado.Status);
+        Assert.Equal(StatusSolicitacao.Aberta, cenario.Solicitacoes.GetItens().Single().Status);
+    }
+
+    [Fact]
+    public void Concluir_ComoNutricionista_Proibido()
+    {
+        var cenario = Montar();
+
+        var criada = cenario.Servico.Criar(
+            new CriarSolicitacaoDTO
+            {
+                Tipo = TipoSolicitacao.MudancaCardapio,
+                CardapioId = cenario.CardapioId,
+                Descricao = "Trocar o arroz por macarrão na sexta."
+            },
+            Merendeira(cenario.UnidadeId, cenario.EscolaId)).Valor!;
+
+        var resultado = cenario.Servico.Concluir(
+            criada.Id, Nutricionista(cenario.UnidadeId));
+
+        Assert.Equal(ResultadoStatus.Proibido, resultado.Status);
     }
 
     [Fact]
@@ -379,7 +447,7 @@ public class SolicitacaoServiceTests
                 CardapioId = cenario.CardapioId,
                 Descricao = "Trocar a sobremesa da quarta."
             },
-            Nutricionista(cenario.UnidadeId));
+            Merendeira(cenario.UnidadeId, cenario.EscolaId));
 
         var pagina = cenario.Servico.Listar(
             null, null, null, null, null, null, null, null, null, null,

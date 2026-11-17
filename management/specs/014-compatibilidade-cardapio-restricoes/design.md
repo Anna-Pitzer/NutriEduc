@@ -1,6 +1,6 @@
 ---
 name: compatibilidade-cardapio-restricoes
-status: implemented
+status: audited
 references: V6, ADR-004, L5
 ---
 

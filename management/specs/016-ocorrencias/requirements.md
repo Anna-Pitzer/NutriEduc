@@ -1,6 +1,6 @@
 ---
 name: ocorrencias
-status: created
+status: audited
 references: V6, V16, V17, ADR-020, ADR-021, ADR-004, L7
 ---
 
@@ -35,20 +35,20 @@ alérgica ou de refeição servida errada não deixa rastro e não pode ser audi
 - RF1: `Ocorrencia` tem `Tipo` (`Aluno`, `Refeicao`, `Alimento`, `Outro`),
   `Descricao` (5–1000), `Status` inicial `Aberta`, `UnidadeId` obrigatório,
   `EscolaId` derivado e `AutorId`/`AutorNome` (snapshot). `EscolaId` é a escola do aluno
-  quando `AlunoId` existe, a escola do autor quando o autor tem escola e nulo apenas para
-  ocorrência registrada por `Nutricionista` sem aluno (ocorrência da unidade).
+  quando `AlunoId` existe, a escola do autor quando o autor tem escola (merendeira/escola);
+  nulo apenas em dados legados criados antes da Spec 028 (ocorrência da unidade).
 - RF2: ao menos um vínculo deve estar presente: `AlunoId` (tipo `Aluno`),
   `CardapioId`+`RefeicaoId` (tipo `Refeicao`) ou `AlimentoId` (tipo `Alimento`).
   Vínculo incoerente com o tipo devolve 400.
 - RF3: `Merendeira` registra ocorrência na própria escola; `Responsavel` registra
-  apenas para aluno vinculado a ele; `Nutricionista` registra na própria unidade;
-  `AdminEscola` registra na própria escola. `AdminSecretaria` não registra (matriz 028).
+  apenas para aluno vinculado a ele; `AdminEscola` registra na própria escola.
+  `Nutricionista` e `AdminSecretaria` não registram (matriz 028: `Nutricionista` é `R`).
 - RF4: transições de status permitidas:
   `Aberta → EmAnalise`, `EmAnalise → Resolvida`, `Resolvida → Arquivada`,
   `EmAnalise → Aberta` (reabertura). Qualquer outra devolve 409.
-- RF5: `Nutricionista` (própria unidade) e `AdminEscola` (própria escola) mudam status;
-  `Merendeira` e `Responsavel` não. `AdminSecretaria` apenas lê. Toda mudança exige
-  `observacao` (2–500) e gera evento de histórico.
+- RF5: `AdminEscola` (própria escola) muda status; `Nutricionista`, `Merendeira` e
+  `Responsavel` não. `AdminSecretaria` apenas lê. Toda mudança exige `observacao`
+  (2–500) e gera evento de histórico.
 - RF6: `Responsavel` vê apenas ocorrências dos alunos vinculados; `Merendeira` e
   `AdminEscola` veem as da própria escola; `Nutricionista` e `AdminSecretaria` veem as da
   própria unidade. Ocorrência com `EscolaId` nulo é visível apenas aos papéis de unidade.
@@ -127,3 +127,9 @@ Executar os gates: `dotnet build backend/backend.csproj`,
 Conformidade com as Specs 027 e 028: escopo por escola, `EscolaId` derivado, filtro de
 escopo no SQL e semântica 404 entre unidades. A criação e a mudança de status continuam
 separadas por papel (`RC` na matriz); nenhuma transição nova foi introduzida.
+
+## Revisão — 2026-11-17 (auditoria)
+
+Correção de conformidade com a matriz (Spec 028, auditada): `Nutricionista` é `R`
+(somente leitura) em `Ocorrencia` — não registra nem muda status. RF1/RF3/RF5 foram
+alinhadas à matriz; a implementação e os testes já seguiam a matriz.

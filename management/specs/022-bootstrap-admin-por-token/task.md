@@ -1,6 +1,6 @@
 ---
 name: bootstrap-admin-por-token
-status: implemented
+status: audited
 references: V11, V6, ADR-002, ADR-004
 ---
 

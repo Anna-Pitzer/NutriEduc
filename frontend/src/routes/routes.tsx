@@ -96,9 +96,13 @@ export function Rotas() {
           <Route path="/cardapios/parametros-geracao" element={<ParametrosGeracao />} />
         </Route>
 
-        {/* Catálogo de alimentos — nutrição escreve, merenda lê (Spec 011, RF9) */}
-        <Route element={<ProtegidaPorPapel papeis={["Nutricionista", "Merendeira"]} />}>
+        {/* Catálogo de alimentos — exclusivo da nutrição (Spec 011, RF9) */}
+        <Route element={<ProtegidaPorPapel papeis={["Nutricionista"]} />}>
           <Route path="/alimentos" element={<ListarAlimentos />} />
+        </Route>
+
+        {/* Escrita de alimentos — exclusiva da nutrição (Spec 011, RF9) */}
+        <Route element={<ProtegidaPorPapel papeis={["Nutricionista"]} />}>
           <Route path="/alimentos/novo" element={<FormularioAlimento />} />
           <Route path="/alimentos/editar/:id" element={<FormularioAlimento />} />
         </Route>
