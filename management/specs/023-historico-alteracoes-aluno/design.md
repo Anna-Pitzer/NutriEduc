@@ -1,6 +1,6 @@
 ---
 name: historico-alteracoes-aluno
-status: planned
+status: audited
 references: V12, ADR-004, ADR-009
 ---
 

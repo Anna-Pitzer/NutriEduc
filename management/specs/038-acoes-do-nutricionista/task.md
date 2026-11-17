@@ -1,13 +1,14 @@
 ---
 name: acoes-do-nutricionista
-status: created
+status: audited
 references: Spec 038
 ---
 
 # Tasks — Ações do nutricionista
 
 > **Estado:** implementação e validação executadas em 2026-11-17, a pedido do proprietário,
-> antes do registro formal desta spec. A promoção de status no roadmap é do pipeline.
+> antes do registro formal desta spec. Status no roadmap: `audited`, promovido manualmente em
+> 2026-11-17 (o motor do `/spec-test` segue bloqueado pelo PEND-028).
 
 ## Backend
 

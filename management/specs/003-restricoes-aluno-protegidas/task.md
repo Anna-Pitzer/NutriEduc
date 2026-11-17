@@ -1,6 +1,6 @@
 ---
 name: restricoes-aluno-protegidas
-status: created
+status: audited
 references: V1, ADR-006, L2
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: contrato-erro-e-infra-di
-status: created
+status: audited
 references: V8, ADR-005, L4
 ---
 

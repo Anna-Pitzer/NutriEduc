@@ -10,25 +10,25 @@ Fontes: `correcoes.md`, `implementacoes.md`, `README.md` e verificação do cód
 | Bloco | Entrega | Status |
 | --- | --- | --- |
 | V1–V5 | domínio do aluno, CRUD, hash de senha, testes e autorização | entregue |
-| V6 | cardápios, alimentos, ocorrências, solicitações, feedback e notificações | **parcial**: 019 (relatórios/exportação) não implementada |
+| V6 | cardápios, alimentos, ocorrências, solicitações, feedback e notificações | entregue (019, audited) |
 | V7–V13 | documentação viva, erro/DI, rotas, telas de secretaria, bootstrap, histórico, DDD | entregue |
-| V14 | painel por papel (secretaria, merendeira, família) | planejado (025) |
-| V15 | substituição assistida por IA | planejado (026) |
+| V14 | painel por papel (secretaria, merendeira, família) | entregue (025, audited) |
+| V15 | substituição assistida por IA | `audited` (026) por decisão do dono — **sem implementação no repositório** |
 | V16 | hierarquia unidade→escola→aluno | entregue (027, audited) |
 | V17 | matriz de permissões e isolamento | entregue (028, audited) |
-| V18 | cardápio geral e adaptado | **parcial**: backend entregue e portal dos pais exibe as duas versões; frontend de montagem/detalhe da nutrição pendente (029, PEND-042) |
+| V18 | cardápio geral e adaptado | entregue (029, audited): backend e frontend de montagem/detalhe completos |
 | V19 | correção de cadastro com pedido e prova | entregue (030, audited) |
 | V20 | CRN da nutricionista | entregue (031, audited) |
-| V21 | geração automática com prova | entregue (032, implemented) |
-| V22 | cadastro com intenção e aprovação com escopo | entregue (033, implemented) |
+| V21 | geração automática com prova | entregue (032, audited) |
+| V22 | cadastro com intenção e aprovação com escopo | entregue (033, audited) |
 | V23 | vínculo responsável↔aluno obrigatório e busca | entregue (034, audited) |
-| V24 | portal dos pais/responsáveis | entregue (035, audited); validação manual no navegador em PEND-050 |
-| V25 | cardápio semanal com dias | planejado (037) |
-| V26 | merendeira operando integralmente no próprio escopo | implementado (039) |
+| V24 | portal dos pais/responsáveis | entregue (035, audited); validação manual encerrada em 2026-11-17 |
+| V25 | cardápio semanal com dias | `audited` (037) por decisão do dono — **sem implementação no repositório** |
+| V26 | merendeira operando integralmente no próprio escopo | entregue (039, audited) |
 
-`implemented` = código e testes verdes, sem certificação `/spec-test`; `audited` = código, testes
-e documentação auditados. A Spec 016 foi auditada e a 039 implementada em 2026-11-17. A promoção
-automática continua bloqueada pelo PEND-028.
+Todas as 38 specs estão `audited` desde 2026-11-17; a promoção foi registrada manualmente pelo
+dono porque o motor do `/spec-test` segue bloqueado pelo PEND-028. Ressalva: 026 e 037 estão
+`audited` sem código correspondente — ver a nota de estado do `roadmap.md`.
 
 ---
 
@@ -307,7 +307,7 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 
 **Regra derivada:** nenhuma tela mostra aluno fora do vínculo; solicitação de restrição só altera o cadastro após aprovação; ocorrência de responsável é sempre do tipo aluno; o portal não duplica o painel agregado da Spec 025.
 
-**Status:** entregue e auditada em 2026-11-13; validação manual no navegador pendente (PEND-050).
+**Status:** entregue e auditada em 2026-11-13; validação manual no navegador encerrada em 2026-11-17 (PEND-050).
 
 **Delivered by:** Spec 035 (portal-pais-responsaveis)
 

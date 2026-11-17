@@ -1,6 +1,6 @@
 ---
 name: cardapio-geral-e-adaptado
-status: created
+status: audited
 references: V18, V20, ADR-022, ADR-011, ADR-009, L7
 ---
 

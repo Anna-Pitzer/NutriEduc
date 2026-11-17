@@ -1,6 +1,6 @@
 ---
 name: cardapio-geral-e-adaptado
-status: created
+status: audited
 references: V18, V20, ADR-022, L7
 ---
 
@@ -66,11 +66,11 @@ references: V18, V20, ADR-022, L7
   restrições por escola; marcar alimento incompatível, bloquear o sem substituto e pedir
   confirmação explícita.
   - Validação: `npm run build` e `npm run lint` sem erro novo; fluxo manual de criar, receber
-    aviso, confirmar e publicar — execução em navegador pendente (PEND-042).
+    aviso, confirmar e publicar — validado em 2026-11-17 (PEND-042 encerrado).
 - [x] T13: detalhe com o par geral↔adaptado por escola, diffs de substituição e alerta de
   aluno indisponível na tela da merendeira.
-  - Validação: navegar entre versões e conferir cada grupo — execução em navegador pendente
-    (PEND-042).
+  - Validação: navegar entre versões e conferir cada grupo — validado em 2026-11-17
+    (PEND-042 encerrado).
 
 ## Fechamento
 

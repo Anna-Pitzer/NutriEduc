@@ -1,6 +1,6 @@
 ---
 name: perfil-crn-nutricionista
-status: created
+status: audited
 references: V20, ADR-004, PEND-038
 ---
 

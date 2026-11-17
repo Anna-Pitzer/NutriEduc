@@ -1,6 +1,6 @@
 ---
 name: substituicao-assistida-ia
-status: planned
+status: audited
 references: V15, ADR-011, ADR-004
 ---
 

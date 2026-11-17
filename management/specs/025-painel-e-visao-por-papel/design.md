@@ -1,6 +1,6 @@
 ---
 name: painel-e-visao-por-papel
-status: verified
+status: audited
 references: V14, V6, ADR-002
 ---
 

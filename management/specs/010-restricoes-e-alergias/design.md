@@ -1,6 +1,6 @@
 ---
 name: restricoes-e-alergias
-status: created
+status: audited
 references: V1, V6, ADR-004, L2
 ---
 

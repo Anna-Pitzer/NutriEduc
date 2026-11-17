@@ -1,6 +1,6 @@
 ---
 name: cadastro-e-autorizacao-de-acesso
-status: created
+status: audited
 references: V22, V17, ADR-021
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: funcionalidades-permissoes-merendeira
-status: created
+status: audited
 references: V26; V14; V17; Spec 009, Spec 012, Spec 015, Spec 016, Spec 017, Spec 018, Spec 025, Spec 027, Spec 028, Spec 029, Spec 031, Spec 033; ADR-002, ADR-004, ADR-020, ADR-021
 ---
 

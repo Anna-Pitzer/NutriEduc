@@ -1,6 +1,6 @@
 ---
 name: matriz-permissoes-e-isolamento
-status: created
+status: audited
 references: V17, ADR-021, ADR-005, L5
 ---
 

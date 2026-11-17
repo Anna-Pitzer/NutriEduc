@@ -1,6 +1,6 @@
 ---
 name: portal-pais-responsaveis
-status: created
+status: audited
 references: Spec 035; Spec 010; Spec 016; Spec 017; Spec 018; Spec 025; Spec 029; Spec 033; Spec 034; ADR-009; ADR-021
 ---
 
@@ -450,7 +450,8 @@ Regras de dados:
 ## Risks and Dependencies
 
 - **Spec 025:** não bloqueia; a agregação futura troca apenas a fonte do painel.
-- **PEND-042:** frontend da 029 pendente; a página de cardápios usa o backend pronto.
+- **PEND-042 (encerrado em 2026-11-17):** frontend da 029 entregue; a página de cardápios usa o
+  contrato do backend adaptado.
 - **PEND-048:** divergência matriz × `CardapioService.PodeLer`; a 035 usa a rota por aluno, mas a
   divergência deve ser resolvida antes da certificação.
 - **PEND-049:** sem testes de frontend; aceitação depende de validação manual.

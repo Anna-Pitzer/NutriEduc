@@ -1,6 +1,6 @@
 ---
 name: papeis-e-estrutura-escolar
-status: created
+status: audited
 references: V6, ADR-002, L4
 ---
 

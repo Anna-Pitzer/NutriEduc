@@ -1,6 +1,6 @@
 ---
 name: cardapio-com-dias
-status: created
+status: audited
 references: Spec 037
 ---
 

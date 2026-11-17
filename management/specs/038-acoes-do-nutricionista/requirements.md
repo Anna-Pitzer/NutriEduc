@@ -1,6 +1,6 @@
 ---
 name: acoes-do-nutricionista
-status: created
+status: audited
 references: V6; V17; Spec 016; Spec 017; Spec 028; ADR-021
 ---
 

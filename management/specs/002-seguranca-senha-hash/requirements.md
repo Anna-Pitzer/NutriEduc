@@ -1,6 +1,6 @@
 ---
 name: seguranca-senha-hash
-status: created
+status: audited
 references: V3, ADR-003, L3
 ---
 

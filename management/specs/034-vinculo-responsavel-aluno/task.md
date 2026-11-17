@@ -1,6 +1,6 @@
 ---
 name: vinculo-responsavel-aluno
-status: created
+status: audited
 references: Spec 034
 ---
 

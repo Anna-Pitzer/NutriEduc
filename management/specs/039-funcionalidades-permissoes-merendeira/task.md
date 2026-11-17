@@ -1,6 +1,6 @@
 ---
 name: funcionalidades-permissoes-merendeira
-status: created
+status: audited
 references: Spec 039
 ---
 

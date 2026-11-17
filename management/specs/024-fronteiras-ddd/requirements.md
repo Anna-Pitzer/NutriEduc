@@ -1,6 +1,6 @@
 ---
 name: fronteiras-ddd
-status: planned
+status: audited
 references: V13, ADR-004, ADR-009
 ---
 

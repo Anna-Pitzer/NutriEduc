@@ -1,6 +1,6 @@
 ---
 name: solicitacoes
-status: created
+status: audited
 references: V6, V17, V19, ADR-020, ADR-021, ADR-004, L7
 ---
 
