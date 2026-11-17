@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Footer from "../../components/Footer";
-import Header from "../../components/Header";
 import Navbar from "../../components/Navbar";
 import { useAuth } from "../../context/authContext";
 import { buscarAlunos, type AlunoResposta } from "../../services/AlunoApi";
