@@ -19,6 +19,7 @@ public class SolicitacaoAnafilaxiaApiTests
         HttpClient Admin,
         HttpClient Responsavel,
         int UnidadeId,
+        int EscolaId,
         int AlunoId,
         int SolicitacaoId);
 
@@ -73,7 +74,7 @@ public class SolicitacaoAnafilaxiaApiTests
             .GetProperty("id")
             .GetInt32();
 
-        return new Cenario(admin, responsavel, unidadeId, alunoId, solicitacaoId);
+        return new Cenario(admin, responsavel, unidadeId, escolaId, alunoId, solicitacaoId);
     }
 
     private static List<HistoricoAluno> HistoricoDoAluno(ApiFactory fabrica, int alunoId)
@@ -121,7 +122,7 @@ public class SolicitacaoAnafilaxiaApiTests
     }
 
     [Fact]
-    public async Task MarcarAnafilaxia_PorNutricionistaDaUnidade_Retorna200()
+    public async Task MarcarAnafilaxia_PorNutricionistaDaUnidade_Retorna403()
     {
         await using var fabrica = new ApiFactory();
         var cenario = await PrepararAsync(fabrica);
@@ -134,12 +135,12 @@ public class SolicitacaoAnafilaxiaApiTests
             $"/api/solicitacoes/{cenario.SolicitacaoId}/anafilaxia",
             null);
 
-        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
 
         var perfil = await cenario.Admin.GetFromJsonAsync<JsonElement>(
             $"/api/aluno/perfil/{cenario.AlunoId}");
 
-        Assert.True(perfil.GetProperty("anafilaxia").GetBoolean());
+        Assert.False(perfil.GetProperty("anafilaxia").GetBoolean());
     }
 
     [Fact]
@@ -183,11 +184,12 @@ public class SolicitacaoAnafilaxiaApiTests
         await using var fabrica = new ApiFactory();
         var cenario = await PrepararAsync(fabrica);
 
-        var (nutricionista, _) = await fabrica.CriarClienteAutenticadoAsync(
-            PapelUsuario.Nutricionista,
-            unidadeId: fabrica.UnidadeIdPadrao);
+        var (merendeira, _) = await fabrica.CriarClienteAutenticadoAsync(
+            PapelUsuario.Merendeira,
+            escolaId: cenario.EscolaId,
+            unidadeId: cenario.UnidadeId);
 
-        var pedido = await nutricionista.PostAsJsonAsync("/api/solicitacoes", new
+        var pedido = await merendeira.PostAsJsonAsync("/api/solicitacoes", new
         {
             tipo = "Ingrediente",
             ingrediente = "Arroz",

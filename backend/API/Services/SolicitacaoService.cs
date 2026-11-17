@@ -334,16 +334,25 @@ public sealed class SolicitacaoService
 
     // ---------- Decisão ----------
 
-    public Resultado<SolicitacaoDTO> Analisar(int id, EscopoUsuario escopo) =>
-        Transicionar(id, escopo, solicitacao =>
+    public Resultado<SolicitacaoDTO> Analisar(int id, EscopoUsuario escopo)
+    {
+        // O nutricionista decide diretamente (aprovar/recusar); a análise é registrada
+        // no mesmo ato da decisão, não como ação separada.
+        if (escopo.Papel == PapelUsuario.Nutricionista)
+        {
+            return Resultado<SolicitacaoDTO>.Proibido();
+        }
+
+        return Transicionar(id, escopo, solicitacao =>
             solicitacao.IniciarAnalise(NomeDoAutor(escopo), DateTime.UtcNow));
+    }
 
     /// <summary>
     /// Confirma a anafilaxia do aluno a partir de uma solicitação de inclusão de alergia
     /// (Spec 017/023), enquanto ela ainda está aberta ou em análise. Pode ser usada pelo
-    /// ADM da unidade (dono da decisão), pelo Nutricionista da unidade (responsável
-    /// clínico) e pelo Responsável do próprio pedido/família. O evento entra na trilha do
-    /// aluno com a origem <c>Solicitacao:&lt;id&gt;</c>; a decisão da solicitação não muda.
+    /// ADM da unidade (dono da decisão) e pelo Responsável do próprio pedido/família.
+    /// O evento entra na trilha do aluno com a origem <c>Solicitacao:&lt;id&gt;</c>; a
+    /// decisão da solicitação não muda.
     /// </summary>
     public Resultado<SolicitacaoDTO> MarcarAnafilaxia(int id, EscopoUsuario escopo)
     {
@@ -368,7 +377,7 @@ public sealed class SolicitacaoService
                 return Resultado<SolicitacaoDTO>.Proibido();
             }
         }
-        else if (escopo.Papel is PapelUsuario.AdminSecretaria or PapelUsuario.Nutricionista)
+        else if (escopo.Papel == PapelUsuario.AdminSecretaria)
         {
             if (solicitacao.UnidadeId != escopo.UnidadeId)
             {
@@ -431,7 +440,13 @@ public sealed class SolicitacaoService
                 : Resultado<SolicitacaoDTO>.Proibido();
         }
 
-        if (solicitacao.Status != StatusSolicitacao.EmAnalise)
+        // O nutricionista decide diretamente: aprovar/recusar é a única ação dele.
+        // A análise é registrada no histórico no mesmo ato, preservando a máquina de estados.
+        var decisaoDireta =
+            escopo.Papel == PapelUsuario.Nutricionista &&
+            solicitacao.Status == StatusSolicitacao.Aberta;
+
+        if (solicitacao.Status != StatusSolicitacao.EmAnalise && !decisaoDireta)
         {
             return Resultado<SolicitacaoDTO>.Conflito(
                 "Somente solicitação em análise pode ser aprovada.");
@@ -491,6 +506,11 @@ public sealed class SolicitacaoService
 
         try
         {
+            if (decisaoDireta)
+            {
+                solicitacao.IniciarAnalise(autor, DateTime.UtcNow);
+            }
+
             solicitacao.Aprovar(dto.Resposta ?? string.Empty, autor, DateTime.UtcNow);
             solicitacao.Concluir(autor, DateTime.UtcNow);
         }
@@ -538,12 +558,31 @@ public sealed class SolicitacaoService
         }
 
         return Transicionar(id, escopo, alvo =>
-            alvo.Recusar(dto.Resposta ?? string.Empty, NomeDoAutor(escopo), DateTime.UtcNow));
+        {
+            var autor = NomeDoAutor(escopo);
+            var agora = DateTime.UtcNow;
+
+            // A recusa direta do nutricionista registra a análise no mesmo ato.
+            if (escopo.Papel == PapelUsuario.Nutricionista &&
+                alvo.Status == StatusSolicitacao.Aberta)
+            {
+                alvo.IniciarAnalise(autor, agora);
+            }
+
+            alvo.Recusar(dto.Resposta ?? string.Empty, autor, agora);
+        });
     }
 
-    public Resultado<SolicitacaoDTO> Concluir(int id, EscopoUsuario escopo) =>
-        Transicionar(id, escopo, solicitacao =>
+    public Resultado<SolicitacaoDTO> Concluir(int id, EscopoUsuario escopo)
+    {
+        if (escopo.Papel == PapelUsuario.Nutricionista)
+        {
+            return Resultado<SolicitacaoDTO>.Proibido();
+        }
+
+        return Transicionar(id, escopo, solicitacao =>
             solicitacao.Concluir(NomeDoAutor(escopo), DateTime.UtcNow));
+    }
 
     public Resultado<SolicitacaoDTO> Cancelar(int id, EscopoUsuario escopo)
     {
@@ -923,7 +962,6 @@ public sealed class SolicitacaoService
             papel == PapelUsuario.Responsavel,
         _ => papel is PapelUsuario.Merendeira
             or PapelUsuario.AdminEscola
-            or PapelUsuario.Nutricionista
     };
 
     private ResultadoStatus? NegacaoDeVisao(Solicitacao solicitacao, EscopoUsuario escopo) =>

@@ -378,6 +378,12 @@ public sealed class OcorrenciaService
 
     public Resultado<OcorrenciaDTO> Cancelar(int id, EscopoUsuario escopo)
     {
+        // Ocorrências são somente leitura para o nutricionista.
+        if (escopo.Papel == PapelUsuario.Nutricionista)
+        {
+            return Resultado<OcorrenciaDTO>.Proibido();
+        }
+
         var ocorrencia = _ocorrencias.ObterComHistorico(id);
 
         if (ocorrencia is null)
@@ -469,11 +475,10 @@ public sealed class OcorrenciaService
     private static bool PodeCriar(PapelUsuario papel) =>
         papel is PapelUsuario.Merendeira
             or PapelUsuario.Responsavel
-            or PapelUsuario.Nutricionista
             or PapelUsuario.AdminEscola;
 
     private static bool PodeMudarStatus(PapelUsuario papel) =>
-        papel is PapelUsuario.Nutricionista or PapelUsuario.AdminEscola;
+        papel == PapelUsuario.AdminEscola;
 
     private ResultadoStatus? NegacaoDeVisao(Ocorrencia ocorrencia, EscopoUsuario escopo) =>
         escopo.Papel switch

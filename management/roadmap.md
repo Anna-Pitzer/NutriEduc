@@ -65,6 +65,7 @@
 | 034 | vinculo-responsavel-aluno | audited | V23; V17; Spec 027; Spec 028; Spec 033; ADR-020; ADR-021 |
 | 035 | portal-pais-responsaveis | audited | V24; V6; V17; V23; Spec 010; Spec 016; Spec 017; Spec 018; Spec 025; Spec 029; ADR-009; ADR-021 |
 | 037 | cardapio-com-dias | planned | V25; ADR-027; ADR-022; Spec 012; Spec 013; Spec 029; Spec 015; Spec 019 |
+| 038 | acoes-do-nutricionista | planned | V6; V17; Spec 016; Spec 017; Spec 028; ADR-021 |
 
 ---
 

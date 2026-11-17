@@ -301,16 +301,17 @@ public class NotificacaoEventosApiTests
     }
 
     [Fact]
-    public async Task SolicitacaoCriadaPeloNutricionista_NaoNotificaOMesmoAutor()
+    public async Task SolicitacaoCriadaPelaMerendeira_NaoNotificaOMesmoAutor()
     {
         await using var fabrica = new ApiFactory();
-        var (_, unidadeId) = fabrica.CriarEscolaComUnidade();
+        var (escolaId, unidadeId) = fabrica.CriarEscolaComUnidade();
 
-        var (nutricionista, _) = await fabrica.CriarClienteAutenticadoAsync(
-            PapelUsuario.Nutricionista,
+        var (merendeira, _) = await fabrica.CriarClienteAutenticadoAsync(
+            PapelUsuario.Merendeira,
+            escolaId: escolaId,
             unidadeId: unidadeId);
 
-        var criacao = await nutricionista.PostAsJsonAsync("/api/solicitacoes", new
+        var criacao = await merendeira.PostAsJsonAsync("/api/solicitacoes", new
         {
             tipo = "Ingrediente",
             ingrediente = "Arroz",
@@ -323,7 +324,7 @@ public class NotificacaoEventosApiTests
             .GetInt32();
 
         Assert.DoesNotContain(
-            await ListarAsync(nutricionista),
+            await ListarAsync(merendeira),
             notificacao => MesmaReferencia(notificacao, "Solicitacao", solicitacaoId));
     }
 

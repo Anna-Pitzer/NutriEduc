@@ -100,7 +100,7 @@ public static class MatrizDePermissoes
 
         [(Recurso.Ocorrencia, PapelUsuario.AdminSecretaria)] = R,
         [(Recurso.Ocorrencia, PapelUsuario.AdminEscola)] = RW,
-        [(Recurso.Ocorrencia, PapelUsuario.Nutricionista)] = RW,
+        [(Recurso.Ocorrencia, PapelUsuario.Nutricionista)] = R,
         [(Recurso.Ocorrencia, PapelUsuario.Merendeira)] = RC,
         [(Recurso.Ocorrencia, PapelUsuario.Responsavel)] = RC,
 
@@ -220,7 +220,7 @@ public static class MatrizDePermissoes
 
             (Recurso.Ocorrencia, PapelUsuario.AdminSecretaria) => R,
             (Recurso.Ocorrencia, PapelUsuario.AdminEscola) => RW,
-            (Recurso.Ocorrencia, PapelUsuario.Nutricionista) => RW,
+            (Recurso.Ocorrencia, PapelUsuario.Nutricionista) => R,
             (Recurso.Ocorrencia, PapelUsuario.Merendeira) => RC,
             (Recurso.Ocorrencia, PapelUsuario.Responsavel) => RC,
 
