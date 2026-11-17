@@ -8,12 +8,45 @@ import {
     gerarCardapio,
     obterParametrosGeracao,
     salvarParametrosGeracao,
+    type DiagnosticoRefeicao,
     type GeracaoCardapio,
     type ParametroGeracao,
 } from "../../../services/GeracaoApi";
 import { listarUnidades, type Unidade } from "../../../services/UnidadeApi";
-import { listarNutricionistas, type Nutricionista } from "../../../services/NutricionistaApi";
 import { listarCategoriasAlimento, type CategoriaAlimento } from "../../../services/AlimentoApi";
+import { ErroRequisicao } from "../../../services/erroApi";
+
+/** Traduz o diagnóstico do 422 da geração em mensagem acionável (Spec 032, RF15). */
+function descreverFalhaDeGeracao(falha: unknown, categorias: CategoriaAlimento[]): string {
+    if (!(falha instanceof ErroRequisicao)) {
+        return "Erro ao gerar o cardápio";
+    }
+
+    const diagnostico = Array.isArray(falha.detalhes)
+        ? (falha.detalhes as unknown[]).filter(
+              (item): item is DiagnosticoRefeicao =>
+                  typeof item === "object" && item !== null && "refeicao" in item,
+          )
+        : [];
+
+    if (diagnostico.length === 0) {
+        return falha.message;
+    }
+
+    const nomes = new Map(categorias.map((categoria) => [categoria.id, categoria.nome]));
+
+    const partes = diagnostico.map((item) => {
+        if (item.categoriaAusente !== null) {
+            const nome = nomes.get(item.categoriaAusente) ?? `categoria ${item.categoriaAusente}`;
+
+            return `${item.refeicao}: a categoria "${nome}" não possui alimentos ativos.`;
+        }
+
+        return `${item.refeicao}: com ${item.candidatosDisponiveis} candidatos, a soma calórica ficou entre ${item.faixaMinimaAlcancavel} e ${item.faixaMaximaAlcancavel} kcal.`;
+    });
+
+    return `${falha.message} ${partes.join(" ")}`;
+}
 
 /**
  * Tela de parâmetros de geração automática (Spec 013, RF12): a nutrição configura a faixa
@@ -25,8 +58,6 @@ export function ParametrosGeracao() {
 
     const [unidades, setUnidades] = useState<Unidade[]>([]);
     const [unidadeId, setUnidadeId] = useState<number | "">("");
-    const [nutricionistas, setNutricionistas] = useState<Nutricionista[]>([]);
-    const [nutricionistaId, setNutricionistaId] = useState<number | "">("");
     const [, setParametro] = useState<ParametroGeracao | null>(null);
     const [categorias, setCategorias] = useState<CategoriaAlimento[]>([]);
     const [categoriasObrigatorias, setCategoriasObrigatorias] = useState<number[]>([]);
@@ -52,10 +83,6 @@ export function ParametrosGeracao() {
         listarUnidades()
             .then(setUnidades)
             .catch(() => setUnidades([]));
-
-        listarNutricionistas()
-            .then(setNutricionistas)
-            .catch(() => setNutricionistas([]));
 
         listarCategoriasAlimento()
             .then(setCategorias)
@@ -135,11 +162,6 @@ export function ParametrosGeracao() {
             return;
         }
 
-        if (nutricionistaId === "") {
-            setErro("Selecione a nutricionista responsável pelo cardápio.");
-            return;
-        }
-
         setErro(null);
         setMensagem(null);
         setCarregando(true);
@@ -147,7 +169,6 @@ export function ParametrosGeracao() {
         try {
             const gerado = await gerarCardapio({
                 unidadeId: Number(unidadeId),
-                nutricionistaId: Number(nutricionistaId),
                 nome: nome.trim(),
                 periodo: { inicio, fim },
                 seed: seed.trim() === "" ? undefined : Number(seed),
@@ -156,7 +177,7 @@ export function ParametrosGeracao() {
             setResultado(gerado);
             setMensagem(`Cardápio #${gerado.cardapioGeralId} gerado (semente ${gerado.seed}).`);
         } catch (falha) {
-            setErro(falha instanceof Error ? falha.message : "Erro ao gerar o cardápio");
+            setErro(descreverFalhaDeGeracao(falha, categorias));
         } finally {
             setCarregando(false);
         }
@@ -326,25 +347,6 @@ export function ParametrosGeracao() {
                     <div className="my-5 w-full border border-gray-200 rounded-3xl" />
 
                     <div className="grid gap-4 md:grid-cols-2">
-                        <div className="flex flex-col">
-                            <label htmlFor="inNutricionista">Nutricionista responsável</label>
-                            <select
-                                id="inNutricionista"
-                                value={nutricionistaId}
-                                onChange={(evento) =>
-                                    setNutricionistaId(evento.target.value === "" ? "" : Number(evento.target.value))
-                                }
-                                className="h-12 rounded-2xl border border-gray-200 bg-white px-4 text-sm text-gray-600 outline-none focus:border-roxo focus:ring-4 focus:ring-roxo/10"
-                            >
-                                <option value="">Selecione a nutricionista</option>
-                                {nutricionistas.map((nutricionista) => (
-                                    <option key={nutricionista.id} value={nutricionista.id}>
-                                        {nutricionista.nome}
-                                        {nutricionista.crn ? ` — CRN ${nutricionista.crn}` : ""}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
                         <div className="flex flex-col">
                             <label htmlFor="inNome">Nome do cardápio</label>
                             <input

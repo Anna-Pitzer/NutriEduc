@@ -33,6 +33,7 @@ import { OcorrenciasPais } from "../pages/pais/OcorrenciasPais"
 import { NovaOcorrenciaPais } from "../pages/pais/NovaOcorrenciaPais"
 import { SolicitacoesPais } from "../pages/pais/SolicitacoesPais"
 import { FeedbackPais } from "../pages/pais/FeedbackPais"
+import { RelatorioPais } from "../pages/pais/RelatorioPais"
 
 // Secretaria
 import { HomeSecretaria } from "../pages/secretaria/HomeSecretaria"
@@ -52,6 +53,9 @@ import { OcorrenciasPage } from "../pages/ocorrencias/OcorrenciasPage"
 
 // Feedback
 import { FeedbackPage } from "../pages/feedback/FeedbackPage"
+
+// Relatórios
+import { RelatoriosPage } from "../pages/relatorios/RelatoriosPage"
 
 export function Rotas() {
   return (
@@ -112,6 +116,7 @@ export function Rotas() {
             <Route path="ocorrencias/nova" element={<NovaOcorrenciaPais />} />
             <Route path="solicitacoes" element={<SolicitacoesPais />} />
             <Route path="feedback" element={<FeedbackPais />} />
+            <Route path="relatorio" element={<RelatorioPais />} />
           </Route>
         </Route>
 
@@ -158,6 +163,15 @@ export function Rotas() {
           }
         >
           <Route path="/feedbacks" element={<FeedbackPage />} />
+        </Route>
+
+        {/* Relatórios — leitura pela matriz de permissões (Spec 019) */}
+        <Route
+          element={
+            <ProtegidaPorPapel papeis={["Nutricionista", "AdminSecretaria", "AdminEscola"]} />
+          }
+        >
+          <Route path="/relatorios" element={<RelatoriosPage />} />
         </Route>
 
         {/* Comum */}

@@ -17,7 +17,7 @@ public class GeracaoCardapioServiceTests
         AlunoRepositoryFake Alunos,
         CardapioRepositoryFake Cardapios);
 
-    /// <summary>Id da nutricionista semeada: a geração exige autoria informada.</summary>
+    /// <summary>Id da nutricionista semeada, usada como autoria da sessão nos testes.</summary>
     private const int NutricionistaId = 1;
 
     private static Cenario Montar()
@@ -51,7 +51,6 @@ public class GeracaoCardapioServiceTests
     private static GerarCardapioDTO EntradaGerar(int unidadeId) => new()
     {
         UnidadeId = unidadeId,
-        NutricionistaId = NutricionistaId,
         Nome = "Semana 12",
         Periodo = new PeriodoCardapioDTO
         {
@@ -69,7 +68,7 @@ public class GeracaoCardapioServiceTests
     {
         var cenario = Montar();
 
-        var resultado = cenario.Servico.Gerar(EntradaGerar(unidadeId: 1));
+        var resultado = cenario.Servico.Gerar(EntradaGerar(unidadeId: 1), NutricionistaId);
 
         Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
         Assert.Contains("Parâmetros", resultado.Erro!);
@@ -82,9 +81,8 @@ public class GeracaoCardapioServiceTests
         cenario.Parametros.Add(Parametros(unidadeId: 1));
 
         var entrada = EntradaGerar(unidadeId: 1);
-        entrada.NutricionistaId = 0;
 
-        var resultado = cenario.Servico.Gerar(entrada);
+        var resultado = cenario.Servico.Gerar(entrada, nutricionistaId: 0);
 
         Assert.Equal(ResultadoStatus.Invalido, resultado.Status);
         Assert.Contains("nutricionista", resultado.Erro!, StringComparison.OrdinalIgnoreCase);
@@ -97,7 +95,7 @@ public class GeracaoCardapioServiceTests
         cenario.Parametros.Add(Parametros(unidadeId: 1));
 
         Assert.Throws<GeracaoImpossivelException>(
-            () => cenario.Servico.Gerar(EntradaGerar(unidadeId: 1)));
+            () => cenario.Servico.Gerar(EntradaGerar(unidadeId: 1), NutricionistaId));
     }
 
     private static Alimento CriarAlimento(AlimentoRepositoryFake alimentos, string nome) =>
@@ -155,7 +153,7 @@ public class GeracaoCardapioServiceTests
         aluno.DefinirUnidade(1);
         cenario.Alunos.Add(aluno);
 
-        var resultado = cenario.Servico.Gerar(EntradaGerar(unidadeId: 1));
+        var resultado = cenario.Servico.Gerar(EntradaGerar(unidadeId: 1), NutricionistaId);
 
         Assert.Equal(ResultadoStatus.Ok, resultado.Status);
 
@@ -183,7 +181,7 @@ public class GeracaoCardapioServiceTests
         publicado.Publicar("teste", DateTime.UtcNow);
         cenario.Cardapios.Add(publicado);
 
-        var resultado = cenario.Servico.Gerar(EntradaGerar(unidadeId: 1));
+        var resultado = cenario.Servico.Gerar(EntradaGerar(unidadeId: 1), NutricionistaId);
 
         Assert.Equal(ResultadoStatus.Ok, resultado.Status);
 

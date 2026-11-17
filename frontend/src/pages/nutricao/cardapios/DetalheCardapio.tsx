@@ -1,22 +1,27 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronLeft, Copy, Pencil, Trash } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Copy, Pencil, Trash } from "lucide-react";
 import Button from "../../../components/Button";
 import Footer from "../../../components/Footer";
 import Header from "../../../components/Header";
+import { useAuth } from "../../../context/authContext";
 import {
+    adaptarCardapio,
     cancelarCardapio,
     criarRevisaoCardapio,
     duplicarCardapio,
     excluirCardapio,
+    listarAdaptados,
     obterCardapio,
     obterCompatibilidade,
     obterHistoricoCardapio,
     publicarCardapio,
     type Cardapio,
+    type CardapioAdaptadoResumo,
     type Compatibilidade,
     type EventoHistoricoCardapio,
     type SituacaoCardapio,
+    type StatusAdaptacao,
 } from "../../../services/CardapioApi";
 
 const corSituacao: Record<SituacaoCardapio, string> = {
@@ -25,6 +30,25 @@ const corSituacao: Record<SituacaoCardapio, string> = {
     Cancelado: "bg-red-100 text-red-700",
     Substituido: "bg-gray-100 text-gray-600",
 };
+
+const corStatusAdaptacao: Record<StatusAdaptacao, string> = {
+    Atualizado: "bg-green-100 text-green-800",
+    Desatualizado: "bg-amber-100 text-amber-800",
+    PendenteDeRevisao: "bg-red-100 text-red-700",
+};
+
+function rotuloStatus(status: StatusAdaptacao | null): string {
+    switch (status) {
+        case "PendenteDeRevisao":
+            return "Pendente de revisão";
+        case "Desatualizado":
+            return "Desatualizado";
+        case "Atualizado":
+            return "Atualizado";
+        default:
+            return "—";
+    }
+}
 
 function dataCurta(iso: string): string {
     const [ano, mes, dia] = iso.split("-");
@@ -40,6 +64,8 @@ function dataCurta(iso: string): string {
 export function DetalheCardapio() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { userLogin } = useAuth();
+    const ehNutricionista = userLogin?.papel === "Nutricionista";
 
     const [cardapio, setCardapio] = useState<Cardapio | null>(null);
     const [carregando, setCarregando] = useState(true);
@@ -50,6 +76,8 @@ export function DetalheCardapio() {
     const [mensagem, setMensagem] = useState<string | null>(null);
     const [compatibilidade, setCompatibilidade] = useState<Compatibilidade | null>(null);
     const [historico, setHistorico] = useState<EventoHistoricoCardapio[]>([]);
+    const [adaptados, setAdaptados] = useState<CardapioAdaptadoResumo[]>([]);
+    const [adaptando, setAdaptando] = useState(false);
 
     useEffect(() => {
         async function carregar() {
@@ -90,6 +118,39 @@ export function DetalheCardapio() {
 
         carregarHistorico();
     }, [id]);
+
+    useEffect(() => {
+        async function carregarAdaptados() {
+            if (cardapio?.tipo !== "Geral") {
+                setAdaptados([]);
+                return;
+            }
+
+            try {
+                setAdaptados(await listarAdaptados(cardapio.id));
+            } catch {
+                setAdaptados([]);
+            }
+        }
+
+        carregarAdaptados();
+    }, [cardapio?.id, cardapio?.tipo]);
+
+    async function readaptar(escolaId: number) {
+        if (!cardapio) return;
+
+        setErro(null);
+        setAdaptando(true);
+
+        try {
+            setAdaptados(await adaptarCardapio(cardapio.id, { escolaId }));
+            setMensagem("Versão adaptada recalculada para a escola.");
+        } catch (falha) {
+            setErro(falha instanceof Error ? falha.message : "Erro ao adaptar o cardápio");
+        } finally {
+            setAdaptando(false);
+        }
+    }
 
     async function publicar() {
         if (!cardapio) return;
@@ -289,9 +350,72 @@ export function DetalheCardapio() {
                                 {dataCurta(cardapio.periodo.fim)}
                             </p>
 
-                            <p className="text-sm text-gray-500">
-                                Vale para todas as escolas desta unidade.
+                            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                                <span className="rounded-full bg-bege px-3 py-1 text-xs font-semibold text-roxo">
+                                    {cardapio.tipo === "Geral" ? "Cardápio geral" : "Cardápio adaptado"}
+                                </span>
+
+                                {cardapio.tipo === "Geral" && (
+                                    <span>Vale para todas as escolas desta unidade.</span>
+                                )}
+
+                                {cardapio.tipo === "Adaptado" && (
+                                    <>
+                                        <span>Escola #{cardapio.escolaId}</span>
+                                        <span>·</span>
+                                        <span>Conjunto {cardapio.conjuntoRestricoesChave}</span>
+                                        {cardapio.origemId && (
+                                            <>
+                                                <span>·</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate(`/cardapios/${cardapio.origemId}`)}
+                                                    className="text-roxo underline hover:text-purple-700"
+                                                >
+                                                    Ver cardápio de origem
+                                                </button>
+                                            </>
+                                        )}
+                                    </>
+                                )}
                             </p>
+
+                            {cardapio.tipo === "Adaptado" && cardapio.restricoes.length > 0 && (
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                    <span className="text-sm text-gray-600">Restrições do conjunto:</span>
+                                    {cardapio.restricoes.map((restricao) => (
+                                        <span
+                                            key={restricao.id}
+                                            className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
+                                            title={restricao.categoria}
+                                        >
+                                            {restricao.nome}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
+                            {cardapio.tipo === "Adaptado" && (
+                                <div className="mt-3 flex flex-wrap items-center gap-3">
+                                    <span
+                                        className={`rounded-full px-3 py-1 text-sm ${
+                                            cardapio.statusAdaptacao
+                                                ? corStatusAdaptacao[cardapio.statusAdaptacao]
+                                                : "bg-gray-100 text-gray-600"
+                                        }`}
+                                    >
+                                        {rotuloStatus(cardapio.statusAdaptacao)}
+                                    </span>
+
+                                    {(cardapio.statusAdaptacao === "PendenteDeRevisao" ||
+                                        cardapio.statusAdaptacao === "Desatualizado") && (
+                                        <span className="text-sm text-red-700">
+                                            Esta versão não pode ser publicada nem servida até ser
+                                            readaptada.
+                                        </span>
+                                    )}
+                                </div>
+                            )}
 
                             {cardapio.nutricionista && (
                                 <div className="mt-4 rounded-2xl border border-[#fce9d3] bg-white p-4">
@@ -460,6 +584,195 @@ export function DetalheCardapio() {
                                 </p>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {cardapio && cardapio.substituicoes.length > 0 && (
+                    <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                        <h2 className="font-bold text-2xl">Substituições aplicadas</h2>
+
+                        <div className="my-5 w-full border border-gray-200 rounded-3xl" />
+
+                        <div className="overflow-hidden rounded-2xl border border-[#fce9d3]">
+                            <table className="w-full bg-white">
+                                <thead>
+                                    <tr className="h-10 bg-bege">
+                                        <th className="px-3 text-left font-light">Refeição</th>
+                                        <th className="px-3 text-left font-light">Original</th>
+                                        <th className="px-3 text-left font-light">Substituto</th>
+                                        <th className="px-3 text-left font-light">Gramas</th>
+                                        <th className="px-3 text-left font-light">Restrições</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {cardapio.substituicoes.map((substituicao, posicao) => (
+                                        <tr
+                                            key={`${substituicao.refeicaoOrdem}-${substituicao.alimentoOriginalId}-${posicao}`}
+                                            className="border-t border-[#fce9d3] h-10"
+                                        >
+                                            <td className="px-3">{substituicao.refeicaoNome}</td>
+                                            <td className="px-3">{substituicao.alimentoOriginal}</td>
+                                            <td className="px-3">{substituicao.alimentoSubstituto}</td>
+                                            <td className="px-3">{substituicao.gramas} g</td>
+                                            <td className="px-3">
+                                                {substituicao.restricoesBloqueantes}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {cardapio && cardapio.pendencias.length > 0 && (
+                    <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                        <h2 className="flex items-center gap-2 font-bold text-2xl text-red-700">
+                            <AlertTriangle size={22} />
+                            Pendências da adaptação
+                        </h2>
+
+                        <div className="my-5 w-full border border-gray-200 rounded-3xl" />
+
+                        <ul className="flex flex-col gap-2">
+                            {cardapio.pendencias.map((pendencia, posicao) => (
+                                <li
+                                    key={`${pendencia.refeicaoOrdem}-${pendencia.alimentoId ?? "refeicao"}-${posicao}`}
+                                    className="rounded-2xl border border-red-200 bg-white p-3 text-sm"
+                                >
+                                    <p className="font-semibold text-gray-800">
+                                        {pendencia.refeicaoNome}
+                                        {pendencia.alimento ? ` · ${pendencia.alimento}` : ""}
+                                    </p>
+                                    <p className="text-red-700">{pendencia.motivo}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {cardapio && cardapio.confirmacoes.length > 0 && (
+                    <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                        <h2 className="font-bold text-2xl">Confirmações de incompatibilidade</h2>
+
+                        <div className="my-5 w-full border border-gray-200 rounded-3xl" />
+
+                        <ul className="flex flex-col gap-2">
+                            {cardapio.confirmacoes.map((confirmacao, posicao) => (
+                                <li
+                                    key={`${confirmacao.alimentoId}-${confirmacao.criadoEm}-${posicao}`}
+                                    className="rounded-2xl border border-amber-200 bg-white p-3 text-sm"
+                                >
+                                    <p className="font-semibold text-gray-800">
+                                        {confirmacao.alimento}
+                                    </p>
+                                    <p className="text-gray-600">
+                                        Escolas: {confirmacao.escolas} · Conjuntos:{" "}
+                                        {confirmacao.conjuntos}
+                                    </p>
+                                    <p className="text-gray-500">
+                                        {confirmacao.autor} ·{" "}
+                                        {new Date(confirmacao.criadoEm).toLocaleString("pt-BR")}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {cardapio?.tipo === "Geral" && (
+                    <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                        <h2 className="font-bold text-2xl">Versões adaptadas por escola</h2>
+
+                        <div className="my-5 w-full border border-gray-200 rounded-3xl" />
+
+                        {adaptados.length === 0 && (
+                            <p className="text-sm text-gray-500">
+                                Nenhuma versão adaptada para este cardápio. Nenhum aluno com
+                                restrição nesta unidade ou adaptação ainda não executada.
+                            </p>
+                        )}
+
+                        {adaptados.length > 0 && (
+                            <div className="overflow-hidden rounded-2xl border border-[#fce9d3]">
+                                <table className="w-full bg-white">
+                                    <thead>
+                                        <tr className="h-10 bg-bege">
+                                            <th className="px-3 text-left font-light">Escola</th>
+                                            <th className="px-3 text-left font-light">Conjunto</th>
+                                            <th className="px-3 text-left font-light">Status</th>
+                                            <th className="px-3 text-left font-light">Situação</th>
+                                            <th className="px-3 text-left font-light">Substituições</th>
+                                            <th className="px-3 text-left font-light">Pendências</th>
+                                            <th className="px-3 text-center font-light">Abrir</th>
+                                            {ehNutricionista && (
+                                                <th className="px-3 text-center font-light">
+                                                    Readaptar
+                                                </th>
+                                            )}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {adaptados.map((versao) => (
+                                            <tr
+                                                key={versao.id}
+                                                className="border-t border-[#fce9d3] h-12"
+                                            >
+                                                <td className="px-3">{versao.escolaNome}</td>
+                                                <td className="px-3">
+                                                    {versao.conjuntoRestricoesChave}
+                                                </td>
+                                                <td className="px-3">
+                                                    <span
+                                                        className={`rounded-full px-2 py-0.5 text-xs ${
+                                                            versao.statusAdaptacao
+                                                                ? corStatusAdaptacao[versao.statusAdaptacao]
+                                                                : "bg-gray-100 text-gray-600"
+                                                        }`}
+                                                    >
+                                                        {rotuloStatus(versao.statusAdaptacao)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3">{versao.situacao}</td>
+                                                <td className="px-3">{versao.totalSubstituicoes}</td>
+                                                <td
+                                                    className={
+                                                        versao.totalPendencias > 0
+                                                            ? "px-3 font-semibold text-red-700"
+                                                            : "px-3"
+                                                    }
+                                                >
+                                                    {versao.totalPendencias}
+                                                </td>
+                                                <td className="px-3 text-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            navigate(`/cardapios/${versao.id}`)
+                                                        }
+                                                        className="text-roxo underline hover:text-purple-700"
+                                                    >
+                                                        Abrir
+                                                    </button>
+                                                </td>
+                                                {ehNutricionista && (
+                                                    <td className="px-3 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => void readaptar(versao.escolaId)}
+                                                            disabled={adaptando}
+                                                            className="text-roxo underline hover:text-purple-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                                                        >
+                                                            Recalcular
+                                                        </button>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 )}
 

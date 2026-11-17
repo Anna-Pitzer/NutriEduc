@@ -102,6 +102,25 @@ public class UsuarioService
 
         usuario.AtualizarPerfil(dto.Nome, email);
         usuario.AtualizarTelefone(dto.Telefone);
+
+        // O próprio nutricionista completa o CRN no perfil; os demais papéis não possuem CRN.
+        if (!string.IsNullOrWhiteSpace(dto.Crn))
+        {
+            if (usuario.Papel != PapelUsuario.Nutricionista)
+            {
+                throw new ArgumentException(CrnDeNutricionista.MensagemSomenteNutricionista);
+            }
+
+            var crnNormalizado = CrnDeNutricionista.Normalizar(dto.Crn);
+
+            if (_usuarioRepository.GetByCrn(crnNormalizado) is { } porCrn && porCrn.Id != id)
+            {
+                throw new ArgumentException("Este CRN já está vinculado a outro usuário.");
+            }
+
+            usuario.DefinirCrn(dto.Crn);
+        }
+
         if (dto.Foto != null)
         {
             usuario.AtualizarFoto(dto.Foto);

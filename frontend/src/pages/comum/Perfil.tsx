@@ -12,6 +12,7 @@ type DadosPerfil = {
     email: string;
     telefone: string;
     foto: string;
+    crn: string;
 };
 
 export function Perfil() {
@@ -21,13 +22,13 @@ export function Perfil() {
 
     const [foto, setFoto] = useState<string | null>(null);
     const [fotoOriginal, setFotoOriginal] = useState<string | null>(null);
-    const [crn, setCrn] = useState<string | null>(null);
 
     const [form, setForm] = useState<DadosPerfil>({
         nome: "",
         email: "",
         telefone: "",
         foto: "",
+        crn: "",
     });
 
     const [dadosOriginais, setDadosOriginais] =
@@ -36,6 +37,7 @@ export function Perfil() {
             email: "",
             telefone: "",
             foto: "",
+            crn: "",
         });
 
     const [erro, setErro] = useState("");
@@ -57,6 +59,15 @@ export function Perfil() {
 
     const sanitizarTelefone = (valor: string) => {
         return valor.replace(/\D/g, "").slice(0, 11);
+    };
+
+    const normalizarCrn = (valor: string) => {
+        return valor
+            .trim()
+            .toUpperCase()
+            .replace(/[\s.-]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 20);
     };
 
     const formatarTelefone = (telefone: string) => {
@@ -101,6 +112,7 @@ export function Perfil() {
                     email: sanitizarEmail(dados.email || ""),
                     telefone: sanitizarTelefone(dados.telefone || ""),
                     foto: dados.foto || "",
+                    crn: normalizarCrn(dados.crn || ""),
                 };
 
                 setForm(dadosUsuario);
@@ -108,7 +120,6 @@ export function Perfil() {
 
                 setFoto(dados.foto || null);
                 setFotoOriginal(dados.foto || null);
-                setCrn(dados.crn || null);
             } catch (error) {
                 console.error("Erro ao carregar perfil:", error);
                 setErro("Não foi possível carregar o perfil.");
@@ -170,6 +181,7 @@ export function Perfil() {
             email: sanitizarEmail(form.email),
             telefone: sanitizarTelefone(form.telefone),
             foto: foto || dadosOriginais.foto,
+            crn: normalizarCrn(form.crn),
         };
 
         if (dadosSanitizados.nome.length < 2) {
@@ -182,6 +194,15 @@ export function Perfil() {
         )
         ) {
             setErro("Digite um e-mail válido.");
+            return;
+        }
+
+        if (
+            userLogin?.papel === "Nutricionista" &&
+            dadosSanitizados.crn &&
+            !/^CRN-\d{1,2}-\d{3,8}$/.test(dadosSanitizados.crn)
+        ) {
+            setErro("CRN inválido. Exemplo aceito: CRN-3-12345.");
             return;
         }
 
@@ -212,6 +233,7 @@ export function Perfil() {
         email: perfilAtualizado.email,
         telefone: perfilAtualizado.telefone ?? "",
         foto: perfilAtualizado.foto ?? "",
+        crn: perfilAtualizado.crn ?? "",
     };
 
     setForm(novosDados);
@@ -252,7 +274,9 @@ export function Perfil() {
                     ? sanitizarNome(valor)
                     : campo === "email"
                         ? sanitizarEmail(valor)
-                        : sanitizarTelefone(valor),
+                        : campo === "crn"
+                            ? normalizarCrn(valor)
+                            : sanitizarTelefone(valor),
         }));
 
         setErro("");
@@ -312,7 +336,7 @@ export function Perfil() {
 
                                 {userLogin?.papel === "Nutricionista" && (
                                     <p className="text-xs text-gray-500">
-                                        CRN: {crn || "—"}
+                                        CRN: {form.crn || "—"}
                                     </p>
                                 )}
 
@@ -430,6 +454,19 @@ export function Perfil() {
                             }
                             maxLength={11}
                         />
+
+                        {userLogin?.papel === "Nutricionista" && (
+                            <input
+                                type="text"
+                                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 hover:bg-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 my-2"
+                                placeholder="CRN (ex.: CRN-3-12345)"
+                                value={form.crn}
+                                onChange={(e) =>
+                                    atualizarCampo("crn", e.target.value)
+                                }
+                                maxLength={20}
+                            />
+                        )}
                     </div>
 
                     <div className="flex flex-col justify-around mt-4">

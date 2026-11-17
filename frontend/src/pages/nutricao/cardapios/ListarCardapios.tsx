@@ -138,10 +138,13 @@ export function ListarCardapios() {
                 </button>
             </div>
 
-            <div className="flex w-full max-w-7xl flex-col items-center justify-center bg-[#FAF9F5] mb-30 mx-auto rounded-3xl p-8 shadow-[0_5px_20px_rgba(1,1,1,0.1)]">
+            <div className="flex w-full max-w-7xl flex-col items-center justify-center 
+            bg-white border-4 border-lilaz mb-30 mx-auto rounded-3xl p-8 shadow-[0_5px_20px_rgba(1,1,1,0.1)]
+            duration-300 hover:-translate-y-1.5
+            ">
                 <div className="flex w-full flex-col justify-start gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h1 className="font-bold text-2xl text-gray-800">Cardápios</h1>
+                        <h1 className="font-bold text-2xl text-verdeClaro">Cardápios</h1>
                         <h2 className="text-lg">
                             Consulte por unidade, data e situação, e monte o cardápio por refeição.
                         </h2>
@@ -273,8 +276,46 @@ export function ListarCardapios() {
                         <tbody>
                             {pagina?.itens.map((cardapio) => (
                                 <tr key={cardapio.id} className="border-t border-[#fce9d3] h-12">
-                                    <td className="p-4 max-w-60 truncate" title={cardapio.nome}>
-                                        {cardapio.nome}
+                                    <td className="p-4 max-w-60">
+                                        <p className="truncate" title={cardapio.nome}>
+                                            {cardapio.nome}
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                                            <span className="rounded-full bg-bege px-2 py-0.5 text-xs text-roxo">
+                                                {cardapio.tipo === "Geral" ? "Geral" : "Adaptado"}
+                                            </span>
+                                            {cardapio.statusAdaptacao && (
+                                                <span
+                                                    className={
+                                                        cardapio.statusAdaptacao === "Atualizado"
+                                                            ? "rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800"
+                                                            : cardapio.statusAdaptacao === "Desatualizado"
+                                                              ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
+                                                              : "rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700"
+                                                    }
+                                                >
+                                                    {cardapio.statusAdaptacao === "PendenteDeRevisao"
+                                                        ? "Pendente de revisão"
+                                                        : cardapio.statusAdaptacao}
+                                                </span>
+                                            )}
+                                            {cardapio.escolaId && (
+                                                <span className="text-xs text-gray-500">
+                                                    Escola #{cardapio.escolaId}
+                                                </span>
+                                            )}
+                                            {cardapio.origemId && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        navigate(`/cardapios/${cardapio.origemId}`)
+                                                    }
+                                                    className="text-xs text-roxo underline hover:text-purple-700"
+                                                >
+                                                    Ver origem
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="p-4">
                                         {dataCurta(cardapio.periodo.inicio)} a{" "}

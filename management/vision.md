@@ -308,3 +308,19 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 **Status:** entregue e auditada em 2026-11-13; validação manual no navegador pendente (PEND-050).
 
 **Delivered by:** Spec 035 (portal-pais-responsaveis)
+
+### V25: Cardápio semanal com dias
+
+**Problema:** o cardápio guarda um único conjunto de refeições válido para todo o período. O modelo oficial do PNAE é uma grade semanal: cada dia tem o próprio conteúdo. Hoje a geração repete o mesmo prato em todos os dias e o relatório da Spec 019 só consegue replicar as colunas.
+
+**Valor entregue:** o cardápio passa a ter dias. O cabeçalho continua sendo o período, a unidade, a escola (quando adaptado), a nutricionista, a situação e a versão; abaixo dele, cada dia carrega as próprias refeições (com horário opcional) e itens. A geração automática produz um conjunto por dia, a adaptação por restrição acompanha cada dia, a publicação versiona o cardápio inteiro e o portal passa a mostrar o dia consultado. O relatório de cardápios passa a representar o documento real, sem repetição.
+
+**Regra derivada:** todo dia pertence ao período do cardápio e é único por data; um cardápio tem ao menos um dia; cardápio legado é migrado para um único dia no início do período, sem perder itens; nenhuma regra de geração ou adaptação muda — apenas passa a ser aplicada por dia.
+
+**Canonical creation path:** `backend/Domain/Entities/DiaDeCardapio.cs`,
+`backend/Domain/Entities/Cardapio.cs`, `backend/Domain/Entities/Refeicao.cs`,
+`backend/API/Services/GeracaoCardapioService.cs`,
+`backend/Infrastructure/Repositories/CardapioRepository.cs`,
+`frontend/src/pages/nutricao/cardapios/DetalheCardapio.tsx`
+
+**Delivered by:** Spec 037 (cardapio-com-dias)

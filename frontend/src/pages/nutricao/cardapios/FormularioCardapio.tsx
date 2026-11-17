@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronLeft, Plus, Save, Trash } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Plus, Save, Trash } from "lucide-react";
 import Button from "../../../components/Button";
 import Footer from "../../../components/Footer";
 import Header from "../../../components/Header";
@@ -8,9 +8,13 @@ import {
     atualizarCardapio,
     criarCardapio,
     obterCardapio,
+    obterContextoDeRestricoes,
     type CardapioEntrada,
+    type ContextoDeRestricoes,
     type RefeicaoEntrada,
 } from "../../../services/CardapioApi";
+import { listarNutricionistas, type Nutricionista } from "../../../services/NutricionistaApi";
+import { ErroRequisicao } from "../../../services/erroApi";
 import { listarAlimentos, type Alimento } from "../../../services/AlimentoApi";
 import { listarUnidades, type Unidade } from "../../../services/UnidadeApi";
 
@@ -32,10 +36,12 @@ const refeicaoVazia = (ordem: number): RefeicaoFormulario => ({
 });
 
 /**
- * Cadastro e edição de cardápio (Spec 012, RF13), no padrão visual do cadastro de alunos.
+ * Cadastro e edição de cardápio geral (Spec 012, RF13; Spec 029, RF9 a RF12).
  *
  * O formulário monta refeições e itens; os totais não são calculados aqui — quem calcula
- * é o backend (RNF3), e o detalhe exibe o resultado.
+ * é o backend (RNF3), e o detalhe exibe o resultado. A montagem manual exige a
+ * nutricionista com CRN e mostra os alunos e restrições por escola; alimento
+ * incompatível com substituto seguro exige confirmação explícita.
  */
 export function FormularioCardapio() {
     const { id } = useParams<{ id: string }>();
@@ -46,23 +52,30 @@ export function FormularioCardapio() {
     const [unidadeId, setUnidadeId] = useState<number | "">("");
     const [inicio, setInicio] = useState("");
     const [fim, setFim] = useState("");
+    const [nutricionistaId, setNutricionistaId] = useState<number | "">("");
     const [refeicoes, setRefeicoes] = useState<RefeicaoFormulario[]>([refeicaoVazia(1)]);
     const [alimentos, setAlimentos] = useState<Alimento[]>([]);
     const [unidades, setUnidades] = useState<Unidade[]>([]);
+    const [nutricionistas, setNutricionistas] = useState<Nutricionista[]>([]);
+    const [contexto, setContexto] = useState<ContextoDeRestricoes | null>(null);
     const [carregando, setCarregando] = useState(true);
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState<string | null>(null);
+    const [avisoIncompatibilidade, setAvisoIncompatibilidade] = useState<string | null>(null);
+    const [entradaPendente, setEntradaPendente] = useState<CardapioEntrada | null>(null);
 
     useEffect(() => {
         async function carregar() {
             try {
-                const [listaUnidades, paginaAlimentos] = await Promise.all([
+                const [listaUnidades, paginaAlimentos, listaNutricionistas] = await Promise.all([
                     listarUnidades(),
                     listarAlimentos({ tamanho: 100 }),
+                    listarNutricionistas(),
                 ]);
 
                 setUnidades(listaUnidades);
                 setAlimentos(paginaAlimentos.itens);
+                setNutricionistas(listaNutricionistas);
 
                 if (id) {
                     const cardapio = await obterCardapio(Number(id));
@@ -71,6 +84,7 @@ export function FormularioCardapio() {
                     setUnidadeId(cardapio.unidadeId);
                     setInicio(cardapio.periodo.inicio);
                     setFim(cardapio.periodo.fim);
+                    setNutricionistaId(cardapio.nutricionista?.id ?? "");
                     setRefeicoes(
                         cardapio.refeicoes.map((refeicao) => ({
                             nome: refeicao.nome,
@@ -93,6 +107,24 @@ export function FormularioCardapio() {
 
         carregar();
     }, [id]);
+
+    useEffect(() => {
+        async function carregarContexto() {
+            if (unidadeId === "") {
+                setContexto(null);
+                return;
+            }
+
+            try {
+                setContexto(await obterContextoDeRestricoes(Number(unidadeId)));
+            } catch {
+                // O contexto é informativo: falha ao carregar não impede montar o cardápio.
+                setContexto(null);
+            }
+        }
+
+        carregarContexto();
+    }, [unidadeId]);
 
     function atualizarRefeicao(indice: number, campo: "nome" | "ordem", valor: string) {
         setRefeicoes((atuais) =>
@@ -168,11 +200,22 @@ export function FormularioCardapio() {
         );
     }
 
-    async function enviar() {
+    function limparAviso() {
+        setAvisoIncompatibilidade(null);
+        setEntradaPendente(null);
+    }
+
+    async function enviar(confirmarIncompatibilidades = false) {
         setErro(null);
+        limparAviso();
 
         if (!nome.trim() || unidadeId === "" || !inicio || !fim) {
             setErro("Informe nome, unidade e período do cardápio.");
+            return;
+        }
+
+        if (!editando && nutricionistaId === "") {
+            setErro("Informe a nutricionista responsável pelo cardápio.");
             return;
         }
 
@@ -213,6 +256,8 @@ export function FormularioCardapio() {
             unidadeId: Number(unidadeId),
             periodo: { inicio, fim },
             refeicoes: refeicoesEntrada,
+            nutricionistaId: nutricionistaId === "" ? null : Number(nutricionistaId),
+            confirmarIncompatibilidades,
         };
 
         setSalvando(true);
@@ -226,11 +271,37 @@ export function FormularioCardapio() {
 
             navigate("/cardapios");
         } catch (falha) {
-            setErro(falha instanceof Error ? falha.message : "Erro ao salvar o cardápio");
+            const mensagem = falha instanceof Error ? falha.message : "Erro ao salvar o cardápio";
+
+            if (
+                falha instanceof ErroRequisicao &&
+                falha.status === 400 &&
+                mensagem.includes("confirmarIncompatibilidades")
+            ) {
+                setAvisoIncompatibilidade(mensagem);
+                setEntradaPendente(entrada);
+            } else {
+                setErro(mensagem);
+            }
         } finally {
             setSalvando(false);
         }
     }
+
+    async function confirmarIncompatibilidade() {
+        if (!entradaPendente) return;
+
+        setAvisoIncompatibilidade(null);
+        setEntradaPendente(null);
+        await enviar(true);
+    }
+
+    const totalAlunos = contexto?.escolas.reduce((total, escola) => total + escola.alunos.length, 0) ?? 0;
+    const totalAlimentosSelecionados = refeicoes.reduce(
+        (total, refeicao) =>
+            total + refeicao.itens.filter((item) => item.alimentoId !== "").length,
+        0,
+    );
 
     return (
         <div className="relative min-h-screen bg-[#FAF9F5]">
@@ -304,12 +375,127 @@ export function FormularioCardapio() {
                                     className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 my-2"
                                 />
                             </div>
+
+                            {!editando && (
+                                <div className="flex flex-col">
+                                    <label htmlFor="inNutricionista" className="text-sm text-gray-600">
+                                        Nutricionista responsável (nome e CRN)
+                                    </label>
+                                    <select
+                                        id="inNutricionista"
+                                        value={nutricionistaId}
+                                        onChange={(evento) =>
+                                            setNutricionistaId(
+                                                evento.target.value === ""
+                                                    ? ""
+                                                    : Number(evento.target.value),
+                                            )
+                                        }
+                                        className="w-full rounded-2xl border border-gray-200 bg-white text-sm text-gray-700 outline-none transition-all duration-200 hover:border-gray-300 hover:bg-gray-200 focus:border-roxo focus:ring-4 focus:ring-roxo/10 cursor-pointer px-3 py-3 my-2"
+                                    >
+                                        <option value="">Selecione a nutricionista</option>
+                                        {nutricionistas.map((nutricionista) => (
+                                            <option
+                                                key={nutricionista.id}
+                                                value={nutricionista.id}
+                                                disabled={!nutricionista.crn}
+                                            >
+                                                {nutricionista.nome ?? `Nutricionista #${nutricionista.id}`}
+                                                {nutricionista.crn
+                                                    ? ` · CRN ${nutricionista.crn}`
+                                                    : " · sem CRN (não pode assinar)"}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {nutricionistas.length === 0 && (
+                                        <p className="text-sm text-amber-700">
+                                            Nenhuma nutricionista ativa na unidade. Cadastre o CRN antes
+                                            de montar o cardápio.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
 
                 {!carregando && (
                     <>
+                        <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h2 className="font-bold text-2xl">Alunos e restrições por escola</h2>
+                                <p className="text-sm text-gray-500">
+                                    {totalAlunos} aluno(s) ativo(s) · {totalAlimentosSelecionados}{" "}
+                                    alimento(s) selecionado(s)
+                                </p>
+                            </div>
+
+                            <div className="my-5 w-full border border-gray-200 rounded-3xl" />
+
+                            {contexto === null && (
+                                <p className="text-sm text-gray-500">
+                                    Selecione a unidade para ver os alunos e as restrições.
+                                </p>
+                            )}
+
+                            {contexto?.escolas.length === 0 && (
+                                <p className="text-sm text-gray-500">
+                                    A unidade não possui escolas cadastradas.
+                                </p>
+                            )}
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {contexto?.escolas.map((escola) => (
+                                    <div
+                                        key={escola.escolaId}
+                                        className="rounded-2xl border border-[#fce9d3] bg-white p-4"
+                                    >
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <h3 className="font-bold text-gray-800">
+                                                {escola.escolaNome}
+                                            </h3>
+                                            {escola.semRestricoes && (
+                                                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">
+                                                    sem restrições
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {escola.alunos.length === 0 && (
+                                            <p className="mt-2 text-sm text-gray-500">
+                                                Nenhum aluno ativo nesta escola.
+                                            </p>
+                                        )}
+
+                                        <ul className="mt-3 flex flex-col gap-2">
+                                            {escola.alunos.map((aluno) => (
+                                                <li key={aluno.alunoId} className="text-sm">
+                                                    <p className="font-medium text-gray-800">
+                                                        {aluno.nome}
+                                                    </p>
+                                                    {aluno.restricoes.length === 0 ? (
+                                                        <p className="text-gray-500">Sem restrições</p>
+                                                    ) : (
+                                                        <div className="mt-1 flex flex-wrap gap-1">
+                                                            {aluno.restricoes.map((restricao) => (
+                                                                <span
+                                                                    key={restricao.id}
+                                                                    className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
+                                                                    title={restricao.categoria}
+                                                                >
+                                                                    {restricao.nome}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="bg-[F2F2F2] rounded-3xl p-4 shadow-[0_8px_30px_rgba(11,102,25,0.08)]">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-bold text-2xl">Refeições</h2>
@@ -497,18 +683,47 @@ export function FormularioCardapio() {
                                 </div>
                             )}
 
-                            <div className="flex justify-center gap-4 m-4">
-                                <Button
-                                    type="button"
-                                    variant="normal"
-                                    onClick={enviar}
-                                    disabled={salvando}
+                            {avisoIncompatibilidade && (
+                                <div
+                                    role="alert"
+                                    className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900"
                                 >
-                                    <span className="flex items-center gap-2">
-                                        <Save size={18} />
-                                        {salvando ? "Salvando..." : "Salvar cardápio"}
-                                    </span>
-                                </Button>
+                                    <p className="flex items-center gap-2 font-semibold">
+                                        <AlertTriangle size={18} />
+                                        Incompatibilidade com restrição de aluno
+                                    </p>
+                                    <p className="mt-2 text-sm">{avisoIncompatibilidade}</p>
+                                </div>
+                            )}
+
+                            <div className="flex flex-wrap justify-center gap-4 m-4">
+                                {entradaPendente ? (
+                                    <Button
+                                        type="button"
+                                        variant="normal"
+                                        onClick={confirmarIncompatibilidade}
+                                        disabled={salvando}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <AlertTriangle size={18} />
+                                            {salvando
+                                                ? "Salvando..."
+                                                : "Confirmar e salvar mesmo assim"}
+                                        </span>
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        type="button"
+                                        variant="normal"
+                                        onClick={() => enviar()}
+                                        disabled={salvando}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <Save size={18} />
+                                            {salvando ? "Salvando..." : "Salvar cardápio"}
+                                        </span>
+                                    </Button>
+                                )}
 
                                 <Button
                                     type="button"

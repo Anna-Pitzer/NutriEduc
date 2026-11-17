@@ -6,6 +6,7 @@ import Footer from "../../components/Footer";
 const abas = [
     { rotulo: "Início", caminho: "/pais", fim: true },
     { rotulo: "Cardápios", caminho: "/pais/cardapios", fim: false },
+    { rotulo: "Relatório", caminho: "/pais/relatorio", fim: false },
     { rotulo: "Ocorrências", caminho: "/pais/ocorrencias", fim: false },
     { rotulo: "Solicitações", caminho: "/pais/solicitacoes", fim: false },
     { rotulo: "Feedback", caminho: "/pais/feedback", fim: false },

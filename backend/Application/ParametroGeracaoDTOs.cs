@@ -27,16 +27,13 @@ public class SalvarParametroGeracaoDTO
 }
 
 /// <summary>
-/// Entrada de geração (Spec 013, RF3; Spec 027): unidade, nutricionista responsável,
-/// nome, período e semente opcional. O cardápio gerado vale para todas as escolas da
-/// unidade informada.
+/// Entrada de geração (Spec 013, RF3; Spec 027): unidade, nome, período e semente
+/// opcional. A nutricionista autora vem da sessão/perfil. O cardápio gerado vale para
+/// todas as escolas da unidade informada.
 /// </summary>
 public class GerarCardapioDTO
 {
     public int UnidadeId { get; set; }
-
-    /// <summary>Nutricionista que elaborou o cardápio; obrigatória na geração.</summary>
-    public int NutricionistaId { get; set; }
 
     public string Nome { get; set; } = string.Empty;
     public PeriodoCardapioDTO? Periodo { get; set; }

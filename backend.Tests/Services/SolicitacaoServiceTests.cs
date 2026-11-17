@@ -53,8 +53,6 @@ public class SolicitacaoServiceTests
         var restricoes = new RestricaoRepositoryFake();
         var unidadeDeTrabalho = new UnidadeDeTrabalhoFake();
         var autorizacao = new AutorizacaoService();
-        var trilha = new TrilhaAcaoRepositoryFake();
-        var vinculos = new VinculoRepositoryFake();
         var notificacaoService = new NotificacaoService(notificacoes, unidadeDeTrabalho);
 
         var unidadeId = escolas.AddUnidade(new UnidadeEscolar("Unidade A")).Id;
@@ -107,19 +105,6 @@ public class SolicitacaoServiceTests
 
         cardapios.Add(cardapio);
 
-        var hierarquia = new HierarquiaService(escolas, alunos, usuarios);
-
-        var alunoService = new AlunoService(
-            alunos,
-            restricoes,
-            usuarios,
-            hierarquia,
-            autorizacao,
-            trilha,
-            unidadeDeTrabalho,
-            vinculos,
-            notificacaoService);
-
         var servico = new SolicitacaoService(
             solicitacoes,
             alunos,
@@ -127,7 +112,7 @@ public class SolicitacaoServiceTests
             escolas,
             usuarios,
             unidadeDeTrabalho,
-            alunoService,
+            restricoes,
             notificacaoService);
 
         return new Cenario(

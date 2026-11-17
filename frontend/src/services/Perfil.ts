@@ -15,6 +15,7 @@ export async function atualizarPerfil(
         email: string;
         telefone: string;
         foto: string;
+        crn?: string;
     }
 ) {
     const resposta = await fetch(
@@ -30,6 +31,7 @@ export async function atualizarPerfil(
                 email: dados.email,
                 telefone: dados.telefone,
                 foto: dados.foto,
+                crn: dados.crn ?? null,
             }),
         }
     );

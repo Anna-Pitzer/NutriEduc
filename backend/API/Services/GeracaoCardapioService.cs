@@ -107,7 +107,7 @@ public sealed class GeracaoCardapioService
         return Resultado<ParametroGeracaoDTO>.Ok(ParaDTO(parametro));
     }
 
-    public Resultado<GeracaoCardapioDTO> Gerar(GerarCardapioDTO dto)
+    public Resultado<GeracaoCardapioDTO> Gerar(GerarCardapioDTO dto, int nutricionistaId)
     {
         // 1. Parâmetros básicos.
         if (dto.UnidadeId <= 0)
@@ -122,12 +122,13 @@ public sealed class GeracaoCardapioService
             return Resultado<GeracaoCardapioDTO>.Invalido(
                 "Parâmetros de geração não configurados para a unidade.");
 
-        // 2. Nutricionista: papel, ativo, mesma unidade e CRN válido (RF2), antes de carregar catálogo.
-        if (dto.NutricionistaId <= 0)
+        // 2. Nutricionista da sessão: papel, ativo, mesma unidade e CRN válido (RF2),
+        // antes de carregar catálogo. A autoria vem do perfil, nunca do corpo do pedido.
+        if (nutricionistaId <= 0)
             return Resultado<GeracaoCardapioDTO>.Invalido(
-                "Selecione a nutricionista responsável pelo cardápio.");
+                "Sessão inválida: nutricionista não identificada.");
 
-        var nutricionista = _usuarios.GetById(dto.NutricionistaId);
+        var nutricionista = _usuarios.GetById(nutricionistaId);
         var motivoDaNutricionista = ValidacaoDeNutricionista.Motivo(nutricionista, dto.UnidadeId);
 
         if (motivoDaNutricionista is not null)

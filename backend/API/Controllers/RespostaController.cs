@@ -21,6 +21,8 @@ public abstract class RespostaController : ControllerBase
             ResultadoStatus.Invalido => BadRequest(new { erro = resultado.Erro }),
             ResultadoStatus.Proibido => Forbid(),
             ResultadoStatus.NaoEncontrado => NotFound(new { erro = resultado.Erro }),
+            ResultadoStatus.LimiteExcedido => StatusCode(
+                StatusCodes.Status413PayloadTooLarge, new { erro = resultado.Erro }),
             _ => Conflict(new { erro = resultado.Erro })
         };
     }

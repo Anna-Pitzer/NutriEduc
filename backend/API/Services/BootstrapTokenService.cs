@@ -68,7 +68,7 @@ public sealed class BootstrapTokenService
             HashDeToken.Criar(valor),
             escopo.UsuarioId,
             agora,
-            agora.AddMinutes(TokenDeCadastro.ValidadeEmMinutos));
+            agora.AddMinutes(30));
 
         _unidadeDeTrabalho.ExecutarEmTransacao(() => _tokens.Add(token));
 

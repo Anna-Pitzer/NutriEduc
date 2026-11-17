@@ -21,7 +21,7 @@ public sealed class SolicitacaoService
     private readonly IEscolaRepository _escolas;
     private readonly IUsuarioRepository _usuarios;
     private readonly IUnidadeDeTrabalho _unidadeDeTrabalho;
-    private readonly AlunoService _alunoService;
+    private readonly IRestricaoRepository _restricoes;
     private readonly NotificacaoService _notificacoes;
 
     public SolicitacaoService(
@@ -31,7 +31,7 @@ public sealed class SolicitacaoService
         IEscolaRepository escolas,
         IUsuarioRepository usuarios,
         IUnidadeDeTrabalho unidadeDeTrabalho,
-        AlunoService alunoService,
+        IRestricaoRepository restricoes,
         NotificacaoService notificacoes)
     {
         _solicitacoes = solicitacoes;
@@ -40,8 +40,21 @@ public sealed class SolicitacaoService
         _escolas = escolas;
         _usuarios = usuarios;
         _unidadeDeTrabalho = unidadeDeTrabalho;
-        _alunoService = alunoService;
+        _restricoes = restricoes;
         _notificacoes = notificacoes;
+    }
+
+    /// <summary>
+    /// Carrega apenas as restrições ativas referenciadas pelo nome informado. O serviço não
+    /// decide o que é válido: entrega o catálogo ao domínio (<see cref="EfeitosDaSolicitacao"/>).
+    /// </summary>
+    private IReadOnlyList<RestricaoAlimentar> CatalogoAtivoPara(string? restricao)
+    {
+        var informados = CatalogoDeRestricoes.NomesInformados(new[] { restricao ?? string.Empty });
+
+        return informados.Count == 0
+            ? Array.Empty<RestricaoAlimentar>()
+            : _restricoes.ObterAtivasPorNomes(CatalogoDeRestricoes.NomesNormalizados(informados));
     }
 
     // ---------- Criação ----------
@@ -382,14 +395,16 @@ public sealed class SolicitacaoService
                 "Aluno da solicitação não encontrado.");
         }
 
-        var aplicacao = _alunoService.MarcarAnafilaxia(
-            aluno,
-            NomeDoAutor(escopo),
-            $"Solicitacao:{solicitacao.Id}");
-
-        if (aplicacao.Status != ResultadoStatus.Ok)
+        try
         {
-            return Resultado<SolicitacaoDTO>.Invalido(aplicacao.Erro!);
+            EfeitosDaSolicitacao.MarcarAnafilaxia(
+                aluno,
+                NomeDoAutor(escopo),
+                $"Solicitacao:{solicitacao.Id}");
+        }
+        catch (ArgumentException excecao)
+        {
+            return Resultado<SolicitacaoDTO>.Invalido(excecao.Message);
         }
 
         _unidadeDeTrabalho.ExecutarEmTransacao(() => _alunos.UpdateAluno(aluno));
@@ -438,28 +453,33 @@ public sealed class SolicitacaoService
                     "Aluno da solicitação não encontrado.");
             }
 
-            var aplicacao = _alunoService.AplicarRestricaoAprovada(
-                aluno,
-                solicitacao.RestricaoNome ?? string.Empty,
-                autor);
-
-            if (aplicacao.Status != ResultadoStatus.Ok)
+            try
             {
-                return Resultado<SolicitacaoDTO>.Invalido(aplicacao.Erro!);
+                EfeitosDaSolicitacao.AplicarRestricao(
+                    aluno,
+                    solicitacao.RestricaoNome ?? string.Empty,
+                    CatalogoAtivoPara(solicitacao.RestricaoNome),
+                    autor);
+            }
+            catch (ArgumentException excecao)
+            {
+                return Resultado<SolicitacaoDTO>.Invalido(excecao.Message);
             }
 
             // O solicitante informou anafilaxia: a marcação é aplicada ao aluno junto com a
             // restrição, na mesma transação (Spec 035, revisão).
             if (solicitacao.Anafilaxia)
             {
-                var anafilaxia = _alunoService.MarcarAnafilaxia(
-                    aluno,
-                    autor,
-                    $"Solicitacao:{solicitacao.Id}");
-
-                if (anafilaxia.Status != ResultadoStatus.Ok)
+                try
                 {
-                    return Resultado<SolicitacaoDTO>.Invalido(anafilaxia.Erro!);
+                    EfeitosDaSolicitacao.MarcarAnafilaxia(
+                        aluno,
+                        autor,
+                        $"Solicitacao:{solicitacao.Id}");
+                }
+                catch (ArgumentException excecao)
+                {
+                    return Resultado<SolicitacaoDTO>.Invalido(excecao.Message);
                 }
             }
         }

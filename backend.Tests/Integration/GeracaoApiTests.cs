@@ -170,7 +170,7 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Gerar_ComParametrosValidos_RetornaCardapioDeterministico()
     {
-        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
+        var (client, _, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
         var categoriaId = await CriarCategoria(client, $"Categoria {Guid.NewGuid():N}");
 
         await CriarAlimento(client, categoriaId, $"Arroz {Guid.NewGuid():N}", 130m);
@@ -183,8 +183,8 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
 
         Assert.Equal(HttpStatusCode.OK, parametros.StatusCode);
 
-        var corpoGerado = await Gerar(client, unidadeId, nutricionistaId, seed: 42);
-        var novamente = await Gerar(client, unidadeId, nutricionistaId, seed: 42);
+        var corpoGerado = await Gerar(client, unidadeId, seed: 42);
+        var novamente = await Gerar(client, unidadeId, seed: 42);
 
         Assert.Equal(corpoGerado.GetProperty("seed").GetInt32(), novamente.GetProperty("seed").GetInt32());
         Assert.Equal(
@@ -202,12 +202,11 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
     [Fact]
     public async Task Gerar_SemParametros_Retorna400()
     {
-        var (client, nutricionistaId, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
+        var (client, _, unidadeId) = await _factory.CriarNutricionistaComUnidadeAsync();
 
         var resposta = await client.PostAsJsonAsync("/api/cardapios/gerar", new
         {
             unidadeId,
-            nutricionistaId,
             nome = "Semana 12",
             periodo = new { inicio = "2026-11-02", fim = "2026-11-06" },
             seed = 42
@@ -237,13 +236,11 @@ public class GeracaoApiTests : IClassFixture<ApiFactory>
     private static async Task<JsonElement> Gerar(
         HttpClient client,
         int unidadeId,
-        int nutricionistaId,
         int seed)
     {
         var resposta = await client.PostAsJsonAsync("/api/cardapios/gerar", new
         {
             unidadeId,
-            nutricionistaId,
             nome = $"Semana {Guid.NewGuid():N}",
             periodo = new { inicio = "2026-11-02", fim = "2026-11-06" },
             seed

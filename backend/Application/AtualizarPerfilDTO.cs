@@ -14,4 +14,10 @@ public class AtualizarPerfilDTO
     public string Email { get; set; } = "";
     public string? Telefone { get; set; }
     public string? Foto { get; set; }
+
+    /// <summary>
+    /// CRN informado pelo próprio nutricionista no perfil. Vazio preserva o valor atual;
+    /// papéis que não são nutrição não possuem CRN.
+    /// </summary>
+    public string? Crn { get; set; }
 }

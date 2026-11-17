@@ -1,4 +1,4 @@
-import { extrairErro, ErroRequisicao } from "./erroApi";
+import { extrairFalha, ErroRequisicao } from "./erroApi";
 
 const ApiURL = "";
 
@@ -66,15 +66,15 @@ export interface GeracaoCardapio {
 
 export interface GerarCardapioEntrada {
     unidadeId: number;
-    /** Nutricionista que elaborou o cardápio; obrigatória na geração. */
-    nutricionistaId: number;
     nome: string;
     periodo: { inicio: string; fim: string };
     seed?: number;
 }
 
 async function falhar(resposta: Response, padrao: string): Promise<never> {
-    throw new ErroRequisicao(await extrairErro(resposta, padrao), resposta.status);
+    const { mensagem, detalhes } = await extrairFalha(resposta, padrao);
+
+    throw new ErroRequisicao(mensagem, resposta.status, detalhes);
 }
 
 export async function obterParametrosGeracao(unidadeId: number): Promise<ParametroGeracao> {

@@ -272,7 +272,12 @@ public sealed class CardapioService
             return Resultado<CardapioDTO>.Proibido();
         }
 
-        var nutricionista = RetratoDaNutricionista(dto.NutricionistaId, dto.UnidadeId, out var motivo);
+        // A autoria vem do perfil da nutricionista autenticada; o campo explícito continua
+        // aceito para chamadas administrativas e testes.
+        var nutricionista = RetratoDaNutricionista(
+            dto.NutricionistaId ?? escopo.UsuarioId,
+            dto.UnidadeId,
+            out var motivo);
 
         if (nutricionista is null)
         {
@@ -547,11 +552,13 @@ public sealed class CardapioService
 
     // ---------- Apoio ----------
 
+    /// <summary>
+    /// Porte de leitura da matriz (Spec 028; ADR-021). A checagem fina por tipo de cardápio
+    /// e escopo continua em <c>_autorizacao.Verificar</c> com <c>RecursoDo(cardapio)</c>.
+    /// </summary>
     private static bool PodeLer(EscopoUsuario escopo) =>
-        escopo.Papel is PapelUsuario.AdminSecretaria
-            or PapelUsuario.AdminEscola
-            or PapelUsuario.Nutricionista
-            or PapelUsuario.Merendeira;
+        MatrizDePermissoes.Nivel(Recurso.CardapioGeral, escopo.Papel)
+            .Permite(OperacaoDeAcesso.Ler);
 
     /// <summary>Snapshot do autor do evento: o nome é copiado, nunca referenciado por FK.</summary>
     private string NomeDoAutor(EscopoUsuario escopo) =>

@@ -1,10 +1,15 @@
 import { useEffect } from "react";
-import type { AlunoResposta } from "../services/AlunoApi";
+
+/** Mínimo que o seletor precisa de um filho; qualquer listagem de aluno serve. */
+export interface FilhoSelecionavel {
+    id: number;
+    nome: string;
+}
 
 /**
- * Seletor único de filho (Spec 035, RF26). Os alunos vêm de `GET /api/aluno`, que já
- * devolve apenas os filhos vinculados ao responsável autenticado. Com um único filho o
- * valor é pré-selecionado; com vários, a escolha é explícita.
+ * Seletor único de filho (Spec 035, RF26). As listagens já devolvem apenas os filhos
+ * vinculados ao responsável autenticado. Com um único filho o valor é pré-selecionado;
+ * com vários, a escolha é explícita.
  */
 export function SeletorDeFilho({
     filhos,
@@ -13,7 +18,7 @@ export function SeletorDeFilho({
     disabled = false,
     id = "seletor-filho",
 }: {
-    filhos: AlunoResposta[];
+    filhos: FilhoSelecionavel[];
     value: number | null;
     onChange: (id: number) => void;
     disabled?: boolean;

@@ -12,6 +12,10 @@ import {
     type TokenGerado,
 } from "../../services/BootstrapApi";
 import { LayoutSecretaria } from "./layoutSecretaria";
+import {
+    buscarPainelSecretaria,
+    type PainelSecretaria,
+} from "../../services/PainelApi";
 
 /** Contagem regressiva em mm:ss, nunca negativa. */
 function formatarRestante(milissegundos: number) {
@@ -33,6 +37,8 @@ export function HomeSecretaria() {
     const [gerando, setGerando] = useState(false);
     const [copiado, setCopiado] = useState(false);
     const [erro, setErro] = useState("");
+    const [painel, setPainel] = useState<PainelSecretaria | null>(null);
+    const [painelErro, setPainelErro] = useState("");
 
     useEffect(() => {
         let ativo = true;
@@ -75,6 +81,42 @@ export function HomeSecretaria() {
         };
     }, [logout]);
 
+    // Indicadores agregados da unidade (Spec 025, RF1). Consulta separada para que uma
+    // falha no painel não impeça a gestão de escolas, usuários e token.
+    useEffect(() => {
+        let ativo = true;
+
+        async function carregarPainel() {
+            try {
+                const dados = await buscarPainelSecretaria();
+
+                if (ativo) {
+                    setPainel(dados);
+                    setPainelErro("");
+                }
+            } catch (falha) {
+                if (naoAutorizado(falha)) {
+                    void logout();
+                    return;
+                }
+
+                if (ativo) {
+                    setPainelErro(
+                        falha instanceof Error
+                            ? falha.message
+                            : "Não foi possível carregar os indicadores.",
+                    );
+                }
+            }
+        }
+
+        void carregarPainel();
+
+        return () => {
+            ativo = false;
+        };
+    }, [logout]);
+
     // Relógio da contagem regressiva: só existe enquanto há token ativo.
     useEffect(() => {
         if (!token?.ativo) {
@@ -88,6 +130,25 @@ export function HomeSecretaria() {
 
     const escolasAtivas = escolas.filter((escola) => escola.ativa).length;
     const usuariosAtivos = usuarios.filter((usuario) => usuario.ativo).length;
+
+    const indicadores = painel
+        ? [
+              { rotulo: "Alunos cadastrados", valor: painel.alunos },
+              {
+                  rotulo: "Cardápios publicados (7 dias)",
+                  valor: painel.cardapiosPublicadosUltimosSeteDias,
+              },
+              { rotulo: "Ocorrências abertas", valor: painel.ocorrenciasAbertas },
+              { rotulo: "Solicitações pendentes", valor: painel.solicitacoesPendentes },
+              {
+                  rotulo: "Usuários ativos na unidade",
+                  valor: painel.usuariosAtivosPorPapel.reduce(
+                      (total, item) => total + item.total,
+                      0,
+                  ),
+              },
+          ]
+        : [];
 
     const atalhos = [
         {
@@ -152,144 +213,238 @@ export function HomeSecretaria() {
 
     return (
         <LayoutSecretaria>
-            <h1 className="text-2xl font-bold text-vermelho">Secretaria</h1>
-            <p className="mt-2 text-sm text-gray-500">
-                Gerencie a rede: escolas, unidades, contas de acesso e o cadastro por token.
-            </p>
-
-            {erro && (
-                <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">
-                    {erro}
+            <div className="bg-white">
+                <h1 className="text-2xl font-bold text-vermelho">Secretaria</h1>
+                <p className="mt-2 text-sm text-gray-500">
+                    Gerencie a rede: escolas, unidades, contas de acesso e o cadastro por token.
                 </p>
-            )}
 
-            {carregando ? (
-                <p className="mt-6 text-sm text-gray-500">Carregando...</p>
-            ) : (
-                <>
-                    <section className="mt-6 rounded-2xl bg-white p-6 shadow-[0_5px_20px_rgba(1,1,1,0.1)]">
-                        <div className="flex items-center gap-3">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-roxo/10 text-roxo">
-                                <KeyRound size={20} />
-                            </span>
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-800">
-                                    Cadastro de administrador por token
-                                </h2>
-                                <p className="text-sm text-gray-500">
-                                    Gere um token de <strong>30 minutos</strong> para criar outro
-                                    administrador da sua unidade. O token vale uma única vez.
-                                </p>
-                            </div>
-                        </div>
+                {erro && (
+                    <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">
+                        {erro}
+                    </p>
+                )}
 
-                        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <span
-                                className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${tokenAtivo
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-gray-200 text-gray-600"
-                                    }`}
-                            >
-                                {tokenAtivo ? "Token ativo" : "Sem token válido"}
-                            </span>
-
-                            <div className="flex flex-col items-start gap-2 sm:items-end">
-                                <button
-                                    type="button"
-                                    onClick={gerarToken}
-                                    disabled={tokenAtivo || gerando}
-                                    className={`flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${tokenAtivo
-                                        ? "border-gray-200 text-gray-500"
-                                        : "border-green-200 text-green-700 hover:bg-green-50"
-                                        }`}
-                                >
-                                    <KeyRound size={16} />
-                                    {gerando
-                                        ? "Gerando..."
-                                        : tokenAtivo
-                                            ? `Aguarde ${formatarRestante(restante)}`
-                                            : "Gerar token de 30 minutos"}
-                                </button>
-
-                                <Link
-                                    to="/bootstrap"
-                                    className="text-xs text-roxo underline hover:no-underline"
-                                >
-                                    Abrir a página de cadastro
-                                </Link>
-                            </div>
-                        </div>
-
-                        {tokenGerado !== null && (
-                            <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4">
-                                <p className="text-sm font-medium text-green-800">
-                                    Copie agora: este token não será exibido novamente.
-                                </p>
-
-                                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                                    <code className="min-w-0 flex-1 break-all rounded-xl bg-white px-3 py-2 text-xs text-gray-700">
-                                        {tokenGerado.token}
-                                    </code>
-
-                                    <button
-                                        type="button"
-                                        onClick={copiarToken}
-                                        className="flex items-center justify-center gap-2 rounded-xl border border-green-300 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100"
-                                    >
-                                        <Copy size={16} />
-                                        {copiado ? "Copiado" : "Copiar"}
-                                    </button>
-                                </div>
-
-                                <p className="mt-2 text-xs text-green-700">
-                                    Válido até{" "}
-                                    {new Date(tokenGerado.expiraEm).toLocaleTimeString("pt-BR", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    })}
-                                    . Depois disso o botão volta a liberar um novo token.
-                                </p>
-                            </div>
-                        )}
-
-                        {!tokenAtivo && tokenGerado === null && (
-                            <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                                Com o botão desabilitado, o cadastro fica bloqueado até o token
-                                expirar. Sua conta precisa estar vinculada a uma unidade para gerar.
+                {carregando ? (
+                    <p className="mt-6 text-sm text-gray-500">Carregando...</p>
+                ) : (
+                    <>
+                        <section className="mt-6 rounded-2xl bg-white p-6 shadow-[0_5px_20px_rgba(1,1,1,0.1)]">
+                            <h2 className="text-lg font-semibold text-gray-800">
+                                Visão da unidade
+                            </h2>
+                            <p className="text-sm text-gray-500">
+                                {painel
+                                    ? painel.unidade
+                                    : "Indicadores calculados sobre a unidade da sua sessão."}
                             </p>
-                        )}
-                    </section>
 
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        {atalhos.map((atalho) => {
-                            const Icone = atalho.icone;
-
-                            return (
-                                <Link
-                                    key={atalho.caminho}
-                                    to={atalho.caminho}
-                                    className="group flex items-center justify-between rounded-2xl bg-white p-5 shadow-[0_5px_20px_rgba(1,1,1,0.1)] transition-shadow hover:shadow-[0_8px_25px_rgba(1,1,1,0.15)]"
+                            {painelErro && (
+                                <p
+                                    role="alert"
+                                    className="mt-3 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700"
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-roxo/10 text-roxo">
-                                            <Icone size={22} />
-                                        </span>
-                                        <div>
-                                            <h2 className="font-semibold text-gray-800">{atalho.titulo}</h2>
-                                            <p className="text-sm text-gray-500">{atalho.descricao}</p>
-                                        </div>
+                                    {painelErro}
+                                </p>
+                            )}
+
+                            {painel && (
+                                <>
+                                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                        {indicadores.map((indicador) => (
+                                            <div
+                                                key={indicador.rotulo}
+                                                className="rounded-xl border border-gray-100 bg-[#FAF9F5] p-4"
+                                            >
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                    {indicador.rotulo}
+                                                </p>
+                                                <p className="mt-1 text-2xl font-bold text-roxo">
+                                                    {indicador.valor}
+                                                </p>
+                                            </div>
+                                        ))}
                                     </div>
 
-                                    <ChevronRight
-                                        size={20}
-                                        className="text-gray-300 transition-transform group-hover:translate-x-1 group-hover:text-roxo"
-                                    />
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </>
-            )}
+                                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                        <div>
+                                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Alunos por escola
+                                            </p>
+                                            {painel.alunosPorEscola.length === 0 ? (
+                                                <p className="mt-1 text-sm text-gray-500">
+                                                    Nenhum aluno cadastrado na unidade.
+                                                </p>
+                                            ) : (
+                                                <ul className="mt-2 space-y-1">
+                                                    {painel.alunosPorEscola.map((item) => (
+                                                        <li
+                                                            key={`${item.escolaId ?? "sem"}-${item.escola}`}
+                                                            className="flex items-center justify-between rounded-lg bg-white px-3 py-1.5 text-sm text-gray-700"
+                                                        >
+                                                            <span>{item.escola}</span>
+                                                            <span className="font-semibold text-roxo">
+                                                                {item.total}
+                                                            </span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                Usuários ativos por papel
+                                            </p>
+                                            {painel.usuariosAtivosPorPapel.length === 0 ? (
+                                                <p className="mt-1 text-sm text-gray-500">
+                                                    Nenhum usuário ativo na unidade.
+                                                </p>
+                                            ) : (
+                                                <ul className="mt-2 space-y-1">
+                                                    {painel.usuariosAtivosPorPapel.map((item) => (
+                                                        <li
+                                                            key={item.papel}
+                                                            className="flex items-center justify-between rounded-lg bg-white px-3 py-1.5 text-sm text-gray-700"
+                                                        >
+                                                            <span>{item.papel}</span>
+                                                            <span className="font-semibold text-roxo">
+                                                                {item.total}
+                                                            </span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </section>
+
+                        <section className="mt-6 rounded-2xl bg-white p-6 shadow-[0_5px_20px_rgba(1,1,1,0.1)]">
+                            <div className="flex items-center gap-3">
+                                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-roxo/10 text-roxo">
+                                    <KeyRound size={20} />
+                                </span>
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-800">
+                                        Cadastro de administrador por token
+                                    </h2>
+                                    <p className="text-sm text-gray-500">
+                                        Gere um token de <strong>30 minutos</strong> para criar outro
+                                        administrador da sua unidade. O token vale uma única vez.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <span
+                                    className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${tokenAtivo
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-gray-200 text-gray-600"
+                                        }`}
+                                >
+                                    {tokenAtivo ? "Token ativo" : "Sem token válido"}
+                                </span>
+
+                                <div className="flex flex-col items-start gap-2 sm:items-end">
+                                    <button
+                                        type="button"
+                                        onClick={gerarToken}
+                                        disabled={tokenAtivo || gerando}
+                                        className={`flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${tokenAtivo
+                                            ? "border-gray-200 text-gray-500"
+                                            : "border-green-200 text-green-700 hover:bg-green-50"
+                                            }`}
+                                    >
+                                        <KeyRound size={16} />
+                                        {gerando
+                                            ? "Gerando..."
+                                            : tokenAtivo
+                                                ? `Aguarde ${formatarRestante(restante)}`
+                                                : "Gerar token de 30 minutos"}
+                                    </button>
+
+                                    <Link
+                                        to="/bootstrap"
+                                        className="text-xs text-roxo underline hover:no-underline"
+                                    >
+                                        Abrir a página de cadastro
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {tokenGerado !== null && (
+                                <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4">
+                                    <p className="text-sm font-medium text-green-800">
+                                        Copie agora: este token não será exibido novamente.
+                                    </p>
+
+                                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <code className="min-w-0 flex-1 break-all rounded-xl bg-white px-3 py-2 text-xs text-gray-700">
+                                            {tokenGerado.token}
+                                        </code>
+
+                                        <button
+                                            type="button"
+                                            onClick={copiarToken}
+                                            className="flex items-center justify-center gap-2 rounded-xl border border-green-300 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100"
+                                        >
+                                            <Copy size={16} />
+                                            {copiado ? "Copiado" : "Copiar"}
+                                        </button>
+                                    </div>
+
+                                    <p className="mt-2 text-xs text-green-700">
+                                        Válido até{" "}
+                                        {new Date(tokenGerado.expiraEm).toLocaleTimeString("pt-BR", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}
+                                        . Depois disso o botão volta a liberar um novo token.
+                                    </p>
+                                </div>
+                            )}
+
+                            {!tokenAtivo && tokenGerado === null && (
+                                <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                    Com o botão desabilitado, o cadastro fica bloqueado até o token
+                                    expirar. Sua conta precisa estar vinculada a uma unidade para gerar.
+                                </p>
+                            )}
+                        </section>
+
+                        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            {atalhos.map((atalho) => {
+                                const Icone = atalho.icone;
+
+                                return (
+                                    <Link
+                                        key={atalho.caminho}
+                                        to={atalho.caminho}
+                                        className="group flex items-center justify-between rounded-2xl bg-white p-5 shadow-[0_5px_20px_rgba(1,1,1,0.1)] transition-shadow hover:shadow-[0_8px_25px_rgba(1,1,1,0.15)]"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-roxo/10 text-roxo">
+                                                <Icone size={22} />
+                                            </span>
+                                            <div>
+                                                <h2 className="font-semibold text-gray-800">{atalho.titulo}</h2>
+                                                <p className="text-sm text-gray-500">{atalho.descricao}</p>
+                                            </div>
+                                        </div>
+
+                                        <ChevronRight
+                                            size={20}
+                                            className="text-gray-300 transition-transform group-hover:translate-x-1 group-hover:text-roxo"
+                                        />
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+            </div>
         </LayoutSecretaria>
     );
 }

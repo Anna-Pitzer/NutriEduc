@@ -1,4 +1,4 @@
-<img width="100%" src="https://capsule-render.vercel.app/api?type=slice&height=150&color=D92567&reversal=false"/>
+d<img width="100%" src="https://capsule-render.vercel.app/api?type=slice&height=150&color=D92567&reversal=false"/>
 
 # NutriEduc
 
@@ -167,7 +167,7 @@ Os caminhos abaixo são definidos pelos controllers atuais. O ASP.NET Core aceit
 | `GET` | `/api/usuario/me` | Retorna o usuário da sessão | Sim |
 | `POST` | `/api/usuario/logout` | Encerra a sessão | Sim |
 | `GET` | `/api/usuario/perfil/{id}` | Consulta perfil pelo ID | Sim; o ID deve corresponder à sessão |
-| `PUT` | `/api/usuario/perfil/{id}` | Atualiza o perfil do usuário autenticado | Sim; o ID deve corresponder à sessão |
+| `PUT` | `/api/usuario/perfil/{id}` | Atualiza o perfil do usuário autenticado; aceita `crn` informado pelo próprio nutricionista | Sim; o ID deve corresponder à sessão |
 
 A autenticação usa cookie HTTP-only chamado `NutriEduc.Auth`, com validade de oito horas. As chamadas feitas diretamente pelo navegador devem incluir credenciais (`credentials: "include"`).
 
@@ -241,7 +241,7 @@ O cardápio vive em `Cardapios`, `Refeicoes` e `ItensRefeicao`. O período é um
 | `GET` | `/api/cardapios/contexto-restricoes` | Alunos ativos e restrições por escola da unidade; aceita `escolaId` | Sim; `Nutricionista` da unidade e `AdminSecretaria`/`AdminEscola` no escopo |
 | `GET` | `/api/cardapios/{id}/adaptados` | Versões adaptadas da origem, com escola, conjunto, status, substituições e pendências | Sim; escopo da unidade ou da própria escola |
 | `GET` | `/api/cardapios/{id}/compatibilidade` | Análise de compatibilidade com as restrições dos alunos (bloqueantes e alertas) | Sim; `Nutricionista` ou `Merendeira` da unidade |
-| `POST` | `/api/cardapios` | Cria o rascunho geral e, na mesma transação, uma versão adaptada por `(escola, conjunto)`; exige `nutricionistaId` com CRN válido e aceita `confirmarIncompatibilidades` | Sim; só `Nutricionista` |
+| `POST` | `/api/cardapios` | Cria o rascunho geral e, na mesma transação, uma versão adaptada por `(escola, conjunto)`; a autora vem da sessão (CRN do perfil), com `nutricionistaId` opcional, e aceita `confirmarIncompatibilidades` | Sim; só `Nutricionista` |
 | `POST` | `/api/cardapios/{id}/adaptar` | Adapta o geral para uma escola; idempotente por `(origem, escola, conjunto)` e limitada a 50 versões (`422`) | Sim; só `Nutricionista` com CRN |
 | `PUT` | `/api/cardapios/{id}` | Substitui nome, período e refeições de um rascunho de forma atômica | Sim; só `Nutricionista` |
 | `POST` | `/api/cardapios/{id}/duplicar` | Copia a composição para um novo período como rascunho | Sim; só `Nutricionista` |
@@ -300,6 +300,26 @@ O fluxo vive em `Ocorrencias` e `HistoricoOcorrencias`. A ocorrência tem um `Ti
 
 A ocorrência não é apagada; o encerramento é `Arquivada`. O "mesmo dia" do cancelamento é o dia civil de `America/Sao_Paulo` (UTC-3), não o dia UTC. Filtro de `escolaId`/`unidadeId` fora do alcance da sessão devolve `403`; recurso de outra unidade devolve `404`. A resposta nunca expõe identificador de autor além do nome (`RF10`).
 
+### Relatórios
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/relatorios/{tipo}/preview` | Pré-visualização com até 200 linhas; aceita `de`, `ate`, `unidadeId` e `escolaId` | Sessão; `AdminSecretaria`, `AdminEscola` ou `Nutricionista` no escopo |
+| `GET` | `/api/relatorios/{tipo}/exportar` | Exporta o conjunto completo do filtro em XLSX; acima de 50.000 linhas devolve `413` | Sessão; mesmo escopo da pré-visualização |
+
+Tipos aceitos: `Cardapios`, `AlunosRestricoes`, `Ocorrencias`, `SolicitacoesFeedbacks` e `IndicadoresAdministrativos`. Sem período informado, vale a janela dos últimos 30 dias.
+
+### Painel por papel
+
+Cada papel tem uma leitura de entrada, sempre escopada à sessão: a secretaria vê as contagens da própria unidade (sem dado pessoal de aluno), a merendeira vê o cardápio publicado do dia com a contagem de alunos com restrição por item (nunca quem), e o responsável vê os filhos vinculados e o relatório do próprio filho. Filho com restrição não recebe o cardápio geral no painel: o painel aponta a versão servida (Spec 029). Aluno fora do vínculo responde `403`, exista ou não.
+
+| Método | Caminho | Descrição | Autenticação |
+| --- | --- | --- | --- |
+| `GET` | `/api/painel/secretaria` | Contagens da unidade da sessão: alunos, alunos por escola, usuários ativos por papel, cardápios publicados nos últimos sete dias, ocorrências abertas e solicitações pendentes | Sessão; só `AdminSecretaria` |
+| `GET` | `/api/painel/merendeira` | Cardápio geral publicado da unidade na data (padrão: hoje), com `alunosComRestricao` por item | Sessão; só `Merendeira` |
+| `GET` | `/api/painel/familia` | Filhos vinculados, com escola, unidade, restrições e cardápio do dia | Sessão; só `Responsavel` |
+| `GET` | `/api/painel/familia/{alunoId}/relatorio` | Restrições vigentes, alterações de restrição e ocorrências do filho no período (padrão: 30 dias; máximo: 366) | Sessão; só `Responsavel` vinculado |
+
 ### Feedback
 
 O feedback fecha o ciclo de comunicação: merendeira, responsável e escola criam; nutrição e escola respondem; o autor encerra o próprio feedback respondido. O status segue `Aberto → Respondido → Encerrado`. A escola é derivada do autor (quando tem escola) ou do aluno referenciado; quando `alunoId` é informado, o vínculo é validado e `AlunoId`/`AlunoNome` são persistidos como snapshot. O escopo de leitura respeita unidade, escola e vínculo (Spec 028).
@@ -345,13 +365,13 @@ recalculado pelo `CalculoNutricional` da Spec 012 antes de persistir.
 | --- | --- | --- | --- |
 | `GET` | `/api/unidades/{unidadeId}/parametros-geracao` | Parâmetros de geração da unidade | `AdminSecretaria` ou `Nutricionista` |
 | `PUT` | `/api/unidades/{unidadeId}/parametros-geracao` | Cria ou altera os parâmetros de geração | Sim; só `Nutricionista` |
-| `GET` | `/api/nutricionistas` | Lista as nutricionistas ativas da unidade com CRN válido (nome, e-mail, CPF e CRN) para escolher a autora do cardápio | Sim; `Nutricionista` da unidade ou `AdminSecretaria` |
-| `POST` | `/api/cardapios/gerar` | Gera o geral e as versões adaptadas por escola/conjunto na mesma transação | Sim; só `Nutricionista` |
+| `GET` | `/api/nutricionistas` | Lista as nutricionistas ativas da unidade com CRN válido (nome, e-mail, CPF e CRN) | Sim; `Nutricionista` da unidade ou `AdminSecretaria` |
+| `POST` | `/api/cardapios/gerar` | Gera o geral e as versões adaptadas por escola/conjunto na mesma transação, usando a nutricionista da sessão (CRN do perfil) como autora | Sim; só `Nutricionista` |
 
 A resposta traz `cardapioGeralId`, `seed`, `tentativasPorRefeicao`, `totaisPorRefeicao`,
 `versaoAdaptadaIds` (com `escolaId`, `conjunto`, `status` e `motivo`), `avisos` e
 `diagnostico`. A geração responde `400` sem parâmetros configurados, com categoria obrigatória
-inexistente/inativa ou com nutricionista inválida (outra unidade ou sem CRN), e `422`
+inexistente/inativa ou com a nutricionista da sessão fora da unidade ou sem CRN no perfil, e `422`
 (`{ erro, detalhes }`) quando a geração é impossível — o `detalhes` traz o diagnóstico por
 refeição (faixa alcançável, categoria ausente, candidatos e tentativas). Nenhum cardápio
 parcial é salvo. `AdminEscola` recebe `403` por não ter escopo por unidade.
@@ -447,7 +467,7 @@ Unidade é da secretaria, **não pertence a escola**: o nome é único na rede. 
 | `GET` | `/api/usuarios` | Lista usuários com filtros `papel`, `escolaId`, `unidadeId`, `ativo`, `busca`; expõe `crn` e `crnValido` | `AdminSecretaria` (própria unidade) ou `AdminEscola` (leitura da própria escola) |
 | `GET` | `/api/usuarios/diagnostico-crn` | Lista nutricionistas ativas sem CRN ou com CRN inválido (diagnóstico de legado) | `AdminSecretaria` |
 | `POST` | `/api/usuarios` | Cria usuário com papel; CRN obrigatório para `Nutricionista` | `AdminSecretaria` |
-| `PUT` | `/api/usuarios/{id}` | Atualiza dados do próprio perfil; papel e escopo só pelo ADM | Dono do perfil (dados próprios) ou `AdminSecretaria` (papel/escopo) |
+| `PUT` | `/api/usuarios/{id}` | Atualiza dados do próprio perfil, inclusive o CRN do nutricionista; papel e escopo só pelo ADM | Dono do perfil (dados próprios) ou `AdminSecretaria` (papel/escopo) |
 | `POST` | `/api/usuarios/{id}/ativar` | Reativa usuário | `AdminSecretaria` |
 | `POST` | `/api/usuarios/{id}/desativar` | Desativa usuário e invalida a sessão na requisição seguinte | `AdminSecretaria` |
 | `DELETE` | `/api/usuarios/{id}` | Exclui conta sem vínculo nem token emitido; bloqueia própria conta e último admin (`409`) | `AdminSecretaria` |

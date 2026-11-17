@@ -11,7 +11,8 @@ public enum ResultadoStatus
     Invalido,
     Proibido,
     NaoEncontrado,
-    Conflito
+    Conflito,
+    LimiteExcedido
 }
 
 public sealed record Resultado<T>(ResultadoStatus Status, T? Valor, string? Erro)
@@ -33,4 +34,8 @@ public sealed record Resultado<T>(ResultadoStatus Status, T? Valor, string? Erro
 
     public static Resultado<T> Conflito(string erro) =>
         new(ResultadoStatus.Conflito, default, erro);
+
+    /// <summary>Conjunto maior que o limite aceito: responde 413 sem gerar arquivo.</summary>
+    public static Resultado<T> LimiteExcedido(string erro) =>
+        new(ResultadoStatus.LimiteExcedido, default, erro);
 }

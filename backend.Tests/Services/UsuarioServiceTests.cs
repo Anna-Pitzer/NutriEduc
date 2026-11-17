@@ -253,6 +253,77 @@ public class UsuarioServiceTests
     }
 
     [Fact]
+    public void AtualizarPerfil_DoNutricionista_AtualizaCrn()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+
+        var usuario = repositorio.GetByEmail("maria@exemplo.com")!;
+        usuario.DefinirCrn("CRN-3 12345");
+        usuario.DefinirPapel(PapelUsuario.Nutricionista, null, 1);
+        repositorio.Update(usuario);
+
+        var atualizado = servico.AtualizarPerfil(usuario.Id, new AtualizarPerfilDTO
+        {
+            Nome = "Maria Silva",
+            Email = "maria@exemplo.com",
+            Crn = "crn.3.99999"
+        });
+
+        Assert.NotNull(atualizado);
+        Assert.Equal("CRN-3-99999", atualizado!.Crn);
+    }
+
+    [Fact]
+    public void AtualizarPerfil_ComCrnDeOutroUsuario_Lanca()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+        servico.CriarUsuario(DtoUsuario(email: "outro@exemplo.com"));
+
+        var primeiro = repositorio.GetByEmail("maria@exemplo.com")!;
+        primeiro.DefinirCrn("CRN-3 12345");
+        primeiro.DefinirPapel(PapelUsuario.Nutricionista, null, 1);
+        repositorio.Update(primeiro);
+
+        var segundo = repositorio.GetByEmail("outro@exemplo.com")!;
+        segundo.DefinirCrn("CRN-3 99999");
+        segundo.DefinirPapel(PapelUsuario.Nutricionista, null, 1);
+        repositorio.Update(segundo);
+
+        Assert.Throws<ArgumentException>(() =>
+            servico.AtualizarPerfil(segundo.Id, new AtualizarPerfilDTO
+            {
+                Nome = "Outro",
+                Email = "outro@exemplo.com",
+                Crn = "CRN-3-12345"
+            }));
+
+        Assert.Equal("CRN-3-99999", repositorio.GetById(segundo.Id)!.Crn);
+    }
+
+    [Fact]
+    public void AtualizarPerfil_ComCrnEmPapelNaoNutricionista_Lanca()
+    {
+        var repositorio = new UsuarioRepositoryFake();
+        var servico = CriarServico(repositorio);
+        servico.CriarUsuario(DtoUsuario());
+        var id = repositorio.GetByEmail("maria@exemplo.com")!.Id;
+
+        var erro = Assert.Throws<ArgumentException>(() =>
+            servico.AtualizarPerfil(id, new AtualizarPerfilDTO
+            {
+                Nome = "Maria Silva",
+                Email = "maria@exemplo.com",
+                Crn = "CRN-3-12345"
+            }));
+
+        Assert.Contains("Somente nutricionistas", erro.Message);
+    }
+
+    [Fact]
     public void CriarUsuario_SemSenha_LancaENaoPersiste()
     {
         var repositorio = new UsuarioRepositoryFake();

@@ -13,10 +13,12 @@ namespace Ntc.Controllers;
 public class GeracaoController : RespostaController
 {
     private readonly GeracaoCardapioService _geracao;
+    private readonly EscopoService _escopo;
 
-    public GeracaoController(GeracaoCardapioService geracao)
+    public GeracaoController(GeracaoCardapioService geracao, EscopoService escopo)
     {
         _geracao = geracao;
+        _escopo = escopo;
     }
 
     [Authorize(Policy = "ParametroGeracaoLeitura")]
@@ -32,5 +34,14 @@ public class GeracaoController : RespostaController
     [Authorize(Policy = "Nutricionista")]
     [HttpPost("cardapios/gerar")]
     public IActionResult Gerar([FromBody] GerarCardapioDTO dto)
-        => Traduzir(_geracao.Gerar(dto), Ok);
+    {
+        var escopo = ObterEscopo(_escopo);
+
+        if (escopo is null)
+        {
+            return SessaoInvalida();
+        }
+
+        return Traduzir(_geracao.Gerar(dto, escopo.UsuarioId), Ok);
+    }
 }

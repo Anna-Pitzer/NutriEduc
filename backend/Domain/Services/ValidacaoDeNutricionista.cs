@@ -1,7 +1,6 @@
 using Ntc.Domain.Entity;
-using Ntc.Domain.Services;
 
-namespace Ntc.Application;
+namespace Ntc.Domain.Services;
 
 /// <summary>
 /// Regra única de autoria do cardápio (Spec 029, RF9 e RF17; Spec 031).
@@ -9,6 +8,9 @@ namespace Ntc.Application;
 /// A nutricionista precisa estar ativa, exercer o papel, pertencer à unidade do cardápio e
 /// ter CRN válido. Criar, adaptar e publicar usam a mesma validação; o login não é afetado
 /// pela ausência de CRN.
+///
+/// Vive no domínio porque decide sobre estado de entidade e política de negócio; a camada
+/// Application apenas orquestra (ADR-004, ADR-018).
 /// </summary>
 public static class ValidacaoDeNutricionista
 {

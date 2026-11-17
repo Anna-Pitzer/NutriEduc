@@ -1,4 +1,5 @@
 using Ntc.Application;
+using Ntc.Application.Seguranca;
 using Ntc.Domain;
 using Ntc.Domain.Entity;
 using Ntc.Domain.Interface;
@@ -300,11 +301,10 @@ public sealed class AlimentoService
     /// Leitura do catálogo segue a matriz (Spec 028): administração, escola, nutrição e
     /// merenda leem; responsável não. Escrita permanece exclusiva de nutrição.
     /// </summary>
+    /// <summary>Leitura segue a matriz autoritativa (Spec 028; ADR-021) — sem lista local de papéis.</summary>
     private static bool PodeLer(EscopoUsuario escopo) =>
-        escopo.Papel is PapelUsuario.AdminSecretaria
-            or PapelUsuario.AdminEscola
-            or PapelUsuario.Nutricionista
-            or PapelUsuario.Merendeira;
+        MatrizDePermissoes.Nivel(Recurso.CatalogoDeAlimentos, escopo.Papel)
+            .Permite(OperacaoDeAcesso.Ler);
 
     private static ValoresNutricionais ValoresDe(ValoresNutricionaisDTO? valores)
     {

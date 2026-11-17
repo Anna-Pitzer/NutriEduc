@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Ntc.Database;
+using Ntc.Exportacao;
 using Ntc.Application;
 using Ntc.Application.Seguranca;
 using Ntc.Domain.Entity;
@@ -77,6 +78,11 @@ builder.Services.AddScoped<AdaptarCardapioService>();
 builder.Services.AddScoped<CardapioServidoService>();
 builder.Services.AddScoped<CompatibilidadeService>();
 builder.Services.AddScoped<PublicacaoCardapioService>();
+builder.Services.AddScoped<IRelatorioRepository, RelatorioRepository>();
+builder.Services.AddScoped<IExportadorDeRelatorio, ExportadorXlsx>();
+builder.Services.AddScoped<RelatorioService>();
+builder.Services.AddScoped<IPainelRepository, PainelRepository>();
+builder.Services.AddScoped<PainelService>();
 builder.Services.AddScoped<IParametroGeracaoRepository, ParametroGeracaoRepository>();
 builder.Services.AddScoped<GeracaoCardapioService>();
 
@@ -235,6 +241,14 @@ builder.Services.AddAuthorization(options =>
         politica.RequireRole(
             nameof(PapelUsuario.Nutricionista),
             nameof(PapelUsuario.AdminSecretaria)));
+
+    // Painel da merendeira (Spec 025): só o próprio papel lê o cardápio do dia da unidade.
+    options.AddPolicy("Merendeira", politica =>
+        politica.RequireRole(nameof(PapelUsuario.Merendeira)));
+
+    // Painel da família (Spec 025): só o responsável; o vínculo é validado no serviço.
+    options.AddPolicy("Responsavel", politica =>
+        politica.RequireRole(nameof(PapelUsuario.Responsavel)));
 });
 
 builder.Services.AddDbContext<ConnectionContext>(options =>

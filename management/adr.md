@@ -543,3 +543,94 @@ a solicitação está em aberto ou em análise.
 - Negativo: mais uma coluna em `Solicitacoes` e uma migration (`SolicitacaoAnafilaxia`).
 - Negativo: o dado é declaratório; a confirmação clínica continua sob responsabilidade do ADM.
 
+## ADR-024: CRN preenchido no próprio perfil e autoria da geração vem da sessão
+
+**Status:** aceito (2026-11-15) por decisão do dono do produto
+
+**Contexto:** a Spec 031 tratou o CRN como dado administrativo: só a Secretaria podia
+preenchê-lo. O resultado prático era um impasse — a geração exigia nutricionista com CRN
+válido, mas o próprio nutricionista não tinha como informar o registro. A tela de geração
+ainda pedia "nutricionista responsável" em um seletor, o que permitia gerar em nome de
+outra pessoa.
+
+**Decisão:** o CRN passa a ser editável pelo próprio usuário no perfil
+(`PUT /api/usuario/perfil/{id}`), aceito apenas para o papel `Nutricionista`, normalizado
+para `CRN-<região>-<número>`, validado contra as regiões configuradas e sem coincidir com o
+de outro usuário. A geração automática não recebe mais `nutricionistaId` no corpo: usa o
+usuário da sessão e valida papel, vínculo ativo, unidade e CRN antes de carregar o catálogo.
+A criação manual de cardápio usa a sessão quando `nutricionistaId` não é enviado.
+
+**Consequências:**
+- Positivo: o nutricionista resolve o próprio cadastro; a autoria é sempre de quem executou.
+- Positivo: elimina o seletor de nutricionista, que permitia atribuição indevida.
+- Negativo: diverge da Spec 031, que está `audited` e é imutável — a revisão formal precisa
+  ser feita pelo `spec-new` e registrada como revisão rastreável.
+- Negativo: clientes que ainda enviam `nutricionistaId` têm o campo ignorado.
+
+## ADR-025: Diagnóstico da geração exposto no contrato de erro
+
+**Status:** aceito (2026-11-15) por decisão do dono do produto
+
+**Contexto:** o 422 da geração já devolvia `detalhes` com o diagnóstico por refeição
+(Spec 032, RF15), mas o cliente lia apenas `erro`. Em uso real, "Não foi possível gerar o
+cardápio." escondia a causa — categorias obrigatórias sem alimentos e uma configuração
+impossível (3 categorias obrigatórias com 2 opções por refeição).
+
+**Decisão:** `ErroRequisicao` passa a carregar `detalhes`; a extração foi separada em
+`extrairFalha` (mensagem + detalhes) e `extrairErro` (somente mensagem, preservada para os
+demais serviços). A tela de parâmetros traduz o diagnóstico: categoria ausente é exibida
+pelo nome e a falha de faixa mostra os valores alcançados e o número de candidatos.
+
+**Consequências:**
+- Positivo: o erro passa a ser acionável sem consultar o servidor ou o banco.
+- Positivo: nenhum outro serviço mudou de comportamento.
+- Negativo: a UI depende do formato do diagnóstico da Spec 032; mudanças no DTO precisam
+  acompanhar a tradução.
+- Negativo: o domínio ainda aceita `categoriasObrigatorias > opcoesPorRefeicao`; falta
+  invariante no salvamento e a mensagem não cobre esse caso específico.
+
+## ADR-026: Exportação de cardápio é documento, não relatório
+
+**Status:** substituído (2026-11-16) — a exportação passou a ser responsabilidade da Spec 019
+
+**Contexto:** a Spec 019 define relatório como tabela (colunas, linhas, totais) com
+exportadores plugáveis, servindo cinco relatórios de catálogo. O dono do produto pediu a
+exportação do cardápio em XLSX com um layout visual próprio, que não é uma tabela de
+relatório: tem cabeçalho institucional, agrupamento por refeição e identidade da
+nutricionista.
+
+**Decisão:** a exportação do cardápio é um artefato próprio da Spec 036, com endpoint e
+montador dedicados (`GET /api/cardapios/{id}/exportar`), sem passar pelo catálogo de
+relatórios da Spec 019. Reutiliza a biblioteca XLSX já prevista (ClosedXML) e o contrato de
+erro da Spec 007; nenhuma dependência nova é introduzida.
+
+**Consequências:**
+- Positivo: cada artefato tem dono claro; o layout do cardápio evolui sem tocar no pipeline
+  de relatórios.
+- Positivo: sem duplicação de regra de negócio — ambos leem os mesmos dados persistidos.
+- Negativo: dois caminhos de geração de arquivo; se um terceiro formato de cardápio surgir,
+  extrair um exportador comum deve ser reavaliado.
+
+## ADR-027: Cardápio passa a ter dias
+
+**Status:** aceito (2026-11-16) por decisão do dono do produto; implementação pendente de spec própria
+
+**Contexto:** o modelo oficial de cardápio (PNAE) é uma grade semanal: colunas por dia da
+semana e linhas por refeição, com conteúdo distinto em cada célula. O agregado `Cardapio`
+guarda um único conjunto de refeições válido para todo o período. O relatório da Spec 019
+só consegue repetir o mesmo conteúdo nas cinco colunas — o que não representa o documento
+real.
+
+**Decisão:** o cardápio ganha dimensão de dia. Cada cardápio mantém o cabeçalho atual
+(unidade, escola quando adaptado, período, nutricionista, situação e versão) e passa a ter
+dias; cada dia tem refeições; cada refeição tem itens. Geração automática, adaptação por
+restrição, publicação e portal passam a operar por dia.
+
+**Consequências:**
+- Positivo: relatório e documento institucional passam a representar o cardápio real.
+- Positivo: a geração deixa de repetir o mesmo prato em todos os dias.
+- Negativo: migration e alteração do agregado `Cardapio` (Spec 012), da geração
+  (Specs 013/032), da adaptação (Spec 029) e da publicação (Spec 015).
+- Negativo: a dimensão de dia exige spec própria; nada disso entra na Spec 019, que apenas
+  consome o dado.
+

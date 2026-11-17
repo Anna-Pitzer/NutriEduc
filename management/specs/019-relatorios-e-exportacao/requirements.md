@@ -15,8 +15,8 @@ exportação em PDF, Excel e Word para nutrição, secretaria e escola.
 ## Escopo
 
 - Backend: catálogo de cinco relatórios, montagem de tabela (colunas + linhas +
-  totais), indicadores administrativos e três exportadores (PDF, XLSX, DOCX), sempre no
-  escopo de unidade e escola da sessão (Specs 027 e 028).
+  totais), indicadores administrativos e exportador XLSX, sempre no escopo de unidade e
+  escola da sessão (Specs 027 e 028).
 - Frontend: tela de relatórios com filtros, pré-visualização em tabela e botões de
   exportação.
 - Fora de escopo: agendamento, envio por e-mail, dashboards em tempo real e
@@ -43,9 +43,8 @@ exportação em PDF, Excel e Word para nutrição, secretaria e escola.
   `filtrosAplicados`; a tabela é renderizada sem transformação no frontend.
 - RF4: `GET /api/relatorios/{tipo}/preview` devolve no máximo 200 linhas; o total de
   linhas e os totais agregados refletem o conjunto completo do filtro.
-- RF5: `GET /api/relatorios/{tipo}/exportar?formato=pdf|xlsx|docx` gera o arquivo
-  completo com `Content-Disposition` e nome
-  `relatorio-{tipo}-{yyyyMMddHHmm}.{ext}`.
+- RF5: `GET /api/relatorios/{tipo}/exportar` gera o arquivo XLSX completo com
+  `Content-Disposition` e nome `relatorio-{tipo}-{yyyyMMddHHmm}.xlsx`.
 - RF6: exportação acima de 50.000 linhas devolve 413 com `{ erro }`; nenhum arquivo
   parcial é enviado.
 - RF7: escopo por papel, sempre dentro da própria unidade:
@@ -63,7 +62,7 @@ exportação em PDF, Excel e Word para nutrição, secretaria e escola.
 - RF10: a ordenação de cada relatório é determinística e documentada na resposta
   (`ordenacao`).
 - RF11: nenhuma coluna expõe CPF, e-mail, telefone, foto ou senha.
-- RF12: o frontend exibe a pré-visualização, os totais e os três botões de exportação;
+- RF12: o frontend exibe a pré-visualização, os totais e o botão de exportação XLSX;
   erro 413 é exibido com orientação para reduzir o período.
 
 ## Requisitos não funcionais
@@ -80,9 +79,8 @@ exportação em PDF, Excel e Word para nutrição, secretaria e escola.
 ## Restrições
 
 - Migration não é necessária: relatórios leem dados existentes.
-- Novas dependências de exportação: `QuestPDF` (PDF), `ClosedXML` (XLSX) e
-  `DocumentFormat.OpenXml` (DOCX), na versão estável mais recente compatível com
-  `net10.0`. Nenhuma outra dependência é adicionada.
+- Exportação XLSX sem dependência externa: o pacote OOXML é gerado com `ZipArchive` e
+  XML escrito à mão (decisão de 2026-11-16). Nenhuma dependência nova é adicionada.
 - Nenhuma alteração nos modelos das specs anteriores.
 
 ## Dependências
@@ -96,7 +94,6 @@ exportação em PDF, Excel e Word para nutrição, secretaria e escola.
 ## Casos de borda
 
 - Período sem dados → tabela com cabeçalho, zero linhas, totais zerados, 200.
-- `formato` desconhecido → 400 com a lista aceita.
 - Relatório inexistente → 404.
 - `Merendeira` ou `Responsavel` pedindo qualquer relatório → 403.
 - `AdminEscola` filtrando `escolaId` de outra escola → 403.
@@ -111,8 +108,8 @@ exportação em PDF, Excel e Word para nutrição, secretaria e escola.
 - [ ] Cada um dos cinco relatórios responde com colunas, linhas, totais e ordenação.
 - [ ] Totais conferem com os dados de uma base fixa de teste.
 - [ ] Pré-visualização limita a 200 linhas e informa o total real.
-- [ ] PDF começa com `%PDF`, XLSX e DOCX são arquivos ZIP válidos (`PK`).
-- [ ] `Content-Disposition` e extensão correspondem ao formato.
+- [ ] O XLSX é um arquivo ZIP válido (`PK`) e abre no Excel.
+- [ ] `Content-Disposition` e extensão correspondem ao XLSX.
 - [ ] Período inválido e formato inválido devolvem 400.
 - [ ] 50.001 linhas devolvem 413 sem corpo de arquivo.
 - [ ] Matriz de escopo 200/403/404 por papel, por escola e por unidade.
@@ -125,7 +122,7 @@ exportação em PDF, Excel e Word para nutrição, secretaria e escola.
 
 Com uma base fixa (duas unidades, duas escolas, alunos com restrições, cardápios
 gerais e adaptados, ocorrências e solicitações), gerar cada relatório, conferir totais e
-exportar nos três formatos; repetir com `AdminSecretaria`, `AdminEscola` e `Nutricionista`
+exportar em XLSX; repetir com `AdminSecretaria`, `AdminEscola` e `Nutricionista`
 e conferir escopo próprio, 403 fora dele e 404 entre unidades. Executar os gates: `dotnet build backend/backend.csproj`,
 `dotnet test backend.Tests/backend.Tests.csproj` e `cd frontend && npm run build && npm run lint`.
 
