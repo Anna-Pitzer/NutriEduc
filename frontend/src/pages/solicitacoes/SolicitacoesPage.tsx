@@ -28,7 +28,6 @@ import {
     rotuloTipoSolicitacao as rotuloTipo,
 } from "../../components/ListaSolicitacoes";
 import Header from "../../components/Header";
-import VoltarPaginas from "../../components/VoltarPaginas";
 import Footer from "../../components/Footer";
 
 const statusFinal = new Set<StatusSolicitacao>(["Recusada", "Concluida", "Cancelada"]);

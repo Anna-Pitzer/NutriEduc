@@ -79,7 +79,9 @@ builder.Services.AddScoped<CardapioServidoService>();
 builder.Services.AddScoped<CompatibilidadeService>();
 builder.Services.AddScoped<PublicacaoCardapioService>();
 builder.Services.AddScoped<IRelatorioRepository, RelatorioRepository>();
+// ADR-012: duas implementações reais do exportador; o serviço escolhe pelo parâmetro `formato`.
 builder.Services.AddScoped<IExportadorDeRelatorio, ExportadorXlsx>();
+builder.Services.AddScoped<IExportadorDeRelatorio, ExportadorCsv>();
 builder.Services.AddScoped<RelatorioService>();
 builder.Services.AddScoped<IPainelRepository, PainelRepository>();
 builder.Services.AddScoped<PainelService>();

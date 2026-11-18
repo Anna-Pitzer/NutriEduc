@@ -43,7 +43,10 @@ public class RelatorioController : RespostaController
             Ok);
     }
 
-    /// <summary>Exportação XLSX do conjunto completo do filtro (RF5).</summary>
+    /// <summary>
+    /// Exportação do conjunto completo do filtro (RF5) em XLSX (padrão) ou CSV, escolhido
+    /// pelo parâmetro `formato` (ADR-012).
+    /// </summary>
     [Authorize(Policy = "SessaoValida")]
     [HttpGet("{tipo}/exportar")]
     public IActionResult Exportar(
@@ -51,7 +54,8 @@ public class RelatorioController : RespostaController
         [FromQuery] DateOnly? de,
         [FromQuery] DateOnly? ate,
         [FromQuery] int? unidadeId,
-        [FromQuery] int? escolaId)
+        [FromQuery] int? escolaId,
+        [FromQuery] string? formato)
     {
         var escopo = ObterEscopo(_escopo);
 
@@ -61,7 +65,7 @@ public class RelatorioController : RespostaController
         }
 
         return Traduzir(
-            _relatorios.Exportar(tipo, de, ate, unidadeId, escolaId, escopo),
+            _relatorios.Exportar(tipo, de, ate, unidadeId, escolaId, formato, escopo),
             arquivo => File(arquivo.Conteudo, arquivo.TipoDeConteudo, arquivo.Nome));
     }
 }

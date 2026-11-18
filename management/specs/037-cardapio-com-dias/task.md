@@ -1,12 +1,12 @@
 ---
 name: cardapio-com-dias
-status: audited
+status: discarded
 references: Spec 037
 ---
 
 # Tasks — Cardápio com dias
 
-> **Estado:** nenhuma tarefa iniciada. T1 bloqueia todas as demais.
+> **Estado:** descartada em 2026-11-18 por decisão do dono. Nenhuma tarefa será executada.
 
 ## Backend — modelo
 

@@ -9,25 +9,30 @@ using Ntc.Domain.Relatorios;
 /// Caso de uso dos relatórios (Spec 019). O serviço decide acesso e escopo, valida o
 /// período, resolve o recorte e delega a leitura ao porto. Nenhuma regra mora no
 /// controller e nenhuma consulta mora aqui (ADR-004, ADR-012, ADR-019).
+/// A exportação escolhe entre as implementações de <see cref="IExportadorDeRelatorio"/>
+/// pelo parâmetro `formato`: `xlsx` (padrão) ou `csv`.
 /// </summary>
 public sealed class RelatorioService
 {
     public const int LinhasDePreview = 200;
     public const int LinhasMaximas = 50_000;
+    public const string FormatoPadrao = "xlsx";
 
     private readonly IRelatorioRepository _relatorios;
-    private readonly IExportadorDeRelatorio _exportador;
+    private readonly IReadOnlyDictionary<string, IExportadorDeRelatorio> _exportadores;
     private readonly AutorizacaoService _autorizacao;
     private readonly TimeProvider _relogio;
 
     public RelatorioService(
         IRelatorioRepository relatorios,
-        IExportadorDeRelatorio exportador,
+        IEnumerable<IExportadorDeRelatorio> exportadores,
         AutorizacaoService autorizacao,
         TimeProvider relogio)
     {
         _relatorios = relatorios;
-        _exportador = exportador;
+        _exportadores = exportadores.ToDictionary(
+            exportador => exportador.Extensao,
+            StringComparer.OrdinalIgnoreCase);
         _autorizacao = autorizacao;
         _relogio = relogio;
     }
@@ -69,6 +74,7 @@ public sealed class RelatorioService
         DateOnly? ate,
         int? unidadeId,
         int? escolaId,
+        string? formato,
         EscopoUsuario escopo)
     {
         var preparo = Preparar(tipo, de, ate, unidadeId, escolaId, escopo);
@@ -76,6 +82,12 @@ public sealed class RelatorioService
         if (!preparo.Permitido)
         {
             return Recusar<ArquivoDeRelatorio>(preparo);
+        }
+
+        if (Selecionar(formato) is not { } exportador)
+        {
+            return Resultado<ArquivoDeRelatorio>.Invalido(
+                $"Formato de exportação desconhecido. Use {FormatosDisponiveis()}.");
         }
 
         var tabela = _relatorios.Obter(preparo.Tipo!.Value, preparo.Filtro!);
@@ -86,17 +98,32 @@ public sealed class RelatorioService
                 $"O relatório excede {LinhasMaximas} linhas. Reduza o período.");
         }
 
-        var conteudo = _exportador.Gerar(tabela);
+        var conteudo = exportador.Gerar(tabela);
 
         var nome =
             $"relatorio-{preparo.Tipo.Value.ToString().ToLowerInvariant()}-" +
-            $"{_relogio.GetUtcNow():yyyyMMddHHmm}.{_exportador.Extensao}";
+            $"{_relogio.GetUtcNow():yyyyMMddHHmm}.{exportador.Extensao}";
 
         return Resultado<ArquivoDeRelatorio>.Ok(
-            new ArquivoDeRelatorio(conteudo, nome, _exportador.TipoDeConteudo));
+            new ArquivoDeRelatorio(conteudo, nome, exportador.TipoDeConteudo));
     }
 
     // ---------- Apoio ----------
+
+    /// <summary>
+    /// Implementação escolhida pelo formato pedido. Formato ausente ou em branco usa
+    /// <see cref="FormatoPadrao"/>; formato desconhecido devolve <c>null</c> (o chamador
+    /// responde 400).
+    /// </summary>
+    private IExportadorDeRelatorio? Selecionar(string? formato)
+    {
+        var pedido = string.IsNullOrWhiteSpace(formato) ? FormatoPadrao : formato.Trim();
+
+        return _exportadores.TryGetValue(pedido, out var exportador) ? exportador : null;
+    }
+
+    private string FormatosDisponiveis() =>
+        string.Join(" ou ", _exportadores.Keys.Order(StringComparer.OrdinalIgnoreCase));
 
     private Preparo Preparar(
         string? tipo,

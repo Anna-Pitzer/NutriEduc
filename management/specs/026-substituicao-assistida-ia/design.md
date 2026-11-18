@@ -1,10 +1,13 @@
 ---
 name: substituicao-assistida-ia
-status: audited
+status: discarded
 references: V15, ADR-011, ADR-004
 ---
 
 # Design — Substituição assistida por IA
+
+> **Descartada em 2026-11-18 por decisão do dono.** Desenho mantido apenas como registro
+> histórico; não implementar.
 
 ## Princípio
 

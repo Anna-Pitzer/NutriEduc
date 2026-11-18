@@ -228,15 +228,22 @@ banco, relógio nem serviço. Geração consome `AlimentosNaoPermitidos`; public
 
 ## ADR-012: Relatório é tabela; exportador é plugável
 
-**Status:** aceito (2026-10-30)
+**Status:** aceito (2026-10-30); revisado em 2026-11-18 para registrar as duas implementações reais
 
 **Contexto:** PDF, Excel e Word compartilham os mesmos dados e filtros. Se cada
 exportador montasse sua consulta, os totais divergiriam entre formatos.
 
-**Decisão:** todo relatório produz `RelatorioGerado` (colunas tipadas, linhas, totais,
-ordenação, filtros aplicados). Os exportadores implementam `IRelatorioExportador` e
-recebem esse objeto pronto, sem acesso a banco. A pré-visualização usa o mesmo
-objeto, limitado a 200 linhas, com total agregado separado.
+**Decisão:** todo relatório produz `TabelaDeRelatorio` (colunas, linhas e rodapé já
+formatados). Os exportadores implementam `IExportadorDeRelatorio` e recebem essa tabela
+pronta, sem acesso a banco. A pré-visualização usa a mesma tabela, limitada a 200 linhas,
+com total agregado separado.
+
+**Revisão de 2026-11-18 — duas implementações em produção:** a porta tem duas
+implementações concretas, ambas registradas no DI e escolhidas por requisição em
+`RelatorioService.Selecionar`, pelo parâmetro `formato` da rota de exportação:
+`ExportadorXlsx` (padrão) e `ExportadorCsv` (`text/csv; charset=utf-8`, separador `;`, BOM
+UTF-8, tabela pura sem título nem rodapé). Formato desconhecido responde `400` com a lista de
+formatos aceitos; formato ausente usa `xlsx`, preservando o contrato anterior.
 
 ## ADR-014: Exclusão definitiva com bloqueio por referência
 
@@ -613,9 +620,9 @@ erro da Spec 007; nenhuma dependência nova é introduzida.
 
 ## ADR-027: Cardápio passa a ter dias
 
-**Status:** aceito (2026-11-16) por decisão do dono do produto; implementação pendente de spec própria
+**Status:** descartado (2026-11-18) — a Spec 037 (`cardapio-com-dias`), única responsável por implementar esta decisão, foi descartada pelo dono. O agregado `Cardapio` permanece sem dimensão de dia: `Refeicao` continua vinculada ao `Cardapio` e `RefeicoesPadrao` segue em `ParametroGeracao`. Retomar exige ADR nova e spec nova (número acima de 039).
 
-**Contexto:** o modelo oficial de cardápio (PNAE) é uma grade semanal: colunas por dia da
+**Contexto original (mantido como registro):** o modelo oficial de cardápio (PNAE) é uma grade semanal: colunas por dia da
 semana e linhas por refeição, com conteúdo distinto em cada célula. O agregado `Cardapio`
 guarda um único conjunto de refeições válido para todo o período. O relatório da Spec 019
 só consegue repetir o mesmo conteúdo nas cinco colunas — o que não representa o documento

@@ -1,10 +1,14 @@
 ---
 name: substituicao-assistida-ia
-status: audited
+status: discarded
 references: V15, ADR-011, ADR-004
 ---
 
 # Requirements — Substituição assistida por IA
+
+> **Descartada em 2026-11-18 por decisão do dono.** Este documento é registro histórico; nada
+> aqui deve ser implementado. Não haverá sugestão de substituição assistida por IA. Para
+> retomar o tema, é obrigatória uma spec nova, numerada acima de 039.
 
 ## Objetivo
 

@@ -1,10 +1,13 @@
 ---
 name: cardapio-com-dias
-status: audited
+status: discarded
 references: V25, ADR-027, Spec 012, Spec 013, Spec 029, Spec 015, Spec 019
 ---
 
 # Design — Cardápio com dias
+
+> **Descartada em 2026-11-18 por decisão do dono.** Desenho mantido apenas como registro
+> histórico; não implementar.
 
 ## Princípio
 

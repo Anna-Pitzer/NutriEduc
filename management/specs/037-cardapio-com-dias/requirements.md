@@ -1,10 +1,15 @@
 ---
 name: cardapio-com-dias
-status: audited
+status: discarded
 references: V25, ADR-027, ADR-022, Spec 012, Spec 013, Spec 029, Spec 015, Spec 019
 ---
 
 # Requirements — Cardápio com dias
+
+> **Descartada em 2026-11-18 por decisão do dono.** Este documento é registro histórico; nada
+> aqui deve ser implementado. Não haverá modelo de cardápio com dias (`DiaDeCardapio`);
+> `Refeicao` continua vinculada a `Cardapio` e `RefeicoesPadrao` segue em `ParametroGeracao`.
+> Para retomar o tema, é obrigatória uma spec nova, numerada acima de 039.
 
 ## Objetivo
 

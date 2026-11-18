@@ -133,7 +133,7 @@ do próprio usuário e o campo `total` serve de contador de não lidas (Spec 018
 | Analisar, aprovar, recusar e concluir solicitações | `POST /api/solicitacoes/{id}/{analise,aprovar,recusar,concluir}` | 017/030 |
 | Marcar anafilaxia em pedido de inclusão de alergia | `POST /api/solicitacoes/{id}/anafilaxia` | 035 |
 | Ver painel da unidade (contagens) | `GET /api/painel/secretaria` | 025 |
-| Gerar relatórios e exportar XLSX | `/api/relatorios/{tipo}/*` | 019 |
+| Gerar relatórios e exportar XLSX ou CSV | `/api/relatorios/{tipo}/*` | 019 |
 | Ler cardápios, ocorrências e feedbacks da unidade | rotas de leitura correspondentes | 012/016/018 |
 
 ### Limites
@@ -172,7 +172,7 @@ do próprio usuário e o campo `total` serve de contador de não lidas (Spec 018
 | Listar nutricionistas da unidade com CRN | `GET /api/nutricionistas` | 031 |
 | Decidir solicitação diretamente (aprovar/recusar) | `POST /api/solicitacoes/{id}/{aprovar,recusar}` | 017/038 |
 | Responder feedback | `POST /api/feedbacks/{id}/responder` | 018 |
-| Gerar relatórios e exportar XLSX | `/api/relatorios/{tipo}/*` | 019 |
+| Gerar relatórios e exportar XLSX ou CSV | `/api/relatorios/{tipo}/*` | 019 |
 | Ler alunos, histórico e cardápio servido ao aluno | rotas de leitura | 001/023/029 |
 
 Publicar exige **CRN válido** (Spec 031) e bloqueia por incompatibilidade (`422`),

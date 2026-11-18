@@ -173,7 +173,7 @@ malformado, `404` de rota, `405` e `415`). `401` e `403` saem dos eventos do coo
 | Exclusão definitiva sem auditoria | `DELETE` remove o registro; resta o log da requisição | ADR-014; avaliar se auditoria é exigida |
 | SQLite sem decimal/collation/date/concorrência reais | PEND-029 a PEND-037 | Migrar de provedor |
 
-## 10. Estado atual verificado (2026-11-17)
+## 10. Estado atual verificado (2026-11-17; status de specs revisado em 2026-11-18)
 
 | Verificação | Resultado |
 | --- | --- |
@@ -184,12 +184,13 @@ malformado, `404` de rota, `405` e `415`). `401` e `403` saem dos eventos do coo
 | Superfície HTTP | 20 controllers (19 de recurso + `RespostaController` base) |
 | Serviços de aplicação | 27 (inclui `NotificacaoDeAcessoService` e `ConfiguracaoDeBootstrap`) |
 | Domínio implementado | aluno, usuário/papéis/CRN, escola/unidade, vínculo, restrições, alimentos, cardápio/refeições/adaptação/publicação, geração, ocorrências, solicitações (com anafilaxia informada), solicitações de acesso, feedback, notificações, trilha |
-| Specs | `audited`: 001–039 (38 specs). Nenhuma em `planned`, `created`, `verified`, `in-progress` ou `implemented`. **Exceção factual:** 026 e 037 constam como `audited` por decisão do dono, mas não têm implementação no repositório (ver ressalva no `roadmap.md`) |
+| Specs | `audited`: 36 specs (001–039 menos 026 e 037). `discarded`: 026 e 037. Nenhuma em `planned`, `created`, `verified`, `in-progress` ou `implemented` |
 | Pendências | `management/pending-items.md`; PEND-028 (motor do `/spec-test`) segue aberto; dívidas técnicas abertas: PEND-027, PEND-029–037, PEND-043, PEND-046, PEND-048, PEND-049 |
 
-Estado formal: o roadmap tem 38 linhas, todas `audited`. As promoções foram registradas
-manualmente em 2026-11-17 pelo dono, porque a promoção automática pelo `/spec-test` continua
-bloqueada pelo PEND-028. As Specs 026 e 037 estão nessa condição sem código correspondente.
+Estado formal: o roadmap tem 38 linhas — 36 `audited` e 2 `discarded` (026 e 037, descartadas
+pelo dono em 2026-11-18). As promoções para `audited` foram registradas manualmente em
+2026-11-17 pelo dono, porque a promoção automática pelo `/spec-test` continua bloqueada pelo
+PEND-028.
 
 ## 11. Mapa de módulos especificados (009–039)
 
@@ -205,14 +206,14 @@ bloqueada pelo PEND-028. As Specs 026 e 037 estão nessa condição sem código 
 | 016 | Ocorrências | `Ocorrencia`, `HistoricoOcorrencia` | `OcorrenciaController` | audited |
 | 017 | Solicitações | `Solicitacao`, `HistoricoSolicitacao` | `SolicitacaoController` | audited |
 | 018 | Feedback e notificações | `Feedback`, `Notificacao` | `FeedbackController`, `NotificacaoController` | audited |
-| 019 | Relatórios e exportação | `RelatorioGerado`, exportadores | `RelatorioController` | audited |
+| 019 | Relatórios e exportação | `TabelaDeRelatorio`, `IExportadorDeRelatorio` com duas implementações (`ExportadorXlsx`, `ExportadorCsv`) | `RelatorioController` | audited |
 | 020 | Contrato de rotas | middleware de erro e padronização | `ContratoDeErro`, controllers | audited |
 | 021 | Telas de secretaria | nenhuma entidade nova | consome escolas, unidades e usuários | audited |
 | 022 | Bootstrap por token | `ConsumoBootstrap`, `TokenDeCadastro` | `BootstrapController`, `UnidadeController` | audited |
 | 023 | Histórico do aluno | `HistoricoAluno` | `AlunoController` | audited |
 | 024 | Fronteiras DDD | DTOs, filtros, unidade de trabalho | todos os controllers | audited |
 | 025 | Painel por papel | agregações de leitura | `PainelController` | audited |
-| 026 | Substituição assistida por IA | nenhuma no repositório (entidades e porta não implementadas) | nenhuma (rotas não implementadas) | audited |
+| 026 | Substituição assistida por IA | nenhuma no repositório (entidades e porta não implementadas) | nenhuma (rotas não implementadas) | discarded (2026-11-18) |
 | 027 | Hierarquia | `Escola.UnidadeId`, `Aluno.EscolaId`, `Aluno.UnidadeId` derivado | `EscolaController`, `UnidadeController`, `VinculoController` | audited |
 | 028 | Matriz de permissões | `MatrizDePermissoes`, `AutorizacaoService`, `FiltroDeEscopo`, `TrilhaAcao` | transversal | audited |
 | 029 | Cardápio geral e adaptado | `ConjuntoDeRestricoes`, `AdaptacaoDeCardapio`, `CardapioServido` | `CardapioController`, `AlunoController` | audited |
@@ -222,7 +223,7 @@ bloqueada pelo PEND-028. As Specs 026 e 037 estão nessa condição sem código 
 | 033 | Cadastro e autorização | `SolicitacaoDeAcesso`, `PoliticaDeAprovacao` | `SolicitacaoAcessoController`, `UsuarioController` | audited |
 | 034 | Vínculo responsável↔aluno | `FiltroAluno`, `VinculoResponsavelAluno` | `AlunoController`, `VinculoController`, `UsuarioAdminController` | audited |
 | 035 | Portal dos pais/responsáveis | `Feedback.AlunoId`/`AlunoNome`; `Solicitacao.Anafilaxia`; componentes de cardápio, ocorrência, solicitação e feedback | `AlunoController`, `OcorrenciaController`, `SolicitacaoController`, `FeedbackController` (reuso) | audited |
-| 037 | Cardápio com dias | `DiaDeCardapio` — **não implementado no repositório** | `CardapioController`, `GeracaoController` | audited |
+| 037 | Cardápio com dias | `DiaDeCardapio` — **não implementado no repositório** | `CardapioController`, `GeracaoController` | discarded (2026-11-18) |
 | 038 | Ações do nutricionista | — (restrições de papel em serviços existentes) | `SolicitacaoController`, `OcorrenciaController` | audited |
 | 039 | Perfil da merendeira | navegação e isolamento da merendeira | `CardapioController`, `SolicitacaoController`, `OcorrenciaController`, `FeedbackController` (reuso) | audited |
 
@@ -293,10 +294,11 @@ consulta fora do escopo — aluno fora do vínculo responde 403 sem revelar exis
 
 ## Spec 026 — substituicao-assistida-ia
 
-**Status:** `audited` por decisão do dono (2026-11-17), **sem implementação no repositório**.
-Nenhum dos caminhos canônicos abaixo existe: sem `SugestaoDeSubstituicao`,
-`ISugestorDeSubstituicao`, `SubstituicaoService`, `SugestorPorIa` ou tela de sugestão. O texto
-descreve o desenho aprovado, não código entregue.
+**Status:** `discarded` (2026-11-18) — descartada pelo dono; **sem implementação no
+repositório** e sem previsão de implementação. Nenhum dos caminhos canônicos abaixo existe:
+sem `SugestaoDeSubstituicao`, `ISugestorDeSubstituicao`, `SubstituicaoService`, `SugestorPorIa`
+ou tela de sugestão. O texto abaixo descreve um desenho aprovado e depois abandonado, não
+código entregue; não deve ser implementado sem spec nova (número acima de 039).
 
 **Canonical creation path:** `backend/Domain/Entities/SugestaoDeSubstituicao.cs`,
 `backend/Domain/Interface/ISugestorDeSubstituicao.cs`,

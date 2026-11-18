@@ -26,13 +26,16 @@ export interface RelatorioPreview {
     rodape?: string | null;
 }
 
-function consulta(filtro: FiltroRelatorio): string {
+export type FormatoDeExportacao = "xlsx" | "csv";
+
+function consulta(filtro: FiltroRelatorio, formato?: FormatoDeExportacao): string {
     const parametros = new URLSearchParams();
 
     if (filtro.de) parametros.set("de", filtro.de);
     if (filtro.ate) parametros.set("ate", filtro.ate);
     if (filtro.unidadeId !== undefined) parametros.set("unidadeId", String(filtro.unidadeId));
     if (filtro.escolaId !== undefined) parametros.set("escolaId", String(filtro.escolaId));
+    if (formato) parametros.set("formato", formato);
 
     const texto = parametros.toString();
     return texto ? `?${texto}` : "";
@@ -58,10 +61,14 @@ export async function previsualizarRelatorio(
 export async function exportarRelatorio(
     tipo: TipoDeRelatorio,
     filtro: FiltroRelatorio,
+    formato: FormatoDeExportacao = "xlsx",
 ): Promise<void> {
-    const resposta = await fetch(`${ApiURL}/api/relatorios/${tipo}/exportar${consulta(filtro)}`, {
-        credentials: "include",
-    });
+    const resposta = await fetch(
+        `${ApiURL}/api/relatorios/${tipo}/exportar${consulta(filtro, formato)}`,
+        {
+            credentials: "include",
+        },
+    );
 
     if (!resposta.ok) {
         const { mensagem, detalhes } = await extrairFalha(resposta, "Erro ao exportar o relatório");
@@ -71,7 +78,7 @@ export async function exportarRelatorio(
 
     const arquivo = await resposta.blob();
     const disposicao = resposta.headers.get("Content-Disposition") ?? "";
-    const nome = /filename=\"?([^\";]+)/.exec(disposicao)?.[1] ?? `relatorio-${tipo}.xlsx`;
+    const nome = /filename=\"?([^\";]+)/.exec(disposicao)?.[1] ?? `relatorio-${tipo}.${formato}`;
 
     const url = URL.createObjectURL(arquivo);
     const link = document.createElement("a");

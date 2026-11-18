@@ -1,10 +1,12 @@
 ---
 name: substituicao-assistida-ia
-status: audited
+status: discarded
 references: V15, ADR-011, ADR-004
 ---
 
 # Tasks — Substituição assistida por IA
+
+> **Estado:** descartada em 2026-11-18 por decisão do dono. Nenhuma tarefa será executada.
 
 ## Pré-condição
 

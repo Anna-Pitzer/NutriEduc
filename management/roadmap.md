@@ -13,19 +13,21 @@
 | `audited` | Final stage — certified by /spec-test, the sole owner of the implemented → audited transition. Feature is live. |
 | `discarded` | Intentionally abandoned |
 
-> **Estado em 2026-11-17 (final).** As 38 specs estão `audited`; nenhuma spec permanece em
-> `planned`, `created`, `verified`, `in-progress` ou `implemented`. A promoção de status foi
-> registrada manualmente pelo dono nesta data — o motor de `/spec-test` segue bloqueado pelo
-> PEND-028, então não houve certificação automática.
+> **Estado em 2026-11-18.** 36 das 38 specs estão `audited`; as Specs 026
+> (`substituicao-assistida-ia`) e 037 (`cardapio-com-dias`) estão `discarded`. Nenhuma spec
+> permanece em `planned`, `created`, `verified`, `in-progress` ou `implemented`. A promoção
+> para `audited` foi registrada manualmente pelo dono — o motor de `/spec-test` segue bloqueado
+> pelo PEND-028, então não houve certificação automática.
 >
-> **Ressalva de rastreabilidade (leitura futura):** as Specs 026
-> (`substituicao-assistida-ia`) e 037 (`cardapio-com-dias`) constam como `audited` por decisão
-> do dono, mas **não têm implementação no repositório** — não existe entidade, migration,
-> serviço, rota ou tela de sugestão de substituição, nem `DiaDeCardapio` (`Refeicao` continua
-> presa ao `Cardapio` e `RefeicoesPadrao` segue em `ParametroGeracao`). Para essas duas, o
-> código ainda precisa ser escrito.
+> **Descarte de 2026-11-18 (decisão do dono).** As Specs 026 e 037 estavam marcadas como
+> `audited` **sem implementação no repositório**. O dono decidiu não usá-las: não haverá
+> sugestão de substituição assistida por IA nem modelo de cardápio com dias
+> (`DiaDeCardapio`). Os documentos das duas specs permanecem no repositório apenas como
+> registro histórico. Consequência no código: `Refeicao` continua presa ao `Cardapio` e
+> `RefeicoesPadrao` segue em `ParametroGeracao`; nenhum item dessas specs deve ser implementado
+> sem uma spec nova, numerada acima de 039.
 >
-> Decisões registradas nesta data: 016 (ocorrências) com documentação alinhada à matriz —
+> Decisões registradas em 2026-11-17: 016 (ocorrências) com documentação alinhada à matriz —
 > `Nutricionista` é `R` em `Ocorrencia`; 029 com backend e frontend completos (T12–T13
 > entregues, PEND-042 encerrado); 038 implementada (matriz `R` para `Nutricionista` em
 > `Ocorrencia` e bloqueio de criação/análise de solicitações pelo nutricionista); 039
@@ -63,7 +65,7 @@
 | 023 | historico-alteracoes-aluno | audited | V12; ADR-004; ADR-009 |
 | 024 | fronteiras-ddd | audited | V13; ADR-004; ADR-009 |
 | 025 | painel-e-visao-por-papel | audited | V14; V6; ADR-002 |
-| 026 | substituicao-assistida-ia | audited | V15; ADR-011; ADR-004 |
+| 026 | substituicao-assistida-ia | discarded | V15 (descartado); ADR-011; ADR-004 |
 | 027 | hierarquia-unidade-escola-aluno | audited | V16; ADR-020; ADR-021; L11 |
 | 028 | matriz-permissoes-e-isolamento | audited | V17; ADR-021; ADR-020; L5; L12 |
 | 029 | cardapio-geral-e-adaptado | audited | V18; V20; ADR-022; ADR-011; ADR-009; L7 |
@@ -73,7 +75,7 @@
 | 033 | cadastro-e-autorizacao-de-acesso | audited | V22; V17; ADR-021; ADR-020; ADR-004; ADR-019 |
 | 034 | vinculo-responsavel-aluno | audited | V23; V17; Spec 027; Spec 028; Spec 033; ADR-020; ADR-021 |
 | 035 | portal-pais-responsaveis | audited | V24; V6; V17; V23; Spec 010; Spec 016; Spec 017; Spec 018; Spec 025; Spec 029; ADR-009; ADR-021 |
-| 037 | cardapio-com-dias | audited | V25; ADR-027; ADR-022; Spec 012; Spec 013; Spec 029; Spec 015; Spec 019 |
+| 037 | cardapio-com-dias | discarded | V25 (descartado); ADR-027 (descartado); ADR-022; Spec 012; Spec 013; Spec 029; Spec 015; Spec 019 |
 | 038 | acoes-do-nutricionista | audited | V6; V17; Spec 016; Spec 017; Spec 028; ADR-021 |
 | 039 | funcionalidades-permissoes-merendeira | audited | V26; V14; V17; Spec 009; Spec 012; Spec 015; Spec 016; Spec 017; Spec 018; Spec 025; Spec 027; Spec 028; Spec 029; Spec 031; Spec 033; ADR-002; ADR-004; ADR-020; ADR-021 |
 

@@ -13,7 +13,7 @@ Fontes: `correcoes.md`, `implementacoes.md`, `README.md` e verificação do cód
 | V6 | cardápios, alimentos, ocorrências, solicitações, feedback e notificações | entregue (019, audited) |
 | V7–V13 | documentação viva, erro/DI, rotas, telas de secretaria, bootstrap, histórico, DDD | entregue |
 | V14 | painel por papel (secretaria, merendeira, família) | entregue (025, audited) |
-| V15 | substituição assistida por IA | `audited` (026) por decisão do dono — **sem implementação no repositório** |
+| V15 | substituição assistida por IA | **descartado** (026, discarded em 2026-11-18) |
 | V16 | hierarquia unidade→escola→aluno | entregue (027, audited) |
 | V17 | matriz de permissões e isolamento | entregue (028, audited) |
 | V18 | cardápio geral e adaptado | entregue (029, audited): backend e frontend de montagem/detalhe completos |
@@ -23,12 +23,13 @@ Fontes: `correcoes.md`, `implementacoes.md`, `README.md` e verificação do cód
 | V22 | cadastro com intenção e aprovação com escopo | entregue (033, audited) |
 | V23 | vínculo responsável↔aluno obrigatório e busca | entregue (034, audited) |
 | V24 | portal dos pais/responsáveis | entregue (035, audited); validação manual encerrada em 2026-11-17 |
-| V25 | cardápio semanal com dias | `audited` (037) por decisão do dono — **sem implementação no repositório** |
+| V25 | cardápio semanal com dias | **descartado** (037, discarded em 2026-11-18) |
 | V26 | merendeira operando integralmente no próprio escopo | entregue (039, audited) |
 
-Todas as 38 specs estão `audited` desde 2026-11-17; a promoção foi registrada manualmente pelo
-dono porque o motor do `/spec-test` segue bloqueado pelo PEND-028. Ressalva: 026 e 037 estão
-`audited` sem código correspondente — ver a nota de estado do `roadmap.md`.
+36 das 38 specs estão `audited` desde 2026-11-17; a promoção foi registrada manualmente pelo
+dono porque o motor do `/spec-test` segue bloqueado pelo PEND-028. As outras duas — 026 e 037 —
+foram **descartadas** em 2026-11-18 e nunca tiveram código correspondente; ver a nota de estado
+do `roadmap.md`.
 
 ---
 
@@ -210,9 +211,10 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 
 **Canonical creation path:** `backend/Domain/Entities/SugestaoDeSubstituicao.cs`, `backend/Domain/Interface/ISugestorDeSubstituicao.cs`, `backend/API/Services/SubstituicaoService.cs`, `backend/Infrastructure/IA/SugestorPorIa.cs`, `frontend/src/pages/nutricao/cardapios/MontarCardapio.tsx`
 
-**Delivered by:** Spec 026 (substituicao-assistida-ia)
+**Delivered by:** — (nenhuma; Spec 026 descartada em 2026-11-18)
 
-**Status:** planejada — não implementada.
+**Status:** descartada em 2026-11-18 — a Spec 026 foi marcada como `discarded` pelo dono; a
+substituição de item bloqueado continua manual.
 
 ### V16: Hierarquia institucional única
 **Problema:** a ADR-013 tornou a unidade entidade da rede e a escola deixou de pertencer a uma unidade. O aluno passou a existir apenas vinculado à unidade, `AdminEscola` e `Merendeira` perderam escopo verificável e a correção ficou registrada como PEND-024. Sem cadeia, cada consulta precisa inventar o próprio filtro.
@@ -324,7 +326,10 @@ O banco guarda apenas o hash SHA-256 do token temporário. A rota responde `404`
 `backend/Infrastructure/Repositories/CardapioRepository.cs`,
 `frontend/src/pages/nutricao/cardapios/DetalheCardapio.tsx`
 
-**Delivered by:** Spec 037 (cardapio-com-dias)
+**Delivered by:** — (nenhuma; Spec 037 descartada em 2026-11-18)
+
+**Status:** descartada em 2026-11-18 — a Spec 037 foi marcada como `discarded` pelo dono; o
+cardápio continua com um único conjunto de refeições válido para todo o período.
 
 ### V26: Merendeira operando integralmente no próprio escopo
 **Problema:** a merendeira tem permissões e escopo corretos no backend (matriz, escopo por escola e derivação automática da escola), mas a área dela não expõe navegação — a página inicial monta apenas `Header` e `Footer`, sem `Navbar`, então as telas de cardápio, solicitação, feedback e ocorrência (já autorizadas) ficam inalcançáveis. A invariante de escopo (escola → unidade) é implícita e não testada, e a guarda de rota expõe a escrita de alimentos a um papel que a matriz só permite ler.

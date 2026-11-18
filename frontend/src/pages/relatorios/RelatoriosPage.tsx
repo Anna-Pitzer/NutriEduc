@@ -5,6 +5,7 @@ import Button from "../../components/Button";
 import {
     exportarRelatorio,
     previsualizarRelatorio,
+    type FormatoDeExportacao,
     type RelatorioPreview,
     type TipoDeRelatorio,
 } from "../../services/RelatorioApi";
@@ -20,7 +21,7 @@ const TIPOS: { valor: TipoDeRelatorio; rotulo: string }[] = [
 
 /**
  * Tela de relatórios (Spec 019, RF12): escolhe o relatório, o período, mostra a
- * pré-visualização e baixa o XLSX. Nenhum total é recalculado aqui.
+ * pré-visualização e baixa em XLSX ou CSV. Nenhum total é recalculado aqui.
  */
 export function RelatoriosPage() {
     const [tipo, setTipo] = useState<TipoDeRelatorio>("Cardapios");
@@ -55,18 +56,22 @@ export function RelatoriosPage() {
         void carregar();
     }, [carregar]);
 
-    async function exportar() {
+    async function exportar(formato: FormatoDeExportacao) {
         setExportando(true);
         setErro(null);
         setMensagem(null);
 
         try {
-            await exportarRelatorio(tipo, {
-                de: de || undefined,
-                ate: ate || undefined,
-            });
+            await exportarRelatorio(
+                tipo,
+                {
+                    de: de || undefined,
+                    ate: ate || undefined,
+                },
+                formato,
+            );
 
-            setMensagem("Exportação gerada.");
+            setMensagem(`Exportação ${formato.toUpperCase()} gerada.`);
         } catch (falha) {
             setErro(falha instanceof Error ? falha.message : "Erro ao exportar o relatório");
         } finally {
@@ -146,8 +151,20 @@ export function RelatoriosPage() {
                             {carregando ? "Carregando..." : "Atualizar prévia"}
                         </Button>
 
-                        <Button type="button" onClick={() => void exportar()} disabled={exportando}>
+                        <Button
+                            type="button"
+                            onClick={() => void exportar("xlsx")}
+                            disabled={exportando}
+                        >
                             {exportando ? "Exportando..." : "Exportar XLSX"}
+                        </Button>
+
+                        <Button
+                            type="button"
+                            onClick={() => void exportar("csv")}
+                            disabled={exportando}
+                        >
+                            {exportando ? "Exportando..." : "Exportar CSV"}
                         </Button>
 
                         {preview && (

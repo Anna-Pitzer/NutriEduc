@@ -326,16 +326,20 @@ aluno com vínculo ativo com o responsável autenticado.
 
 ## Traceability
 
-| Requisito | Value block | Componente/contrato | Task |
-| --- | --- | --- | --- |
-| RF1 | V24 | `PainelPais`, `GET /api/aluno` | T4, T5.1 |
-| RF2–RF6 | V24 | `CardapiosPais`, `CardapioApi`, `GET /api/aluno/{id}/cardapio` | T6 |
-| RF7–RF10 | V24, V6 | lista/detalhe de ocorrências, `OcorrenciaApi` | T7 |
-| RF11–RF14 | V24, V6 | formulário de ocorrência, `POST /api/ocorrencias` | T8 |
-| RF15–RF20 | V24, V6 | `SolicitacoesPais`, `SolicitacaoApi` | T9 |
-| RF21–RF25 | V24, V6 | `FeedbackPais`, `FeedbackApi`, backend de feedback | T1–T3, T10 |
-| RF26–RF32 | V24, V17 | layout, seletor, estados e erros | T4, T5, T11 |
-| NFR1–NFR12 | V24, V17 | design, testes e revisão | T12–T14 |
+A coluna **Teste** aponta a prova automatizada de cada requisito (`Classe.Metodo` em
+`backend.Tests/`). Lacuna declarada em negrito é lacuna consciente, não omissão; a visão
+consolidada fluxo → regra → implementação → teste está em `docs/av2/rastreabilidade.md`.
+
+| Requisito | Value block | Componente/contrato | Task | Teste |
+| --- | --- | --- | --- | --- |
+| RF1 | V24 | `PainelPais`, `GET /api/aluno` | T4, T5.1 | `PainelApiTests.Familia_ListaSomenteOsFilhosVinculados` |
+| RF2–RF6 | V24 | `CardapiosPais`, `CardapioApi`, `GET /api/aluno/{id}/cardapio` | T6 | `CardapioPaisApiTests.Responsavel_VeGeralEAdaptadoDoFilhoNaMesmaConsulta`, `PainelApiTests.Familia_FilhoComRestricao_NaoRecebeOCardapioGeral` |
+| RF7–RF10 | V24, V6 | lista/detalhe de ocorrências, `OcorrenciaApi` | T7 | **Sem teste positivo** — só negação: `PainelApiTests.Relatorio_DeAlunoNaoVinculado_Retorna403` (lacuna em `docs/av2/rastreabilidade.md` §4) |
+| RF11–RF14 | V24, V6 | formulário de ocorrência, `POST /api/ocorrencias` | T8 | `OcorrenciaApiTests.Pai_RegistraParaAlunoVinculado_201`, `OcorrenciaApiTests.Pai_RegistraParaAlunoNaoVinculado_403` |
+| RF15–RF20 | V24, V6 | `SolicitacoesPais`, `SolicitacaoApi` | T9 | `SolicitacaoServiceTests.Criar_Restricao_ComoResponsavelVinculado_CriaAberta`, `SolicitacaoApiTests.Criar_PorResponsavelSemVinculo_Retorna403` |
+| RF21–RF25 | V24, V6 | `FeedbackPais`, `FeedbackApi`, backend de feedback | T1–T3, T10 | `FeedbackApiTests.Responsavel_CriaFeedbackComAluno_PersisteAssociacao`, `FeedbackApiTests.Responsavel_FeedbackComAlunoNaoVinculado_403` |
+| RF26–RF32 | V24, V17 | layout, seletor, estados e erros | T4, T5, T11 | **Sem teste de UI** (PEND-049); camada HTTP: `CardapioPaisApiTests.Responsavel_DeOutroAluno_Recebe403` |
+| NFR1–NFR12 | V24, V17 | design, testes e revisão | T12–T14 | `FronteirasDddTests`, `MatrizPermissoesTests`, `DocumentationTests` |
 
 ## Acceptance Criteria
 

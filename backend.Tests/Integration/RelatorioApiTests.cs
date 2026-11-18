@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Ntc.Domain.Entity;
 using Xunit;
@@ -7,8 +8,8 @@ using Xunit;
 namespace Backend.Tests.Integration;
 
 /// <summary>
-/// Contrato HTTP dos relatórios (Spec 019): pré-visualização, exportação XLSX, catálogo
-/// fechado, validação de período e autorização pela matriz.
+/// Contrato HTTP dos relatórios (Spec 019): pré-visualização, exportação XLSX e CSV,
+/// catálogo fechado, validação de período e autorização pela matriz.
 /// </summary>
 public class RelatorioApiTests : IClassFixture<ApiFactory>
 {
@@ -70,6 +71,53 @@ public class RelatorioApiTests : IClassFixture<ApiFactory>
         Assert.True(bytes.Length > 4);
         Assert.Equal((byte)'P', bytes[0]);
         Assert.Equal((byte)'K', bytes[1]);
+    }
+
+    [Fact]
+    public async Task Exportar_ComFormatoCsv_RetornaTextoCsv()
+    {
+        var (client, _, _) = await _factory.CriarNutricionistaComUnidadeAsync();
+
+        var resposta = await client.GetAsync(
+            "/api/relatorios/AlunosRestricoes/exportar?formato=csv");
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        Assert.Equal("text/csv", resposta.Content.Headers.ContentType?.MediaType);
+        Assert.Contains(".csv", resposta.Content.Headers.ContentDisposition?.ToString() ?? "");
+
+        var bytes = await resposta.Content.ReadAsByteArrayAsync();
+
+        Assert.Equal(new byte[] { 0xEF, 0xBB, 0xBF }, bytes[..3]);
+
+        var texto = Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3);
+
+        Assert.Contains(";", texto);
+        Assert.DoesNotContain("<worksheet", texto);
+    }
+
+    [Fact]
+    public async Task Exportar_ComFormatoDesconhecido_Retorna400()
+    {
+        var (client, _, _) = await _factory.CriarNutricionistaComUnidadeAsync();
+
+        var resposta = await client.GetAsync(
+            "/api/relatorios/AlunosRestricoes/exportar?formato=pdf");
+
+        Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+
+        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Contains("xlsx", corpo.GetProperty("erro").GetString());
+    }
+
+    [Fact]
+    public async Task Exportar_PorMerendeiraComFormatoInvalido_Retorna403()
+    {
+        var client = await _factory.CreateAuthenticatedClientAsync(PapelUsuario.Merendeira);
+
+        var resposta = await client.GetAsync("/api/relatorios/Ocorrencias/exportar?formato=pdf");
+
+        Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
     }
 
     [Fact]

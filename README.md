@@ -99,6 +99,21 @@ As regiões válidas do CRN podem ser ajustadas sem alterar código. O padrão �
 >
 > O mesmo vale para `dotnet test` e `dotnet ef`: o build copia `backend.exe` para `bin/` e não consegue substituir o arquivo em uso.
 
+> **`APPDATA` e `ProgramFiles` (Git Bash/MSYS).** O restore do NuGet deriva caminhos dessas
+> variáveis. No PowerShell/cmd elas já existem; no Git Bash/MSYS podem vir vazias, e o build falha
+> com `Value cannot be null. (Parameter 'path1')`. Injete-as apenas no comando:
+>
+> ```bash
+> env APPDATA="$HOME/AppData/Roaming" ProgramFiles='C:\Program Files' \
+>   dotnet build backend/backend.csproj
+>
+> env APPDATA="$HOME/AppData/Roaming" ProgramFiles='C:\Program Files' \
+>   dotnet test backend.Tests/backend.Tests.csproj
+> ```
+>
+> Confirme o valor real com `echo %APPDATA%` no cmd. O caso está registrado em PEND-016
+> (`management/pending-items.md`).
+
 ### 3. Iniciar o frontend
 
 No segundo terminal, a partir da raiz do repositório:
@@ -305,7 +320,7 @@ A ocorrência não é apagada; o encerramento é `Arquivada`. O "mesmo dia" do c
 | Método | Caminho | Descrição | Autenticação |
 | --- | --- | --- | --- |
 | `GET` | `/api/relatorios/{tipo}/preview` | Pré-visualização com até 200 linhas; aceita `de`, `ate`, `unidadeId` e `escolaId` | Sessão; `AdminSecretaria`, `AdminEscola` ou `Nutricionista` no escopo |
-| `GET` | `/api/relatorios/{tipo}/exportar` | Exporta o conjunto completo do filtro em XLSX; acima de 50.000 linhas devolve `413` | Sessão; mesmo escopo da pré-visualização |
+| `GET` | `/api/relatorios/{tipo}/exportar` | Exporta o conjunto completo do filtro em XLSX (padrão) ou CSV via `formato=xlsx\|csv`; acima de 50.000 linhas devolve `413` | Sessão; mesmo escopo da pré-visualização |
 
 Tipos aceitos: `Cardapios`, `AlunosRestricoes`, `Ocorrencias`, `SolicitacoesFeedbacks` e `IndicadoresAdministrativos`. Sem período informado, vale a janela dos últimos 30 dias.
 

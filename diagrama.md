@@ -117,10 +117,14 @@ flowchart LR
 
 ---
 
-## 3. Modelo de dados (ER por agregado)
+## 3. Modelo de dados e de classes (ER por agregado + comportamento)
 
 Extraído de `ConnectionContext.cs`. Cardápio e catálogo aparecem em diagrama próprio
 porque concentram a maior parte das relações.
+
+Os blocos 3.1–3.3 são **ER** (só dados). O `erDiagram` do Mermaid não aceita métodos, então o
+**comportamento** das entidades fica no bloco 3.4, em `classDiagram`. O bloco 3.5 mostra o único
+contrato de domínio com **duas implementações reais em produção**.
 
 ### 3.1 Identidade, escola e aluno
 
@@ -338,6 +342,169 @@ erDiagram
   migração de dados (o próprio `SituacaoCardapio` documenta isso).
 - `TrilhaAcao.AlvoId` é polimórfico (guarda id de recursos diferentes).
 
+### 3.4 Comportamento das entidades (métodos públicos)
+
+O ER dos blocos anteriores mostra dados; este bloco mostra o **comportamento** de domínio —
+os métodos que mudam estado e aplicam invariantes, extraídos de `backend/Domain/Entities/`.
+Ele complementa o ER: não repete relações nem todas as colunas.
+
+```mermaid
+classDiagram
+    class Cardapio {
+        +SituacaoCardapio Situacao
+        +TipoCardapio Tipo
+        +int Versao
+        +Publicar(string autorNome, DateTime utc)
+        +Cancelar(string motivo, string autorNome, DateTime utc)
+        +CriarRevisao(string autorNome, DateTime utc) Cardapio
+        +AplicarAdaptacao(IEnumerable~Refeicao~? refeicoes, IEnumerable~ItemSubstituido~? substituicoes, IEnumerable~PendenciaDeAdaptacao~? pendencias, StatusAdaptacao status, string autorNome, DateTime utc)
+        +MarcarDesatualizado(string? autorNome, DateTime utc)
+        +RegistrarConfirmacaoDeIncompatibilidade(string autorNome, int alimentoId, string alimentoNome, IEnumerable~string~ escolas, IEnumerable~string~ conjuntos, DateTime utc)
+        +Atualizar(string? nome, PeriodoVigencia? periodo, IEnumerable~Refeicao~? refeicoes)
+        +DefinirNutricionista(NutricionistaResponsavel nutricionista)
+        +CriarAdaptado(Cardapio origem, int escolaId, ConjuntoDeRestricoes conjunto, IEnumerable~Refeicao~? refeicoes, IEnumerable~ItemSubstituido~? substituicoes, IEnumerable~PendenciaDeAdaptacao~? pendencias, StatusAdaptacao status) Cardapio
+    }
+
+    class Aluno {
+        +bool Anafilaxia
+        +IReadOnlyList Restricoes
+        +AtualizarDados(string nome, DateOnly nascimento, Turma turma, string? telefone, string? observacao, IEnumerable~string~? restricoes, bool anafilaxia, Responsavel responsavel, int? unidadeId, int escolaId)
+        +AdicionarRestricao(string restricao)
+        +RemoverRestricao(string restricao) bool
+        +DefinirUnidade(int? unidadeId)
+        +TransferirEscola(int escolaId, int unidadeId, bool mesmaUnidade)
+        +RegistrarHistorico(IEnumerable~AlteracaoDeDado~ alteracoes, IEnumerable~string~ adicionadas, IEnumerable~string~ removidas, string? autorNome, string? origem)
+        +RegistrarCriacao(string? autorNome)
+    }
+
+    class Usuario {
+        +PapelUsuario Papel
+        +bool Ativo
+        +DefinirPapel(PapelUsuario? papel, int? escolaId, int? unidadeId)
+        +DefinirCrn(string? crn)
+        +AtualizarPerfil(string nome, string email)
+        +AtualizarTelefone(string? telefone)
+        +AtualizarFoto(string? foto)
+        +DefinirSenha(string senha)
+        +SenhaConfere(string? senha) bool
+        +NormalizarCpf(string? cpf) string
+    }
+
+    class Solicitacao {
+        +StatusSolicitacao Status
+        +IniciarAnalise(string autorNome, DateTime utc)
+        +Aprovar(string resposta, string autorNome, DateTime utc)
+        +Recusar(string resposta, string autorNome, DateTime utc)
+        +Concluir(string autorNome, DateTime utc)
+        +Cancelar(string autorNome, DateTime utc)
+        -Transicionar(StatusSolicitacao destino, string autorNome, string? resposta, DateTime utc)
+    }
+
+    class Ocorrencia {
+        +StatusOcorrencia Status
+        +MudarStatus(StatusOcorrencia destino, string observacao, string autorNome, DateTime utc)
+        +Cancelar(string autorNome, DateTime utc)
+    }
+
+    class Feedback {
+        +StatusFeedback Status
+        +Responder(string? resposta, string? autorNome, DateTime utc)
+        +Encerrar(string? autorNome, DateTime utc)
+    }
+
+    class Escola {
+        +DefinirNome(string nome)
+        +DefinirUnidade(int unidadeId, bool possuiAlunos)
+    }
+
+    class UnidadeEscolar {
+        +DefinirNome(string nome)
+    }
+
+    class RestricaoAlimentar {
+        +CategoriaRestricao Categoria
+        +DefinirNome(string nome)
+        +DefinirCategoria(CategoriaRestricao categoria)
+        +Normalizar(string? valor) string
+    }
+
+    class Alimento {
+        +bool Ativo
+        +AtualizarDados(string nome, int categoriaId, ValoresNutricionais valores, IEnumerable~int~? restricaoIds)
+    }
+```
+
+**Como ler:**
+
+- `+` é público, `-` é privado. Só `Solicitacao.Transicionar` é privado: as cinco transições de
+  negócio (`IniciarAnalise`, `Aprovar`, `Recusar`, `Concluir`, `Cancelar`) passam por ele, e é
+  ali que a tabela `TransicoesPermitidas` (`Solicitacao.cs:20-36`) é aplicada.
+- `CriarAdaptado` (`Cardapio`), `NormalizarCpf` (`Usuario`) e `Normalizar` (`RestricaoAlimentar`)
+  são **estáticos**; os demais métodos são de instância.
+- `Aluno.AtualizarDados` é o único método do bloco com retorno composto: devolve as alterações de
+  campo (anterior/novo), as restrições adicionadas e as removidas; os demais devolvem `void`,
+  `bool` ou `string`.
+- `Refeicao`, `ItemRefeicao`, `PeriodoVigencia`, `ValoresNutricionais`, `Turma`, `Responsavel` e
+  `ConjuntoDeRestricoes` **não têm métodos de transição**: validam no construtor e são imutáveis
+  depois de criados. Por isso não aparecem neste bloco.
+- As máquinas de estado da §5 são implementadas exatamente por estes métodos — `Publicar`/`Cancelar`
+  para `SituacaoCardapio`, `MudarStatus` para `StatusOcorrencia`, o grupo de `Solicitacao` para
+  `StatusSolicitacao`, `Responder`/`Encerrar` para `StatusFeedback`.
+
+### 3.5 Contrato polimórfico — exportadores de relatório
+
+Único contrato de domínio com **duas implementações reais em produção**. O diagrama mostra a
+porta, as duas realizações e o ponto único que escolhe entre elas em tempo de execução.
+Diferente de 3.4, aqui o que importa não é o estado da entidade, e sim a **substituibilidade**:
+o consumidor depende da interface e não conhece as classes concretas (ADR-012).
+
+```mermaid
+classDiagram
+    class IExportadorDeRelatorio {
+        <<interface>>
+        +string Extensao
+        +string TipoDeConteudo
+        +Gerar(TabelaDeRelatorio tabela) byte[]
+    }
+
+    class ExportadorXlsx {
+        +string Extensao
+        +string TipoDeConteudo
+    }
+
+    class ExportadorCsv {
+        +string Extensao
+        +string TipoDeConteudo
+    }
+
+    class RelatorioService {
+        -IReadOnlyDictionary exportadores
+        +Exportar(string? tipo, DateOnly? de, DateOnly? ate, int? unidadeId, int? escolaId, string? formato, EscopoUsuario escopo) ArquivoDeRelatorio
+        -Selecionar(string formato) IExportadorDeRelatorio
+    }
+
+    IExportadorDeRelatorio <|.. ExportadorXlsx : realiza
+    IExportadorDeRelatorio <|.. ExportadorCsv : realiza
+    RelatorioService ..> IExportadorDeRelatorio : "seleciona por Extensao"
+```
+
+**Como ler:**
+
+- A porta fica em `backend/Domain/Interface/IExportadorDeRelatorio.cs`; as duas realizações, em
+  `backend/Infrastructure/Exportacao/`. O domínio não referencia nenhuma delas.
+- `ExportadorXlsx` é o **padrão** (`RelatorioService.FormatoPadrao = "xlsx"`); `ExportadorCsv` é
+  escolhido por `?formato=csv`. As duas são registradas no DI (`Program.cs:83-84`) — é isso que
+  entrega ao serviço a coleção `IEnumerable<IExportadorDeRelatorio>`.
+- A escolha acontece em **um** método (`Selecionar`), que compara o formato pedido com
+  `Extensao` (case-insensitive). Formato desconhecido não cai em implementação alguma: o
+  serviço devolve `400` com a lista de formatos aceitos.
+- Acrescentar um terceiro formato é criar uma classe e um registro no DI; **nenhum chamador
+  muda**. Se o formato exigir consulta própria, a mudança viola a ADR-012 e precisa de outra
+  decisão arquitetural.
+- Nenhuma das duas usa biblioteca externa (só BCL: `System.IO.Compression` no XLSX,
+  `System.Text` no CSV) e ambas são determinísticas: a mesma `TabelaDeRelatorio` produz os
+  mesmos bytes.
+
 ---
 
 ## 4. Fluxo de criação, adaptação e publicação de cardápio
@@ -519,8 +686,9 @@ stateDiagram-v2
 2. **O que foi omitido de propósito:** índices secundários, colunas de auditoria
    (`CriadoEmUtc`, `AtualizadoEmUtc`), detalhes de `HistoricoCardapio`/`EventoCardapio` e as
    54 linhas de registro de DI em `Program.cs`.
-3. **Cardápio com dias (Spec 037)** não aparece nos diagramas de dados: `DiaDeCardapio` não
-   existe no código — `Refeicao` continua presa diretamente ao `Cardapio`. O mesmo vale para
-   sugestão por IA (Spec 026). Ver a ressalva de rastreabilidade no `roadmap.md`.
+3. **Cardápio com dias (Spec 037) e substituição assistida por IA (Spec 026)** não aparecem
+   nos diagramas porque as duas specs foram **descartadas** em 2026-11-18: `DiaDeCardapio`
+   não existe no código — `Refeicao` continua presa diretamente ao `Cardapio` — e não há
+   sugestão por IA.
 4. **Frontend:** um diagrama de rotas por papel já existe de forma textual em
    `funcionalidades.md` §1–§9; não foi duplicado aqui.
