@@ -60,7 +60,7 @@ NutriEduc/
 │   ├── src/services/          # Chamadas HTTP
 │   └── package.json
 ├── management/                # SDD: roadmap, visão, arquitetura, ADRs, specs e pendências
-├── docs/av2/                  # Requisitos, rastreabilidade, prompt, depuração e auditorias
+├── docs/av2/                  # Requisitos, rastreabilidade, prompt e depuração
 ├── diagrama.md                # Modelos ER/classes e máquinas de estado
 ├── funcionalidades.md         # Funcionalidades por ator
 └── README.md
@@ -109,6 +109,17 @@ A API inicia em `http://localhost:5001`. Na inicialização, o backend aplica au
 
 As regiões válidas do CRN podem ser ajustadas sem alterar código. O padrão é `1..11`; em `backend/appsettings.json` use `Crn:RegioesValidas` ou, no ambiente, a variável `Crn__RegioesValidas` com a lista separada por vírgula (ex.: `1,2,3,4,5,6,7,8,9,10,11`). Configuração inválida impede o startup com mensagem explícita.
 
+**Primeiro administrador.** A rota `/bootstrap` só existe quando uma via está configurada, e a configuração precisa estar presente **antes** de `dotnet run`. A via mais simples em desenvolvimento é gravar o token no user-secrets do projeto:
+
+```bash
+# execute de dentro de backend/ (diretório do passo 2)
+dotnet user-secrets set "Bootstrap:Token" "<token com pelo menos 32 caracteres>"
+```
+
+O valor real fica apenas no user-secrets da máquina; **nunca** versione o token no README ou em `.env`.
+
+Alternativamente, defina `AdminInicial__Email` e `AdminInicial__Senha` no ambiente para criar o administrador no startup (idempotente). Em produção/container, use a variável `Bootstrap__Token` em vez do user-secrets. A seção [Papéis e escopo](#papéis-e-escopo) descreve o token temporário de 30 minutos e a trava `Bootstrap__Permitir`.
+
 > **Se `dotnet run` falhar com `MSB3027`/`MSB3021` ("backend.exe está sendo usado por outro processo")** ou `address already in use`, há uma instância anterior rodando. Encerre-a antes de subir de novo:
 >
 > ```powershell
@@ -146,7 +157,7 @@ O Vite informa no terminal o endereço local da interface, normalmente `http://l
 
 ### 4. Primeiro acesso
 
-> As variáveis do passo 2 precisam existir **antes** de `dotnet run`: sem `Bootstrap__Token` e sem `AdminInicial__Email`/`AdminInicial__Senha`, a rota `/bootstrap` responde `404` e não há como criar o primeiro administrador.
+> A configuração de bootstrap do passo 2 precisa existir **antes** de `dotnet run`: sem `Bootstrap__Token` e sem `AdminInicial__Email`/`AdminInicial__Senha`, a rota `/bootstrap` responde `404` e não há como criar o primeiro administrador.
 
 1. Abra `http://localhost:5173/bootstrap`.
 2. Cadastre o primeiro `AdminSecretaria` com o **token de ambiente** (`Bootstrap__Token`, mínimo de 32 caracteres) e o nome da unidade, ou crie o administrador no startup com `AdminInicial__Email` e `AdminInicial__Senha`.
@@ -200,7 +211,7 @@ dotnet test backend.Tests/backend.Tests.csproj --filter Domain.AlunoTests
 | `/alimentos`, `/alimentos/novo`, `/alimentos/editar/:id` | Catálogo de alimentos | `Nutricionista` (exclusivo da nutrição desde a Spec 039) |
 | `/merendeiras` | Área da merendeira | `Merendeira` |
 | `/relatorios` | Relatórios: prévia, filtros de período e exportação XLSX/CSV | `Nutricionista`, `AdminSecretaria`, `AdminEscola` |
-| `/pais`, `/pais/cardapios`, `/pais/ocorrencias`, `/pais/ocorrencias/nova`, `/pais/solicitacoes`, `/pais/feedback` | Portal dos pais: filhos, cardápio servido, ocorrências, solicitação de alergia e feedback | `Responsavel` |
+| `/pais`, `/pais/cardapios`, `/pais/ocorrencias`, `/pais/ocorrencias/nova`, `/pais/solicitacoes`, `/pais/feedback`, `/pais/relatorio` | Portal dos pais: filhos, cardápio servido, relatório do filho, ocorrências, solicitação de alergia e feedback | `Responsavel` |
 | `/secretaria`, `/secretaria/escolas`, `/secretaria/unidades`, `/secretaria/usuarios`, `/secretaria/solicitacoes-acesso` | Gestão da secretaria e fila de acesso | `AdminSecretaria` |
 | `/escolas` | Área da escola | `AdminEscola` |
 | `/solicitacoes`, `/ocorrencias`, `/feedbacks` | Solicitações, ocorrências e feedback | Todos os papéis autenticados, com escopo por papel |
@@ -580,7 +591,7 @@ O arquivo `frontend/.env` é local e não versionado; use `frontend/.env.example
 - [`management/specs/`](management/specs/) — requisitos, design e tarefas por spec.
 - [`diagrama.md`](diagrama.md) — ER, classes, máquinas de estado e fluxos.
 - [`funcionalidades.md`](funcionalidades.md) — funcionalidades por ator.
-- [`docs/av2/`](docs/av2/) — requisitos dos três fluxos e cinco regras, rastreabilidade, prompt para agente, depuração medida e auditorias.
+- [`docs/av2/`](docs/av2/) — requisitos dos três fluxos e cinco regras, rastreabilidade, prompt para agente e depuração medida.
 
 ## Banco de dados
 
