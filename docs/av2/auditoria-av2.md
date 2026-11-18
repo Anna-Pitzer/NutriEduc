@@ -28,6 +28,9 @@ sem pontuação parcial. Cada critério vale 0,25 ponto.
 > **F04** — o `README.md` agora documenta `APPDATA`/`ProgramFiles` e um clone limpo compila e roda
 > **881/881** testes seguindo as instruções. Com isso, o resultado corrente é **40/40 (10,0)**;
 > os vereditos por parte abaixo permanecem como registro do estado **antes** das correções.
+> Também foram superadas a ressalva de versionamento (`docs/av2/` e `av2-avaliacao.md` commitados
+> em `1f58edf`) e a ausência do pré-requisito no README; os itens 1, 2, 3 e 7 da tabela de
+> pendências estão resolvidos.
 
 ---
 
@@ -103,10 +106,10 @@ Fonte: `docs/av2/depuracao.md` (defeito de build sem `APPDATA`/`ProgramFiles`, P
 | F02 | SIM | `UsuarioTests.AtualizarPerfil_Invalido_NaoAlteraEstado` (`:77`): `Assert.Throws<ArgumentException>` + `Nome`/`Email` inalterados | Invariante violada e objeto permanece válido. |
 | F03 | SIM | `SolicitacaoApiTests.Fluxo_AprovarRestricao_AplicaNoAlunoEGravaTrilha` (`:151`) com `ApiFactory`/SQLite: POST, analisar, aprovar, `GET /api/aluno/perfil/{id}` e `GET /api/aluno/{id}/historico` | Integração real (HTTP + EF) que aplica R4 e verifica persistência. |
 | F04 | NÃO | Clone novo `/tmp/nutriedu-clone-2`: `README.md:129` (`dotnet build`) → **exit 1**, `path1`; `grep APPDATA README.md` = 0; com workaround não documentado: build OK e **870/870** (árvore: **881/881**); `docs/av2` ausente no clone | Instruções do repositório não bastam para clone limpo; depende de configuração local não documentada. |
-| F05 | SIM | `docs/av2/rastreabilidade.md`: F1–F3, R1–R5, matriz de 33 linhas (regra → comportamento → implementação → teste), mapa de testes e script de verificação; 50 referências conferidas | Rastreabilidade completa. Ressalva: documento não versionado. |
-| F06 | SIM | `av2-avaliacao.md` (32/40, 8 reprovações e ressalvas) e `docs/av2/avaliacao-final.md` (38/40, B03 e F04 como NÃO); `requisitos.md` §5 com 5 lacunas; PEND-028/PEND-049 abertos | Auditoria com evidência e pendências, sem declarar concluído o não comprovado. Ressalvas: duas auditorias divergentes e não versionadas. |
-| G01 | SIM | `docs/av2/requisitos.md`: F1–F3 (atores, pré-condições, fluxo principal, alternativas, pós-condições) e R1–R5 (condições, onde é imposta, exceções); `CA-F1-1`…`CA-R5-3`; 57 referências verificadas no código | Especificação verificável compatível com a implementação. Ressalva: não versionado. |
-| G02 | SIM | `docs/av2/prompt-agente.md`: alteração CSV (ADR-012/Spec 019), 11 achados de inspeção (I1–I11), prompt com escopo/RFs/gates, §3 com execução (11 testes, 881/881) e desvio registrado | Especificação para agente com evidência de inspeção e verificação. Ressalva: não versionado. |
+| F05 | SIM | `docs/av2/rastreabilidade.md`: F1–F3, R1–R5, matriz de 33 linhas (regra → comportamento → implementação → teste), mapa de testes e script de verificação; 50 referências conferidas | Rastreabilidade completa. Ressalva à época: não versionado; hoje versionado em `1f58edf`. |
+| F06 | SIM | `av2-avaliacao.md` (32/40, 8 reprovações e ressalvas) e `docs/av2/avaliacao-final.md` (38/40, B03 e F04 como NÃO); `requisitos.md` §5 com 5 lacunas; PEND-028/PEND-049 abertos | Auditoria com evidência e pendências, sem declarar concluído o não comprovado. Ressalvas: duas auditorias divergentes; hoje versionadas. |
+| G01 | SIM | `docs/av2/requisitos.md`: F1–F3 (atores, pré-condições, fluxo principal, alternativas, pós-condições) e R1–R5 (condições, onde é imposta, exceções); `CA-F1-1`…`CA-R5-3`; 57 referências verificadas no código | Especificação verificável compatível com a implementação. Ressalva à época: não versionado; hoje versionado. |
+| G02 | SIM | `docs/av2/prompt-agente.md`: alteração CSV (ADR-012/Spec 019), 11 achados de inspeção (I1–I11), prompt com escopo/RFs/gates, §3 com execução (11 testes, 881/881) e desvio registrado | Especificação para agente com evidência de inspeção e verificação. Ressalva à época: não versionado; hoje versionado. |
 
 **Totais da Parte 4:** 7 SIM, 1 NÃO (F04) — **1,75 / 2,00**.
 
@@ -122,20 +125,20 @@ Fonte: `docs/av2/depuracao.md` (defeito de build sem `APPDATA`/`ProgramFiles`, P
 
 ## Pendências consolidadas
 
-| # | Pendência | Impacto | Correção objetiva |
-| --- | --- | --- | --- |
-| 1 | B03: nulabilidade/genéricos divergentes no `diagrama.md` §3.4 (6 métodos de `Aluno` e `Cardapio`) | Reprova B03 | Repassar `?` e genéricos conforme `Aluno.cs:120-130,177,189,258` e `Cardapio.cs:146-153,192-198` |
-| 2 | F04: `README.md` não documenta `APPDATA`/`ProgramFiles`; clone limpo falha seguindo as instruções | Reprova F04 | Documentar o pré-requisito (ou script de build) e commitar as alterações |
-| 3 | `docs/av2/` e `av2-avaliacao.md` não versionados (`??` no Git) | Não existem em clone limpo; enfraquece F05/F06/G01/G02 na entrega | `git add` e commit |
-| 4 | `422` sem asserção (`UnprocessableEntity` = 0) | Lacuna de cobertura do ramo de diagnóstico de domínio | Teste de publicação/geração que asserte 422 |
-| 5 | Duas auditorias divergentes (`av2-avaliacao.md` 17/11, 32/40; `avaliacao-final.md` 18/11, 38/40) | Risco de interpretação | Eleger a versão válida e arquivar a outra |
-| 6 | C03/C05 dependem do recorte da Spec 035; para a anafilaxia isolada não há análise de escopo nem de POO | C03/C05 ficariam NÃO naquele recorte | Documentar o recorte da anafilaxia ou manter o recorte da Spec 035 |
-| 7 | E05: correção é workaround de ambiente, não institucionalizado | Eliminação condicionada | Levar o pré-requisito ao README (mesma correção de F04) |
+| # | Pendência | Impacto | Correção objetiva | Situação |
+| --- | --- | --- | --- | --- |
+| 1 | B03: nulabilidade/genéricos divergentes no `diagrama.md` §3.4 (6 métodos de `Aluno` e `Cardapio`) | Reprova B03 | Repassar `?` e genéricos conforme `Aluno.cs:120-130,177,189,258` e `Cardapio.cs:146-153,192-198` | **Resolvido em `1f58edf`** |
+| 2 | F04: `README.md` não documenta `APPDATA`/`ProgramFiles`; clone limpo falha seguindo as instruções | Reprova F04 | Documentar o pré-requisito (ou script de build) e commitar as alterações | **Resolvido em `1f58edf`** |
+| 3 | `docs/av2/` e `av2-avaliacao.md` não versionados (`??` no Git) | Não existem em clone limpo; enfraquece F05/F06/G01/G02 na entrega | `git add` e commit | **Resolvido em `1f58edf`** |
+| 4 | `422` sem asserção (`UnprocessableEntity` = 0) | Lacuna de cobertura do ramo de diagnóstico de domínio | Teste de publicação/geração que asserte 422 | Aberto (lacuna declarada) |
+| 5 | Duas auditorias divergentes (`av2-avaliacao.md` 17/11, 32/40; `avaliacao-final.md` 18/11, 38/40) | Risco de interpretação | Eleger a versão válida e arquivar a outra | Parcial: `auditoria-av2.md` e `avaliacao-final.md` consolidados; `av2-avaliacao.md` marcado como histórico |
+| 6 | C03/C05 dependem do recorte da Spec 035; para a anafilaxia isolada não há análise de escopo nem de POO | C03/C05 ficariam NÃO naquele recorte | Documentar o recorte da anafilaxia ou manter o recorte da Spec 035 | Aberto (recorte declarado) |
+| 7 | E05: correção é workaround de ambiente, não institucionalizado | Eliminação condicionada | Levar o pré-requisito ao README (mesma correção de F04) | **Resolvido em `1f58edf`** |
 
 ## Como reproduzir
 
 ```bash
-# gates (o env é pré-requisito não documentado — ver F04)
+# gates (o env está documentado no README — ver F04)
 env APPDATA="<seu %APPDATA%>" ProgramFiles='C:\Program Files' \
   dotnet build backend.Tests/backend.Tests.csproj -c Release
 env APPDATA="<seu %APPDATA%>" ProgramFiles='C:\Program Files' \
@@ -144,7 +147,7 @@ env APPDATA="<seu %APPDATA%>" ProgramFiles='C:\Program Files' \
 # clone limpo (evidência de F04)
 git clone . /tmp/nutriedu-clone-2 && cd /tmp/nutriedu-clone-2
 dotnet build backend/backend.csproj        # exit 1, path1
-ls docs/av2                                # ausente (não versionado)
+ls docs/av2                                # presente e versionado em 1f58edf
 
 # referências de teste citadas em docs/av2
 for f in docs/av2/requisitos.md docs/av2/rastreabilidade.md; do

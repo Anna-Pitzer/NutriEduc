@@ -173,17 +173,17 @@ malformado, `404` de rota, `405` e `415`). `401` e `403` saem dos eventos do coo
 | Exclusão definitiva sem auditoria | `DELETE` remove o registro; resta o log da requisição | ADR-014; avaliar se auditoria é exigida |
 | SQLite sem decimal/collation/date/concorrência reais | PEND-029 a PEND-037 | Migrar de provedor |
 
-## 10. Estado atual verificado (2026-11-17; status de specs revisado em 2026-11-18)
+## 10. Estado atual verificado (2026-11-18)
 
 | Verificação | Resultado |
 | --- | --- |
-| `dotnet test backend.Tests` | 870 testes, 870 aprovados, 0 falhas |
+| `dotnet test backend.Tests` | 881 testes, 881 aprovados, 0 falhas |
 | Build backend | 0 erros; avisos de nulabilidade pré-existentes em `GeracaoCardapioService` |
-| `npm run build` / `npm run lint` | build OK; lint 0 erros e 21 avisos pré-existentes |
-| Migrations | 29, aplicadas no startup por `Database.Migrate()` |
-| Superfície HTTP | 20 controllers (19 de recurso + `RespostaController` base) |
-| Serviços de aplicação | 27 (inclui `NotificacaoDeAcessoService` e `ConfiguracaoDeBootstrap`) |
-| Domínio implementado | aluno, usuário/papéis/CRN, escola/unidade, vínculo, restrições, alimentos, cardápio/refeições/adaptação/publicação, geração, ocorrências, solicitações (com anafilaxia informada), solicitações de acesso, feedback, notificações, trilha |
+| `npm run build` / `npm run lint` | build OK; lint 0 erros e 26 avisos pré-existentes |
+| Migrations | 30, aplicadas no startup por `Database.Migrate()` |
+| Superfície HTTP | 22 controllers (21 de recurso + `RespostaController` base) |
+| Serviços de aplicação | 29 (inclui `NotificacaoDeAcessoService` e `ConfiguracaoDeBootstrap`) |
+| Domínio implementado | aluno, usuário/papéis/CRN, escola/unidade, vínculo, restrições, alimentos, cardápio/refeições/adaptação/publicação, geração, ocorrências, solicitações (com anafilaxia informada), solicitações de acesso, feedback, notificações, trilha, relatórios (exportação XLSX e CSV) |
 | Specs | `audited`: 36 specs (001–039 menos 026 e 037). `discarded`: 026 e 037. Nenhuma em `planned`, `created`, `verified`, `in-progress` ou `implemented` |
 | Pendências | `management/pending-items.md`; PEND-028 (motor do `/spec-test`) segue aberto; dívidas técnicas abertas: PEND-027, PEND-029–037, PEND-043, PEND-046, PEND-048, PEND-049 |
 

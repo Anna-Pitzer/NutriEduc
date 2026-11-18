@@ -152,15 +152,15 @@ Fonte: `docs/av2/depuracao.md` (caso `dotnet build` sem `APPDATA`/`ProgramFiles`
 | F02 | Atendido | `UsuarioTests.AtualizarPerfil_Invalido_NaoAlteraEstado` (`:77`) espera `ArgumentException` e confirma `Nome`/`Email` inalterados; equivalente em `AlunoTests.Construtor_ComMaisDe20Restricoes_Lanca` |
 | F03 | Atendido | `SolicitacaoApiTests.Fluxo_AprovarRestricao_AplicaNoAlunoEGravaTrilha` (`:151`) cria, analisa e aprova via API (regra R4), e verifica persistência em `GET /api/aluno/perfil/{id}` (restrição "Lactose") e `GET /api/aluno/{id}/historico` (evento `RestricaoAdicionada` com autor) |
 | F04 | **Não Atendido** | Clone limpo executado; seguindo `README.md:129`, o build falha (`path1`); `grep APPDATA README.md` → 0; com injeção não documentada, 870/870 testes (contra 881/881 na árvore, por alterações não commitadas). Detalhes na §2 |
-| F05 | Atendido | `docs/av2/rastreabilidade.md` liga F1–F3, R1–R5, implementação e teste em 33 linhas, com 50 referências verificadas e script de checagem (§6). Ressalva: não versionado (`?? docs/`) |
+| F05 | Atendido | `docs/av2/rastreabilidade.md` liga F1–F3, R1–R5, implementação e teste em 33 linhas, com 50 referências verificadas e script de checagem (§6). Ressalva à época: não versionado; hoje versionado em `1f58edf` |
 | F06 | Atendido | `av2-avaliacao.md` traz veredito por item, evidência e 8 reprovações explícitas (§3), sem declarar concluído o não comprovado — a linha F06 denuncia o overclaim de 026/037, já corrigido (`roadmap.md`: 36 `audited` + 2 `discarded`); lacunas em `docs/av2/requisitos.md` §5 e PEND-028/PEND-049 abertos. Ressalva: auditoria datada de 17/11, desatualizada frente ao código de 18/11 |
 
 ### Família G — especificação e prompt para agente (2/2)
 
 | Item | Veredito | Evidência |
 | --- | --- | --- |
-| G01 | Atendido | `docs/av2/requisitos.md` especifica F1–F3 (atores, pré-condições, fluxo principal, alternativas, pós-condições) e R1–R5 (condições, onde é imposta, exceções), com `CA-F1-1`…`CA-R5-3` e 57 referências de prova verificadas contra o código. Ressalva: não versionado |
-| G02 | Atendido | `docs/av2/prompt-agente.md` descreve alteração concreta (CSV, ADR-012/Spec 019) com 11 achados de inspeção (I1–I11, com arquivo e linha), prompt executável com escopo fechado, RFs, gates e condições de parada, além do resultado da execução e do desvio registrado. Ressalva: não versionado |
+| G01 | Atendido | `docs/av2/requisitos.md` especifica F1–F3 (atores, pré-condições, fluxo principal, alternativas, pós-condições) e R1–R5 (condições, onde é imposta, exceções), com `CA-F1-1`…`CA-R5-3` e 57 referências de prova verificadas contra o código. Ressalva à época: não versionado; hoje versionado |
+| G02 | Atendido | `docs/av2/prompt-agente.md` descreve alteração concreta (CSV, ADR-012/Spec 019) com 11 achados de inspeção (I1–I11, com arquivo e linha), prompt executável com escopo fechado, RFs, gates e condições de parada, além do resultado da execução e do desvio registrado. Ressalva à época: não versionado; hoje versionado |
 
 ---
 
@@ -169,9 +169,9 @@ Fonte: `docs/av2/depuracao.md` (caso `dotnet build` sem `APPDATA`/`ProgramFiles`
 | Ressalva | Situação |
 | --- | --- |
 | `422` sem asserção em teste | `ErrorHandlingMiddleware` mapeia 422 para diagnóstico de domínio, mas há 0 asserções de `UnprocessableEntity`; declarado em `docs/av2/requisitos.md` §5 |
-| `docs/av2/` e `av2-avaliacao.md` não versionados | `git status` → `?? docs/`, `?? av2-avaliacao.md`; ausentes em clone limpo |
+| `docs/av2/` e `av2-avaliacao.md` não versionados | **Superada em `1f58edf`**: `docs/av2/`, `av2-avaliacao.md` e o código do CSV foram commitados; presentes no clone |
 | Frontend sem testes automatizados | PEND-049 aberto; critérios de UI não têm prova automatizada |
-| Workaround de `APPDATA`/`ProgramFiles` fora do README | Fonte da reprovação F04; registrado em PEND-016 e em `docs/av2/depuracao.md` |
+| Workaround de `APPDATA`/`ProgramFiles` fora do README | **Superada em `1f58edf`**: o README documenta o pré-requisito e um clone limpo roda 881/881 |
 | Auditoria `av2-avaliacao.md` de 17/11 | Vereditos de A08/B03/E06/F05/G01/G02 anteriores às correções de 18/11 |
 
 ---
@@ -179,7 +179,7 @@ Fonte: `docs/av2/depuracao.md` (caso `dotnet build` sem `APPDATA`/`ProgramFiles`
 ## 5. Como reproduzir
 
 ```bash
-# 1. gates (o env é pré-requisito não documentado no README — ver F04)
+# 1. gates (o env está documentado no README — ver F04)
 env APPDATA="<seu %APPDATA%>" ProgramFiles='C:\Program Files' \
   dotnet build backend.Tests/backend.Tests.csproj -c Release
 env APPDATA="<seu %APPDATA%>" ProgramFiles='C:\Program Files' \
@@ -188,7 +188,7 @@ env APPDATA="<seu %APPDATA%>" ProgramFiles='C:\Program Files' \
 # 2. clone limpo (evidência de F04)
 git clone . /tmp/nutriedu-clone && cd /tmp/nutriedu-clone
 dotnet build backend/backend.csproj        # exit 1, path1
-ls docs/av2                                # ausente (não versionado)
+ls docs/av2                                # presente e versionado em 1f58edf
 
 # 3. referências de teste citadas nos documentos
 for f in docs/av2/requisitos.md docs/av2/rastreabilidade.md; do

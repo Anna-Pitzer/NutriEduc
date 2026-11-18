@@ -9,6 +9,11 @@ famílias de critérios (A, B, C, D, E, F, G), com a nota calculada e a memória
 gate. Não houve pontuação parcial: apenas `Atendido` ou `Não Atendido`. Itens com "ressalva"
 foram aprovados porque a evidência existe, mas com uma lacuna registrada.
 
+> **Documento histórico (17/11/2026).** Avaliação feita sobre `HEAD` `10fb145`, antes das
+> correções de 18/11 e do commit `1f58edf`. O estado atual e os vereditos consolidados estão em
+> `docs/av2/avaliacao-final.md` e `docs/av2/auditoria-av2.md` (40/40). Os vereditos abaixo não
+> foram reescritos: retratam aquela data.
+
 > **Aviso sobre a nota.** O repositório **não contém rubrica oficial** da disciplina. A única
 > referência de pesos encontrada é `revisao-codigo.md` §2/§5, que cita dimensões A (10%), C (20%)
 > e D (20%) de uma régua anterior — esquema diferente destes 40 itens. Por isso a nota abaixo usa
