@@ -21,6 +21,14 @@ sem pontuação parcial. Cada critério vale 0,25 ponto.
 | 4 — Testes, rastreabilidade e specs (F/G) | 8 | 7 | 1 (F04) | 1,75 / 2,00 |
 | **Total** | **40** | **38** | **2** | **9,50 / 10,00** |
 
+> **Revisão pós-auditoria (2026-11-18, commit `1f58edf`).** As duas reprovações foram corrigidas e
+> reverificadas: **B03** — `diagrama.md` §3.4 passou a declarar a nulabilidade e os genéricos
+> exatamente como no código (6 métodos de `Aluno`/`Cardapio`, mais `RestricaoAlimentar.Normalizar`
+> e `Alimento.AtualizarDados`), usando a notação `~T~` do Mermaid, sem `<`/`>` no bloco;
+> **F04** — o `README.md` agora documenta `APPDATA`/`ProgramFiles` e um clone limpo compila e roda
+> **881/881** testes seguindo as instruções. Com isso, o resultado corrente é **40/40 (10,0)**;
+> os vereditos por parte abaixo permanecem como registro do estado **antes** das correções.
+
 ---
 
 ## Parte 1 — POO e modelo de classes (A01–A08, B01–B08)

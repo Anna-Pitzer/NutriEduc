@@ -31,6 +31,12 @@ com evidência por item. Sem pontuação parcial: cada item é `Atendido` ou `N�
 Os dois itens reprovados são objetivos e corrigíveis: B03 (nulabilidade de parâmetros no modelo)
 e F04 (instruções de build insuficientes para um clone limpo).
 
+> **Revisão pós-auditoria (2026-11-18, commit `1f58edf`).** B03 e F04 foram corrigidos e
+> reverificados: o modelo passou a refletir nulabilidade e genéricos do código e o `README.md`
+> documenta `APPDATA`/`ProgramFiles`; um clone limpo compila e roda **881/881** testes seguindo as
+> instruções. **Resultado corrente: 40/40 = 100% → 10,0.** A tabela acima permanece como registro
+> do estado anterior às correções.
+
 ---
 
 ## 2. Itens não atendidos
