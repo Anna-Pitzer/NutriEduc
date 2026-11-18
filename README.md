@@ -14,23 +14,27 @@ Curso: Ciência da Computação | Turma: A
 
 Aplicação web para apoiar atividades de educação alimentar em contexto escolar. O projeto reúne cadastro e consulta de alunos, dados de saúde e restrições alimentares, telas de cardápio e gerenciamento de usuários.
 
-> **Estado da integração (2026-11-13):** backend com 20 controllers, 29 migrations e 830 testes verdes; frontend com build e lint sem erro. O fluxo de cardápio está implementado no backend (geral, adaptado, publicação e geração) e o frontend de montagem/detalhe ainda tem tarefas abertas na Spec 029. O portal dos pais mostra o cardápio geral e a versão adaptada do filho. O fluxo de notificações cobre solicitações de acesso, decisões e os eventos de solicitação e ocorrência. Consulte [`management/roadmap.md`](management/roadmap.md) para o status por spec e [`management/pending-items.md`](management/pending-items.md) para as pendências.
+> **Estado atual (2026-11-18).** Backend com **22 controllers**, **30 migrations** e **881 testes verdes**; frontend com `npm run build` e `npm run lint` sem erros. Os fluxos de cardápio (geral, adaptado, geração, publicação e histórico), solicitações, ocorrências, feedback, notificações, portal dos pais, área da merendeira e relatórios com exportação **XLSX e CSV** estão implementados. No roadmap, **36 specs estão `audited`** e as specs **026 e 037** foram `discarded`. Consulte [`management/roadmap.md`](management/roadmap.md) para o status por spec e [`management/pending-items.md`](management/pending-items.md) para as pendências.
 
 ## Funcionalidades
 
-- Cadastro e autenticação de usuários com sessão baseada em cookie.
-- Gestão de perfil do usuário.
-- Telas para cadastro e consulta de alunos, incluindo dados de nascimento, contato de emergência e anafilaxia.
-- Telas para consulta e montagem de cardápios.
-- Páginas de suporte, termos de uso e política de privacidade.
+- Autenticação com sessão por cookie, perfis por papel (`AdminSecretaria`, `AdminEscola`, `Nutricionista`, `Merendeira`, `Responsavel`) e bootstrap do primeiro administrador.
+- Cadastro e consulta de alunos, com nascimento, contato de emergência, anafilaxia, restrições alimentares e trilha de alterações.
+- Catálogo de alimentos: categorias, valores nutricionais, vínculos com restrições e ativação/desativação.
+- Cardápios: montagem manual, geração automática, adaptação por escola, publicação, revisões e histórico de eventos.
+- Solicitações (inclusive alteração de dados cadastrais), ocorrências, feedback e notificações, com escopo por unidade/escola e trilha.
+- Relatórios com pré-visualização (200 linhas) e exportação completa em **XLSX** ou **CSV** (limite de 50.000 linhas).
+- Painéis por papel, portal dos pais/responsáveis e área da merendeira.
+- CRN da nutricionista, vínculo responsável↔aluno e gestão de usuários pela secretaria.
 
 A existência de uma tela no frontend não significa que todas as operações tenham uma API implementada; as rotas disponíveis estão listadas abaixo.
 
 ## Tecnologias
 
-- **Frontend:** React, TypeScript, Vite, React Router, Tailwind CSS e Lucide.
-- **Backend:** ASP.NET Core Web API com .NET 10.
-- **Persistência:** SQLite com Entity Framework Core e migrations.
+- **Frontend:** React 19, TypeScript 6, Vite 8, React Router 7, Tailwind CSS 4, Lucide e React Toastify.
+- **Backend:** ASP.NET Core Web API em .NET 10 (target `net10.0`).
+- **Persistência:** SQLite com Entity Framework Core 10 e migrations.
+- **Testes:** xUnit em `backend.Tests` (domínio, serviços e integração HTTP).
 - **Lint do frontend:** Oxlint.
 
 ## Estrutura
@@ -39,33 +43,47 @@ A existência de uma tela no frontend não significa que todas as operações te
 NutriEduc/
 ├── backend/
 │   ├── API/Controllers/       # Endpoints HTTP
-│   ├── API/Services/          # Regras de aplicação
-│   ├── Application/           # DTOs
-│   ├── Domain/                # Entidades e contratos
-│   ├── Infrastructure/        # EF Core, SQLite e repositórios
+│   ├── API/Services/          # Casos de uso
+│   ├── API/Middleware/        # Contrato de erro e exceções
+│   ├── Application/           # DTOs e autorização
+│   ├── Domain/                # Entidades, serviços puros e portas
+│   ├── Infrastructure/        # EF Core, SQLite, repositórios e exportadores
 │   ├── Migrations/            # Migrations do banco
 │   ├── Program.cs             # Inicialização e porta da API
 │   └── backend.csproj
+├── backend.Tests/             # xUnit: domínio, serviços, integração e fakes
 ├── frontend/
 │   ├── src/components/        # Componentes compartilhados
 │   ├── src/context/           # Estado de autenticação
-│   ├── src/pages/             # Páginas da aplicação
-│   ├── src/routes/            # Rotas e proteção de páginas
+│   ├── src/pages/             # Páginas por papel
+│   ├── src/routes/            # Rotas e proteção por papel
 │   ├── src/services/          # Chamadas HTTP
 │   └── package.json
 ├── management/                # SDD: roadmap, visão, arquitetura, ADRs, specs e pendências
+├── docs/av2/                  # Requisitos, rastreabilidade, prompt, depuração e auditorias
+├── diagrama.md                # Modelos ER/classes e máquinas de estado
+├── funcionalidades.md         # Funcionalidades por ator
 └── README.md
 ```
 
 ## Requisitos
 
-- .NET SDK 10.
-- Node.js compatível com Vite 8 (Node.js 20.19+ ou 22.12+).
-- npm, incluído com o Node.js.
+- .NET SDK 10 (validado com 10.0.302).
+- Node.js 20.19+ ou 22.12+ (validado com 22.18).
+- npm 10+.
+- Git.
+- Windows, macOS ou Linux. No Windows com Git Bash/MSYS, veja a nota de `APPDATA`/`ProgramFiles` abaixo.
 
-## Configuração e execução
+## Como rodar na sua máquina
 
-Execute o backend e o frontend em terminais separados.
+Execute o backend e o frontend em **dois terminais separados**.
+
+### 0. Clonar o repositório
+
+```bash
+git clone https://github.com/Anna-Pitzer/NutriEduc.git
+cd NutriEduc
+```
 
 ### 1. Configurar a URL da API
 
@@ -126,6 +144,24 @@ npm run dev
 
 O Vite informa no terminal o endereço local da interface, normalmente `http://localhost:5173`.
 
+### 4. Primeiro acesso
+
+> As variáveis do passo 2 precisam existir **antes** de `dotnet run`: sem `Bootstrap__Token` e sem `AdminInicial__Email`/`AdminInicial__Senha`, a rota `/bootstrap` responde `404` e não há como criar o primeiro administrador.
+
+1. Abra `http://localhost:5173/bootstrap`.
+2. Cadastre o primeiro `AdminSecretaria` com o **token de ambiente** (`Bootstrap__Token`, mínimo de 32 caracteres) e o nome da unidade, ou crie o administrador no startup com `AdminInicial__Email` e `AdminInicial__Senha`.
+3. Entre em `http://localhost:5173/login` com a conta criada.
+
+As duas vias de bootstrap, o token temporário de 30 minutos e a trava `Bootstrap__Permitir` estão descritos em [Papéis e escopo](#papéis-e-escopo).
+
+### 5. Rodar os testes
+
+```bash
+dotnet test backend.Tests/backend.Tests.csproj
+```
+
+A suíte sobe com `WebApplicationFactory` e SQLite em memória; não é necessário banco real.
+
 ## Comandos úteis
 
 Execute os comandos do frontend dentro de `frontend/`:
@@ -143,6 +179,9 @@ Execute os comandos do backend a partir da raiz do repositório:
 dotnet restore backend/backend.csproj
 dotnet build backend/backend.csproj
 dotnet run --project backend/backend.csproj
+
+dotnet test backend.Tests/backend.Tests.csproj                       # suíte completa
+dotnet test backend.Tests/backend.Tests.csproj --filter Domain.AlunoTests
 ```
 
 ## Páginas do frontend
@@ -158,8 +197,9 @@ dotnet run --project backend/backend.csproj
 | `/cardapios`, `/cardapios/:id` | Listagem e detalhe de cardápios | `Nutricionista`, `AdminSecretaria`, `Merendeira` |
 | `/cardapios/alteracoes` | Feed de alterações de cardápio | `Nutricionista`, `Merendeira` |
 | `/cardapios/novo`, `/cardapios/:id/editar`, `/cardapios/parametros-geracao` | Montagem e parâmetros de geração | `Nutricionista` |
-| `/alimentos`, `/alimentos/novo`, `/alimentos/editar/:id` | Catálogo de alimentos | `Nutricionista`, `Merendeira` (escrita validada no backend) |
+| `/alimentos`, `/alimentos/novo`, `/alimentos/editar/:id` | Catálogo de alimentos | `Nutricionista` (exclusivo da nutrição desde a Spec 039) |
 | `/merendeiras` | Área da merendeira | `Merendeira` |
+| `/relatorios` | Relatórios: prévia, filtros de período e exportação XLSX/CSV | `Nutricionista`, `AdminSecretaria`, `AdminEscola` |
 | `/pais`, `/pais/cardapios`, `/pais/ocorrencias`, `/pais/ocorrencias/nova`, `/pais/solicitacoes`, `/pais/feedback` | Portal dos pais: filhos, cardápio servido, ocorrências, solicitação de alergia e feedback | `Responsavel` |
 | `/secretaria`, `/secretaria/escolas`, `/secretaria/unidades`, `/secretaria/usuarios`, `/secretaria/solicitacoes-acesso` | Gestão da secretaria e fila de acesso | `AdminSecretaria` |
 | `/escolas` | Área da escola | `AdminEscola` |
@@ -507,35 +547,44 @@ O perfil de usuário devolve `id`, `nome`, `email`, `telefone`, `foto`, `papel`,
 
 ## Testes
 
-A suíte automatizada fica em `backend.Tests` (xUnit) e cobre domínio, serviços com fakes,
-repositórios/filtros e contratos HTTP via `WebApplicationFactory` com SQLite em memória.
-Estado em 2026-11-13: **830 testes aprovados**.
+A suíte fica em `backend.Tests` (xUnit) e cobre domínio, serviços com fakes, repositórios/filtros e contratos HTTP via `WebApplicationFactory` com SQLite em memória.
+Estado em 2026-11-18: **881 testes aprovados** (870 de base + 11 do exportador CSV).
 
 ```bash
 dotnet test backend.Tests/backend.Tests.csproj
 ```
 
 Para rodar apenas um grupo: `dotnet test backend.Tests/backend.Tests.csproj --filter Domain.AlunoTests`.
-O frontend ainda não possui testes automatizados; a validação é `npm run build` + `npm run lint`.
+O frontend ainda não possui testes automatizados (PEND-049); a validação é `npm run build` + `npm run lint`.
 
 ## Pendências conhecidas
 
 A lista canônica, com identificadores estáveis, evidência e próxima ação, é
-[`management/pending-items.md`](management/pending-items.md). Em resumo (2026-11-13):
+[`management/pending-items.md`](management/pending-items.md). Em resumo (2026-11-18):
 
-- **Spec 019 (relatórios/exportação)** ainda não implementada.
-- **Spec 029** com backend pronto e frontend de montagem/detalhe pendente (PEND-042).
-- **Specs 034 e 035** auditadas em 2026-11-13; a validação manual no navegador segue como PEND-047 e PEND-050.
-- **PEND-028** bloqueia a promoção automática de status pelo motor SDD; as auditorias de 034 e 035 foram registradas manualmente.
-- **PEND-046** mantém desabilitado o diagnóstico global de contas sem papel.
-- Limitações do SQLite (decimal, collation, datas e concorrência) seguem registradas como PEND-029 a PEND-037.
-- O frontend não possui testes automatizados.
+- **PEND-028** — o motor do `/spec-test` não resolve o status das specs; as auditorias foram registradas manualmente.
+- **PEND-049** — frontend sem testes automatizados; validação por `npm run build` + `npm run lint`.
+- **PEND-029 a PEND-037** — limitações do SQLite (decimal, collation, datas, concorrência e migração de provedor).
+- **PEND-043** — `SolicitacaoService` ainda concentra os seis tipos de solicitação.
+- **PEND-046** — diagnóstico global de contas sem papel permanece desabilitado.
+- **PEND-048** — matriz de permissões e `CardapioService.PodeLer` divergem para `Responsavel`.
+- **422 sem teste dedicado** — o ramo de diagnóstico de domínio está implementado, mas sem asserção; declarado em [`docs/av2/requisitos.md`](docs/av2/requisitos.md) §5.
+- As specs **026 e 037** foram descartadas e não são pendências.
 
 O arquivo `frontend/.env` é local e não versionado; use `frontend/.env.example` como base.
 
+## Documentação do projeto
+
+- [`management/roadmap.md`](management/roadmap.md) — índice e status das specs.
+- [`management/vision.md`](management/vision.md), [`management/arch.md`](management/arch.md), [`management/adr.md`](management/adr.md) e [`management/lessons.md`](management/lessons.md).
+- [`management/specs/`](management/specs/) — requisitos, design e tarefas por spec.
+- [`diagrama.md`](diagrama.md) — ER, classes, máquinas de estado e fluxos.
+- [`funcionalidades.md`](funcionalidades.md) — funcionalidades por ator.
+- [`docs/av2/`](docs/av2/) — requisitos dos três fluxos e cinco regras, rastreabilidade, prompt para agente, depuração medida e auditorias.
+
 ## Banco de dados
 
-O backend usa SQLite e executa `Database.Migrate()` ao iniciar. As migrations ficam em `backend/Migrations/`. O caminho SQLite é relativo ao diretório de execução (`database.db`); mantenha isso em mente ao executar a API e ao localizar o arquivo criado.
+O backend usa SQLite e executa `Database.Migrate()` ao iniciar. As migrations ficam em `backend/Migrations/`; quando a API roda a partir de `backend/`, o arquivo é `backend/database.db`. Para recriar do zero, pare a API, apague `backend/database.db` e rode `dotnet run` de novo — todas as migrations são reaplicadas.
 
 
 <img width="100%" src="https://capsule-render.vercel.app/api?type=slice&height=150&color=D92567&reversal=false&section=footer"/>
