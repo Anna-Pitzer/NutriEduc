@@ -116,7 +116,15 @@ As regiões válidas do CRN podem ser ajustadas sem alterar código. O padrão �
 dotnet user-secrets set "Bootstrap:Token" "<token com pelo menos 32 caracteres>"
 ```
 
-O valor real fica apenas no user-secrets da máquina; **nunca** versione o token no README ou em `.env`.
+O valor real fica apenas no user-secrets da máquina; **nunca** versione o token no README ou em `.env`. No Windows, o arquivo gerado é `%APPDATA%\Microsoft\UserSecrets\nutrieduc-bootstrap-dev\secrets.json`.
+
+**Que valor usar?** O token não é emitido por nenhum serviço: é apenas uma string combinada entre você e a configuração, e **qualquer sequência serve** desde que tenha **no mínimo 32 caracteres** — o limite é conferido depois de aparar espaços nas pontas (`ConfiguracaoDeBootstrap`). A comparação é byte a byte, então maiúsculas e minúsculas contam. Na prática use um valor aleatório e não adivinhável, gerado uma única vez:
+
+```bash
+openssl rand -base64 32   # gera 44 caracteres
+```
+
+Com token ausente ou com menos de 32 caracteres a rota `/bootstrap` responde `404` e o backend registra o motivo no log; o mesmo token vale **uma vez por unidade** e não expira.
 
 Alternativamente, defina `AdminInicial__Email` e `AdminInicial__Senha` no ambiente para criar o administrador no startup (idempotente). Em produção/container, use a variável `Bootstrap__Token` em vez do user-secrets. A seção [Papéis e escopo](#papéis-e-escopo) descreve o token temporário de 30 minutos e a trava `Bootstrap__Permitir`.
 
